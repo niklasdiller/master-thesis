@@ -25,6 +25,8 @@ dependencies {
     implementation group: 'org.apache.commons', name: 'commons-math3', version: '3.6.1'
     implementation group: 'com.google.guava', name: 'guava', version: '31.0.1-jre'
     implementation group: 'com.googlecode.json-simple', name: 'json-simple', version: '1.1.1'
+    implementation 'tech.tablesaw:tablesaw-core:0.42.0'
+
 }
 
 mainClassName = "ModelTrainer"

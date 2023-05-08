@@ -1,6 +1,9 @@
 package main.java;
 
 import org.json.simple.JSONArray;
+import tech.tablesaw.io.DataFrameReader;
+import tech.tablesaw.io.ReaderRegistry;
+import tech.tablesaw.io.jdbc.SqlResultSetReader;
 import weka.classifiers.Classifier;
 import weka.classifiers.trees.RandomForest;
 import weka.core.*;
@@ -12,6 +15,17 @@ import java.sql.*;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import tech.tablesaw.api.*;
+import tech.tablesaw.io.csv.CsvReadOptions;
+import tech.tablesaw.selection.Selection;
+
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ModelTrainer {
 
@@ -86,61 +100,6 @@ public class ModelTrainer {
     System.out.println("Database connection established.");
   }
 
-  /**
-   * Preprocessing queries to generate a training dataset in database
-   * @throws SQLException
-   */
-  @SuppressWarnings("SqlResolve")
-  private void preprocessInDB() throws SQLException {
-    String cattleId = settings.cattleId;
-    String round = settings.round;
-    String sensorTable = "sensor_data_" + cattleId + "_" + round;
-    String labelsTable = "labels_data_" + cattleId + "_" + round;
-    String combinedTable = "combined_data_" + cattleId + "_" + round;
-
-    System.out.println("Start preprocessing...");
-    Statement st = conn.createStatement();
-    st.execute("DROP TABLE IF EXISTS " + sensorTable + ", " + labelsTable + ", " + combinedTable + ";");
-    System.out.println("(1/4) Cleaned up old tables");
-    st.execute("SELECT * INTO " + sensorTable +
-            " FROM prediction_framework_sensor_data_rawdb" +
-            " WHERE cattle_id = '" + cattleId + "' AND round = '" + round + "';");
-    System.out.println("(2/4) Extracted sensor data into new table " + sensorTable);
-    st.execute("SELECT * INTO " + labelsTable +
-            " FROM prediction_framework_label_data_rawdb AS a" +
-            " WHERE ((a.label='Gehen') OR (a.label='Grasen') OR (a.label='Liegen') OR (a.label='Stehen'))" +
-            " AND cattle_id = '" + cattleId + "' AND round = '" + round + "';");
-    System.out.println("(3/4) Extracted label data into new table " + labelsTable);
-    st.execute("SELECT a.cattle_id, b.timestamp, a.label, b.gx, b.gy, b.gz, b.ax, b.ay, b.az INTO " + combinedTable +
-            " FROM " + labelsTable + " as a, " + sensorTable + " as b" +
-            " WHERE ((a.begin_time_epoch<=b.timestamp) AND (a.end_time_epoch>=b.timestamp));");
-    System.out.println("(4/4) Joined data into new table " + combinedTable);
-    st.close();
-
-    System.out.println("Preprocessing complete.");
-  }
-
-  /**
-   * Retrieve preprocessed data from database
-   * @return A ResultSet containing the matching rows
-   */
-  @SuppressWarnings("SqlResolve")
-  private ResultSet queryDBAfterPreprocessing() throws SQLException {
-    System.out.println("Querying preprocessed data...");
-    String query = "SELECT * FROM " + "combined_data_" + settings.cattleId + "_" + settings.round;
-    if (settings.startTimestamp != null) {
-      query += " WHERE timestamp >= " + settings.startTimestamp;
-      if (settings.endTimestamp != null) {
-        query += " AND timestamp <= " + settings.endTimestamp;
-      }
-    } else if (settings.endTimestamp != null) {
-      query += " WHERE timestamp <= " + settings.endTimestamp;
-    }
-    query += " ORDER BY timestamp;";
-
-    Statement st = conn.createStatement();
-    return st.executeQuery(query);
-  }
 
   /**
    * Get preprocessed data from previously existing table in db
@@ -148,108 +107,13 @@ public class ModelTrainer {
    */
   private ResultSet queryDB() throws SQLException {
     System.out.println("Querying preprocessed data...");
-    String query = "SELECT * FROM " + settings.preprocessTable + " ORDER BY sdid LIMIT 100;"; // instead of timestamp
+    String query = "SELECT * FROM public.\"Input_datasets_parkinglot_38\" ORDER BY arrival_unix_seconds ASC LIMIT 100 ;";
+
+    //String query = "SELECT * FROM " + settings.preprocessTable + " ORDER BY sdid LIMIT 100;"; // instead of timestamp
 
     Statement st = conn.createStatement();
     return st.executeQuery(query);
   }
-
-  /**
-   * Calculate features for a specific field
-   * @param features List of string codes for features which are to be calculated
-   * @param field The field for which the features are calculated for e.g. "ax", "gyrMag"
-   * @param values The input values for the calculation
-   * @return Map of calculation results
-   * @throws Exception
-   */
-  private HashMap<String, Double> calcFeatures(ArrayList<String> features, String field, double[] values) throws Exception {
-    FeatureCalculator calc = new FeatureCalculator();
-    HashMap<String, Double> results = new HashMap<>();
-    for (String feature : features) {
-      switch (feature) {
-        case "min":
-          results.put(field + feature, calc.min(values));
-          break;
-        case "max":
-          results.put(field + feature, calc.max(values));
-          break;
-        case "mean":
-          results.put(field + feature, calc.mean(values));
-          break;
-        case "median":
-          results.put(field + feature, calc.median(values));
-          break;
-        case "stdev":
-          results.put(field + feature, calc.std(values));
-          break;
-        case "iqr":
-          results.put(field + feature, calc.iqr(values));
-          break;
-        case "skew":
-          results.put(field + feature, calc.skew(values));
-          break;
-        case "kurt":
-          results.put(field + feature, calc.kurtosis(values));
-          break;
-        case "rms":
-          results.put(field + feature, calc.rms(values));
-          break;
-        case "mcr":
-          results.put(field + feature, calc.mcr(values));
-          break;
-        case "energy":
-          results.put(field + feature, calc.energy(values));
-          break;
-        case "peakfreq":
-          results.put(field + feature, calc.peakFreq(values));
-          break;
-        case "freqentrpy":
-          results.put(field + feature, calc.frDmEntropy(values));
-          break;
-        default:
-          throw new Exception("Unknown feature in features setting");
-      }
-    }
-    return results;
-  }
-
-  /**
-   * Extract data and get calculated features for field
-   * @param field The field for which the features are calculated for e.g. "ax", "gyrMag"
-   * @param features List of string codes for features which are to be calculated
-   * @param windowData Input data
-   * @return The calculated results
-   * @throws Exception
-   */
-  private HashMap<String, Double> getResultsForField(String field,  ArrayList<String> features, ArrayList<HashMap<String,String>> windowData) throws Exception {
-    FeatureCalculator calc = new FeatureCalculator();
-    double[] magValues = new double[3];
-    HashMap<String, String> dataset;
-
-    double[] values = new double[windowData.size()];
-    for (int i = 0; i < values.length; i++) {
-      dataset = windowData.get(i);
-      switch (field) {
-        case "gyrmag":
-          magValues[0] = Double.parseDouble(dataset.get("gx"));
-          magValues[1] = Double.parseDouble(dataset.get("gy"));
-          magValues[2] = Double.parseDouble(dataset.get("gz"));
-          values[i] = calc.mag(magValues);
-          break;
-        case "accmag":
-          magValues[0] = Double.parseDouble(dataset.get("ax"));
-          magValues[1] = Double.parseDouble(dataset.get("ay"));
-          magValues[2] = Double.parseDouble(dataset.get("az"));
-          values[i] = calc.mag(magValues);
-          break;
-        default:
-          values[i] = Double.parseDouble(dataset.get(field));
-      }
-    }
-
-    return calcFeatures(features, field, values);
-  }
-
   /**
    * Find the label with the most occurrences in window
    * @param windowData The windowed input data
@@ -290,12 +154,6 @@ public class ModelTrainer {
    */
   private Instance createInstance(ArrayList<HashMap<String,String>> windowData) throws Exception {
     HashMap<String, Double> instanceData = new HashMap<>();
-    for (Map.Entry<String, ArrayList<String>> entry : settings.featureData.entrySet()) {
-      String field = entry.getKey();
-      ArrayList<String> features = entry.getValue();
-
-      instanceData.putAll(getResultsForField(field, features, windowData));
-    }
 
     Instance instance = new DenseInstance(this.m_Data.numAttributes());
     instance.setDataset(this.m_Data);
@@ -318,16 +176,14 @@ public class ModelTrainer {
    * @return
    * @throws SQLException
    */
-  private HashMap<String, String> extractDBResult(ResultSet rs) throws SQLException {
-    HashMap<String, String> map = new HashMap<>();
-    map.put("timestamp", rs.getString("timestamp"));
-    map.put("label", rs.getString("label"));
-    map.put("gx", rs.getString("gx"));
-    map.put("gy", rs.getString("gy"));
-    map.put("gz", rs.getString("gz"));
-    map.put("ax", rs.getString("ax"));
-    map.put("ay", rs.getString("ay"));
-    map.put("az", rs.getString("az"));
+  private HashMap<String, Long> extractDBResult(ResultSet rs) throws SQLException {
+    HashMap<String, Long> map = new HashMap<>();
+    long arrivalSeconds = rs.getLong("arrival_unix_seconds"),
+      departureSeconds = rs.getLong("departure_unix_seconds");
+    map.put("arrival", arrivalSeconds);
+    map.put("departure", departureSeconds);
+    map.put("occupancy", departureSeconds - arrivalSeconds);
+
     return map;
   }
 
@@ -335,7 +191,7 @@ public class ModelTrainer {
    * Convert the DB result to instances
    * @param rs DB result
    */
-  private void saveQueryAsInstances(ResultSet rs) throws Exception {
+  /*private void saveQueryAsInstances(ResultSet rs) throws Exception {
     long currStamp;
     boolean useBuffer = false;
     Instance instance;
@@ -350,9 +206,9 @@ public class ModelTrainer {
     int validSize = (int) (settings.trainProp * 10);
 
     rs.next();
-    long windowStart = Long.parseLong(rs.getString("timestamp")); // start time from table
+    long windowStart = Long.parseLong(rs.getString("arrival_unix_seconds")); // start time from table
     do {
-      currStamp = Long.parseLong(rs.getString("timestamp"));
+      currStamp = Long.parseLong(rs.getString("arrival_unix_seconds"));
       if (currStamp > windowStart + settings.windowSize) {
         instance = createInstance(windowData);
 
@@ -373,7 +229,7 @@ public class ModelTrainer {
         if (useBuffer) {
           final long finalWindowStart = windowStart;
           buffer.forEach(elem -> {
-            long timestamp = Long.parseLong(elem.get("timestamp"));
+            long timestamp = Long.parseLong(elem.get("arrival_unix_seconds"));
             if (timestamp >= finalWindowStart) {
               windowData.add(elem);
             } else {
@@ -392,7 +248,7 @@ public class ModelTrainer {
     } while (rs.next());
 
     System.out.println("Converted data to instances.");
-  }
+  }*/
 
   /**
    * Save the built classifier as a model file
@@ -434,92 +290,7 @@ public class ModelTrainer {
     System.out.println("Saved base64 string at location: " + fileName);
   }
 
-  /**
-   * Save classifier encoded in base64 string
-   * @throws IOException
-   */
-  private void saveModelAsBase64String() throws IOException {
-    System.out.println("Converting to base64 String");
-    String classifierBase64 = this.classifierToString();
-    String fileName = "./" + settings.modelName + ".txt";
-    saveStringAsFile(classifierBase64, fileName);
-  }
-
-  /**
-   * Save the model and all its parameters to the DB
-   * @throws IOException
-   * @throws SQLException
-   */
-  @SuppressWarnings("SqlResolve")
-  private void saveModelToDB() throws IOException, SQLException {
-    System.out.println("Saving model to database...");
-    PreparedStatement ps = conn.prepareStatement("" +
-            "INSERT INTO paul_trained_models(" +
-            "model_name, labels, window_size, window_stride, features, validation_method, test_accuracy," +
-            "created_time, train_test_split, train_table, output_attributes, binary_model, sensor_system," +
-            "window_type, train_dataset, test_dataset, model_content)" +
-            "VALUES (?,?,?,?,to_json(?::json),?,?,?,?,?,?,?,?,?,?,?,?);");
-
-    // model_name
-    ps.setString(1, settings.modelName);
-    // labels
-    ps.setString(2, JSONArray.toJSONString(labels));
-    // window_size
-    ps.setInt(3, settings.windowSize);
-    // window_stride
-    ps.setInt(4, settings.windowStride);
-    // features
-    ps.setString(5, settings.featuresJSON);
-    // validation_method
-    ps.setString(6, "accuracy");
-    // test_accuracy
-    ps.setDouble(7, testAccuracy);
-    // created_time
-    ps.setTimestamp(8, new Timestamp(System.currentTimeMillis()));
-    // train_test_split
-    ps.setDouble(9, settings.trainProp);
-    // train_table
-    if (settings.preprocessTable != null) {
-      ps.setString(10, settings.preprocessTable);
-    } else {
-      ps.setString(10, "combined_data_" + settings.cattleId + "_" + settings.round);
-    }
-    // output_attributes
-    ps.setString(11, JSONArray.toJSONString(outputAttributes));
-    // binary_model
-    ps.setBoolean(12, settings.binaryLabel != null);
-    // sensor_system
-    ps.setInt(13, 1);
-    // window_type
-    if (settings.windowStride == settings.windowSize) {
-      ps.setString(14, "Jumping");
-    } else if (settings.windowStride < settings.windowSize) {
-      ps.setString(14, "Sliding");
-    } else {
-      ps.setString(14, "Sampling");
-    }
-    // train_dataset
-    ps.setInt(15, 2);
-    // test_dataset
-    ps.setInt(16, 1);
-
-    // model_content (the binary classifier)
-    ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    ObjectOutputStream out = new ObjectOutputStream(bos);
-    out.writeObject(m_Classifier);
-    out.flush();
-    byte[] serializedClassifier = bos.toByteArray();
-    bos.close();
-    ByteArrayInputStream bis = new ByteArrayInputStream(serializedClassifier);
-    ps.setBinaryStream(17, bis, serializedClassifier.length);
-
-    ps.executeUpdate();
-    bis.close();
-    ps.close();
-    System.out.println("Saved model to database.");
-  }
-
-  /**
+   /**
    * Apply filter on saved instances
    * @throws Exception
    */
@@ -533,24 +304,7 @@ public class ModelTrainer {
     this.m_Test_Data = new Instances(this.m_Test_Data);
   }
 
-  /**
-   * Save the built model to the specified location
-   * @throws IOException
-   * @throws SQLException
-   */
-  private void saveModel() throws IOException, SQLException {
-    switch (settings.saveIn) {
-      case "db":
-        saveModelToDB();
-        break;
-      case "file":
-        saveModelAsFile();
-        break;
-      case "base64":
-        saveModelAsBase64String();
-        break;
-    }
-  }
+
 
   /**
    * Test classifier on all test instances
@@ -571,6 +325,163 @@ public class ModelTrainer {
     testAccuracy = correctRate * 100;
   }
 
+  private void preprocessing(ResultSet rs) throws SQLException, IOException {
+    SqlResultSetReader rsReader = new SqlResultSetReader();
+    Table data = new DataFrameReader(new ReaderRegistry()).db(rs);
+
+    data.setName("Parking data");
+    System.out.println("Parking data is imported, dada shape is " + data.shape());
+    System.out.println(data.first(5));
+    // get number of sensors (unique values)
+    int sensorCount = data.column("parking_space_id").countUnique();
+
+    // delete unnecessary columns and sort asc
+    data.removeColumns("parking_lot_id", "xml_id", "parking_space_id");
+    data.sortAscendingOn("arrival_unix_seconds");
+
+    System.out.println("after removing: " + data.first(5));
+    // seconds to data convertation
+    String pattern = "dd.MM.yyyy HH:mm:ss"; // pattern to format the date from string
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern); // instance to format the date with pattern
+
+    // getting the first arrival time in "arrival_local_time"
+    String startDateString = data.getString(0, "arrival_local_time");
+    LocalDateTime START_DATE = LocalDateTime.parse(startDateString, formatter);
+    // START_DATE rounded to hours
+    START_DATE = START_DATE.truncatedTo(java.time.temporal.ChronoUnit.HOURS);
+    System.out.println(START_DATE + "'s format is " + START_DATE.getClass());
+
+    // getting the last arrival time in "arrival_local_time" and process as START_DATE
+    String endDateString = data.getString(data.rowCount() - 1, "arrival_local_time");
+    LocalDateTime END_DATE = LocalDateTime.parse(endDateString, formatter);
+    END_DATE = END_DATE.truncatedTo(java.time.temporal.ChronoUnit.HOURS);
+    System.out.println(END_DATE + "'s format is " + END_DATE.getClass());
+
+
+    // copy of data to process in future
+    Table dataWithOccupacy = data.emptyCopy();
+    // adding column to concatenate with new rows in future
+    dataWithOccupacy.addColumns(StringColumn.create("periodStart", dataWithOccupacy.rowCount()),
+            StringColumn.create("periodEnd", dataWithOccupacy.rowCount()),
+            LongColumn.create("occupancySeconds", dataWithOccupacy.rowCount()),
+            LongColumn.create("periodStartSeconds"));
+
+    // from start date to end date iterate for every hour
+    LocalDateTime tmpDate = START_DATE;
+
+    while (!tmpDate.equals(END_DATE)) {
+      dataWithOccupacy.append(filterRecordsByHours(tmpDate, data));
+      tmpDate = tmpDate.plusHours(1);
+    }
+
+    dataWithOccupacy.removeColumns("arrival_unix_seconds", "departure_unix_seconds",
+            "arrival_local_time", "departure_local_time");  // removing unnecessary columns
+
+
+    // processing occupancy sum
+    dataWithOccupacy.addColumns(IntColumn.create("occupancySum", dataWithOccupacy.rowCount()));
+    Map<String, Integer> occupancySumDataMap = new HashMap<String, Integer>();
+
+    // for every periodStart save the sum or add to sum of occupancy in HashMap
+    for (int i = 0; i < dataWithOccupacy.rowCount(); i++) {
+      String getKey = dataWithOccupacy.getString(i, "periodStart"); // the time and date
+      int getValue = Integer.valueOf(dataWithOccupacy.getString(i, "occupancySeconds")); //occupancy
+      if (occupancySumDataMap.containsKey(getKey))
+        occupancySumDataMap.put(getKey, getValue + occupancySumDataMap.get(getKey));
+      else
+        occupancySumDataMap.put(getKey, getValue);
+    }
+
+    // and put the occupancy value in "occupancySum" column
+    for (int i = 0; i < dataWithOccupacy.rowCount(); i++) {
+      String getKey = dataWithOccupacy.getString(i, "periodStart");
+      dataWithOccupacy.row(i).setInt("occupancySum", occupancySumDataMap.get(getKey));
+    }
+
+    dataWithOccupacy.removeColumns("occupancySeconds");
+    dataWithOccupacy = dataWithOccupacy.dropDuplicateRows();
+    dataWithOccupacy.replaceColumn("occupancySum", // seconds to percents
+            dataWithOccupacy.intColumn("occupancySum").divide(sensorCount * 3600 / 100)
+                    .multiply(100).roundInt().divide(100)); // round .2 operation
+    dataWithOccupacy.column(dataWithOccupacy.columnCount() - 1).setName("occupancyPercent");
+
+    String allInstances = "src/parking38RowDataAll.csv";
+    String only5000Instances = "src/parking38RowData5000.csv";
+
+    // export to csv
+    dataWithOccupacy.write().csv(allInstances);
+    System.out.println("Parking data export is done, data size is" + dataWithOccupacy.shape());
+  }
+
+  /**
+   * returns a Table with rows that refer to the time gap between currentDate and currentDate + 1 hour
+   * Additional columns: currentDate, currentDate + 1 hour and occupation time in seconds (maximum 3600 (1 hour))
+   *
+   * @param currentDate    The time by which filtering is performed and the occupation time is calculated
+   * @param unfilteredData The data to be processed
+   * @return filtered Table with time range and occupancy in this range
+   */
+
+  public static Table filterRecordsByHours(LocalDateTime currentDate, Table unfilteredData) {
+    ZoneId zoneId = ZoneId.of("Europe/Paris"); // the timezone has to be defined
+    // convert LocalDateTime to ZonedDateTime to extract seconds
+    ZonedDateTime zonedcurrentDate = currentDate.atZone(zoneId),
+            zonedcurrentDatePlusHour = (currentDate.plusHours(1)).atZone(zoneId);
+    // Get the epoch second value from ZonedDateTime
+    long currentDateSeconds = zonedcurrentDate.toEpochSecond(),
+            currentDatePlusHourSeconds = zonedcurrentDatePlusHour.toEpochSecond();
+
+    // define arrival and departure seconds columns for better readability
+    LongColumn arrivalSecondsColumn = unfilteredData.longColumn("arrival_unix_seconds").asLongColumn();
+    LongColumn departureSecondsColumn = unfilteredData.longColumn("departure_unix_seconds").asLongColumn();
+
+    // selectionBetween:        (hour)arrival       departure(hour +1)
+    Selection selectionBetween = arrivalSecondsColumn.isGreaterThanOrEqualTo(currentDateSeconds)
+            .and(departureSecondsColumn.isLessThan(currentDatePlusHourSeconds)),                 //here is a bug
+            // selectionBetween: arrival(hour)                       (hour +1)departure
+            selectionOverlap = arrivalSecondsColumn.isLessThanOrEqualTo(currentDateSeconds)
+                    .and(departureSecondsColumn.isGreaterThanOrEqualTo(currentDatePlusHourSeconds)),
+            // selectionBetween: arrival(hour)        departure      (hour +1)
+            selectionArrivalBefore = arrivalSecondsColumn.isLessThanOrEqualTo(currentDateSeconds)
+                    .and(departureSecondsColumn.isGreaterThanOrEqualTo(currentDateSeconds)),
+            // selectionBetween:        (hour)   arrival             (hour +1)departure
+            selectionDepartureLater = arrivalSecondsColumn.isLessThanOrEqualTo(currentDatePlusHourSeconds)
+                    .and(departureSecondsColumn.isGreaterThanOrEqualTo(currentDatePlusHourSeconds));
+
+    // filtering with for all 4 variants of intersection
+    Table filteredData = unfilteredData.where(selectionBetween.or(selectionOverlap)
+            .or(selectionArrivalBefore).or(selectionDepartureLater));
+
+    // adding columns to concatenate with the main Table
+    filteredData.addColumns(StringColumn.create("periodStart", filteredData.rowCount()),
+            StringColumn.create("periodEnd", filteredData.rowCount()),
+            LongColumn.create("occupancySeconds", filteredData.rowCount()),
+            LongColumn.create("periodStartSeconds", filteredData.rowCount()));
+
+    if (!filteredData.isEmpty()) {
+      long stayStart = 0, stayFinish = 0;
+      for (int i = 0; i < filteredData.rowCount(); i++) {
+        // start time for duration seconds
+        if (Integer.valueOf(filteredData.getString(i, "arrival_unix_seconds")) > currentDateSeconds)
+          stayStart = Integer.valueOf(filteredData.getString(i, "arrival_unix_seconds"));
+        else stayStart = currentDateSeconds;
+        // finish time for duration seconds
+        if (Integer.valueOf(filteredData.getString(i, "departure_unix_seconds")) < currentDatePlusHourSeconds)
+          stayFinish = Integer.valueOf(filteredData.getString(i, "departure_unix_seconds"));
+        else stayFinish = currentDatePlusHourSeconds;
+
+        filteredData.row(i).setLong("occupancySeconds", stayFinish - stayStart); // occupancy duration
+        filteredData.row(i).setString("periodStart", currentDate.toString());
+        filteredData.row(i).setString("periodEnd", currentDate.plusHours(1).toString());
+        filteredData.row(i).setLong("periodStartSeconds", currentDateSeconds);
+      }
+    }
+
+    return filteredData;
+  }
+
+
+
   public static void main(String[] args) {
     try {
       Settings settings = new Settings("main/java/config.properties"); // instead of config.properties - ich
@@ -590,13 +501,11 @@ public class ModelTrainer {
         if (settings.round == null) {
           throw new NullPointerException("round required in current setting");
         }
-
-
-        trainer.preprocessInDB();
-        rs = trainer.queryDBAfterPreprocessing();
+        rs = trainer.queryDB();
       }
 
-     trainer.saveQueryAsInstances(rs); // make batches of data
+      trainer.preprocessing(rs);
+     //trainer.saveQueryAsInstances(rs); // make batches of data
       /* rs.getStatement().close(); // closes the resource
 
       trainer.applyFilter();
@@ -606,7 +515,7 @@ public class ModelTrainer {
 
       trainer.testClassifier();
 
-      trainer.saveModel();*/
+      trainer.saveModelAsFile();*/
     } catch (Exception ex) {
       ex.printStackTrace();
     }
