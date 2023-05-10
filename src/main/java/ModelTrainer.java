@@ -1,6 +1,7 @@
 package main.java;
 
 import org.json.simple.JSONArray;
+import tech.tablesaw.columns.Column;
 import tech.tablesaw.io.DataFrameReader;
 import tech.tablesaw.io.ReaderRegistry;
 import tech.tablesaw.io.jdbc.SqlResultSetReader;
@@ -28,6 +29,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ModelTrainer {
+
+  private ArrayList<String> occupancyPredictAttributes = new ArrayList<String>() {{
+    add("Temp");
+    add("Humidity");
+    add("periodStartSeconds");
+    add("occupancyPercent");
+  }};
+
 
   /** All settings specified in properties file */
   private final Settings settings;
@@ -62,29 +71,25 @@ public class ModelTrainer {
   public ModelTrainer(Settings settings) {
     this.settings = settings;
 
-    String nameOfDataset = "CattleClassificationProblem";
+    String nameOfDataset = "ParkingOccupancyRegressionProblem";
 
     ArrayList<Attribute> attributes = new ArrayList<>();
 
-    attributes.add(new Attribute("label", (ArrayList<String>) null));
+    attributes.add(new Attribute(occupancyPredictAttributes.get(0)));
+    attributes.add(new Attribute(occupancyPredictAttributes.get(1)));
+    attributes.add(new Attribute(occupancyPredictAttributes.get(2)));
+    Attribute occupancyAttribute = new Attribute(occupancyPredictAttributes.get(3));
+    attributes.add(occupancyAttribute);
 
-    // Add label at index 0 of output attributes
-    outputAttributes.add("label");
-
-    settings.featureData.forEach((field, features) -> {
-      features.forEach(feature -> {
-        String outputAttribute = field + feature;
-        attributes.add(new Attribute(outputAttribute));
-        outputAttributes.add(outputAttribute);
-      });
-    });
+    int targetAttributIndex = attributes.indexOf(occupancyAttribute);
 
     // Create dataset with initial capacity of 100, and set index of class.
     m_Data = new Instances(nameOfDataset, attributes, 100);
-    m_Data.setClassIndex(0);
+    // Add label at index 0 of output attributes
+    m_Data.setClassIndex(targetAttributIndex);
 
     m_Test_Data = new Instances(nameOfDataset, attributes, 100);
-    m_Test_Data.setClassIndex(0);
+    m_Test_Data.setClassIndex(targetAttributIndex);
   }
 
   /**
@@ -107,10 +112,10 @@ public class ModelTrainer {
    */
   private ResultSet queryDB() throws SQLException {
     System.out.println("Querying preprocessed data...");
-    String query = "SELECT * FROM public.\"Input_datasets_parkinglot_38\" ORDER BY arrival_unix_seconds ASC LIMIT 100 ;";
-
-    //String query = "SELECT * FROM " + settings.preprocessTable + " ORDER BY sdid LIMIT 100;"; // instead of timestamp
-
+    //String query = "SELECT * FROM public.\"Input_datasets_parkinglot_38\" ORDER BY arrival_unix_seconds ASC;";
+    //String query = "SELECT * FROM public.\"Input_datasets_parkinglot_38\" ORDER BY arrival_unix_seconds ASC LIMIT 5000;";
+    //String query = "SELECT * FROM public.\"Input_datasets_parkinglot_634\" ORDER BY arrival_unix_seconds ASC;";
+    String query = "SELECT * FROM public.\"Input_datasets_parkinglot_634\" ORDER BY arrival_unix_seconds ASC LIMIT 5000;";
     Statement st = conn.createStatement();
     return st.executeQuery(query);
   }
@@ -148,24 +153,18 @@ public class ModelTrainer {
 
   /**
    * Create a new instance based on features calculated from windowData
-   * @param windowData Raw input data
+   * @param rowData Row input data
    * @return Instance with calculated features and label
    * @throws Exception
    */
-  private Instance createInstance(ArrayList<HashMap<String,String>> windowData) throws Exception {
-    HashMap<String, Double> instanceData = new HashMap<>();
-
+  private Instance createInstance(Row rowData) throws Exception {
     Instance instance = new DenseInstance(this.m_Data.numAttributes());
     instance.setDataset(this.m_Data);
 
-    String label = getLabelForWindow(windowData);
-    Attribute labelAttr = m_Data.attribute("label");
-    instance.setValue(labelAttr, label);
-
-    instanceData.forEach((attribute, value) -> {
-      Attribute attr = m_Data.attribute(attribute);
-      instance.setValue(attr, value);
-    });
+    instance.setValue(this.m_Data.attribute(occupancyPredictAttributes.get(0)), rowData.getDouble(occupancyPredictAttributes.get(0)));
+    instance.setValue(this.m_Data.attribute(occupancyPredictAttributes.get(1)), rowData.getDouble(occupancyPredictAttributes.get(1)));
+    instance.setValue(this.m_Data.attribute(occupancyPredictAttributes.get(2)), rowData.getLong(occupancyPredictAttributes.get(2)));
+    instance.setValue(this.m_Data.attribute(occupancyPredictAttributes.get(3)), rowData.getDouble(occupancyPredictAttributes.get(3)));
 
     return instance;
   }
@@ -176,79 +175,54 @@ public class ModelTrainer {
    * @return
    * @throws SQLException
    */
-  private HashMap<String, Long> extractDBResult(ResultSet rs) throws SQLException {
-    HashMap<String, Long> map = new HashMap<>();
-    long arrivalSeconds = rs.getLong("arrival_unix_seconds"),
-      departureSeconds = rs.getLong("departure_unix_seconds");
-    map.put("arrival", arrivalSeconds);
-    map.put("departure", departureSeconds);
-    map.put("occupancy", departureSeconds - arrivalSeconds);
+  private HashMap<String, String> extractDBResult(Row rs) throws Exception {
+    HashMap<String, String> map = new HashMap<>();
+    long arrivalSeconds = rs.getLong("periodStartSeconds");
+    double temperature = rs.getDouble("Temp"),
+            humidity = rs.getDouble("Humidity"),
+            occupancyPercent = rs.getDouble("occupancyPercent");
+
+    map.put("periodStartSeconds", Long.toString(arrivalSeconds));
+    map.put("temperature", String.valueOf(temperature));
+    map.put("humidity", String.valueOf(humidity));
+    map.put("occupancyPercent", String.valueOf(occupancyPercent));
 
     return map;
   }
 
   /**
    * Convert the DB result to instances
-   * @param rs DB result
+   * @param table from preprocessing
    */
-  /*private void saveQueryAsInstances(ResultSet rs) throws Exception {
-    long currStamp;
-    boolean useBuffer = false;
+  private void saveQueryAsInstances(Table table) throws Exception {
     Instance instance;
 
-    if (settings.windowStride < settings.windowSize) {
-      useBuffer = true;
-    }
-    HashMap<String, String> dataset;
-    ArrayList<HashMap<String,String>> windowData = new ArrayList<>();
-    ArrayList<HashMap<String,String>> buffer = new ArrayList<>();
     int i = 0;
     int validSize = (int) (settings.trainProp * 10);
 
-    rs.next();
-    long windowStart = Long.parseLong(rs.getString("arrival_unix_seconds")); // start time from table
-    do {
-      currStamp = Long.parseLong(rs.getString("arrival_unix_seconds"));
-      if (currStamp > windowStart + settings.windowSize) {
-        instance = createInstance(windowData);
+    if (table.isEmpty())
+      throw new NullPointerException("The table is empty");
+    int currentRowIndex = 0;
+    Row currentRow = table.row(currentRowIndex);
+    while (currentRowIndex < table.rowCount()) {
+      instance = createInstance(currentRow);
 
-        if (i < validSize) {
-          m_Data.add(instance);
-          i++;
-        } else if (i < 10) {
-          m_Test_Data.add(instance);
-          i++;
-          if (i == 10) {
-            i = 0;
-          }
-        }
-
-        windowData.clear();
-        windowStart += settings.windowStride;
-
-        if (useBuffer) {
-          final long finalWindowStart = windowStart;
-          buffer.forEach(elem -> {
-            long timestamp = Long.parseLong(elem.get("arrival_unix_seconds"));
-            if (timestamp >= finalWindowStart) {
-              windowData.add(elem);
-            } else {
-              buffer.remove(elem);
-            }
-          });
+      if (i < validSize) {
+        m_Data.add(instance);
+        i++;
+      } else if (i < 10) {
+        m_Test_Data.add(instance);
+        i++;
+        if (i == 10) {
+          i = 0;
         }
       }
-
-      dataset = extractDBResult(rs);
-      windowData.add(dataset);
-
-      if (useBuffer) {
-        buffer.add(dataset);
-      }
-    } while (rs.next());
+      currentRowIndex++;
+      currentRow = table.row(currentRowIndex);
+    }
 
     System.out.println("Converted data to instances.");
-  }*/
+  }
 
   /**
    * Save the built classifier as a model file
@@ -304,8 +278,6 @@ public class ModelTrainer {
     this.m_Test_Data = new Instances(this.m_Test_Data);
   }
 
-
-
   /**
    * Test classifier on all test instances
    * @throws Exception
@@ -316,7 +288,7 @@ public class ModelTrainer {
     for (Instance i : m_Test_Data) {
       double value = i.classValue();
       double prediction = m_Classifier.classifyInstance(i);
-      if (value == prediction) {
+      if (prediction >= value - 5 && prediction <= value + 5) {
         correctPred++;
       }
     }
@@ -325,13 +297,11 @@ public class ModelTrainer {
     testAccuracy = correctRate * 100;
   }
 
-  private void preprocessing(ResultSet rs) throws SQLException, IOException {
-    SqlResultSetReader rsReader = new SqlResultSetReader();
+  private Table preprocessing(ResultSet rs) throws Exception {
     Table data = new DataFrameReader(new ReaderRegistry()).db(rs);
 
     data.setName("Parking data");
-    System.out.println("Parking data is imported, dada shape is " + data.shape());
-    System.out.println(data.first(5));
+    System.out.println("Parking data is imported from DB, data shape is " + data.shape());
     // get number of sensors (unique values)
     int sensorCount = data.column("parking_space_id").countUnique();
 
@@ -339,7 +309,6 @@ public class ModelTrainer {
     data.removeColumns("parking_lot_id", "xml_id", "parking_space_id");
     data.sortAscendingOn("arrival_unix_seconds");
 
-    System.out.println("after removing: " + data.first(5));
     // seconds to data convertation
     String pattern = "dd.MM.yyyy HH:mm:ss"; // pattern to format the date from string
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern); // instance to format the date with pattern
@@ -349,13 +318,11 @@ public class ModelTrainer {
     LocalDateTime START_DATE = LocalDateTime.parse(startDateString, formatter);
     // START_DATE rounded to hours
     START_DATE = START_DATE.truncatedTo(java.time.temporal.ChronoUnit.HOURS);
-    System.out.println(START_DATE + "'s format is " + START_DATE.getClass());
 
     // getting the last arrival time in "arrival_local_time" and process as START_DATE
     String endDateString = data.getString(data.rowCount() - 1, "arrival_local_time");
     LocalDateTime END_DATE = LocalDateTime.parse(endDateString, formatter);
     END_DATE = END_DATE.truncatedTo(java.time.temporal.ChronoUnit.HOURS);
-    System.out.println(END_DATE + "'s format is " + END_DATE.getClass());
 
 
     // copy of data to process in future
@@ -402,15 +369,12 @@ public class ModelTrainer {
     dataWithOccupacy = dataWithOccupacy.dropDuplicateRows();
     dataWithOccupacy.replaceColumn("occupancySum", // seconds to percents
             dataWithOccupacy.intColumn("occupancySum").divide(sensorCount * 3600 / 100)
-                    .multiply(100).roundInt().divide(100)); // round .2 operation
+                    .multiply(10).roundInt().divide(10)); // round .1 operation
     dataWithOccupacy.column(dataWithOccupacy.columnCount() - 1).setName("occupancyPercent");
 
-    String allInstances = "src/parking38RowDataAll.csv";
-    String only5000Instances = "src/parking38RowData5000.csv";
 
-    // export to csv
-    dataWithOccupacy.write().csv(allInstances);
-    System.out.println("Parking data export is done, data size is" + dataWithOccupacy.shape());
+    System.out.println("Data is processed, data with weather: " + dataWithOccupacy.shape());
+    return addingWetter(dataWithOccupacy);
   }
 
   /**
@@ -422,7 +386,7 @@ public class ModelTrainer {
    * @return filtered Table with time range and occupancy in this range
    */
 
-  public static Table filterRecordsByHours(LocalDateTime currentDate, Table unfilteredData) {
+  private static Table filterRecordsByHours(LocalDateTime currentDate, Table unfilteredData) {
     ZoneId zoneId = ZoneId.of("Europe/Paris"); // the timezone has to be defined
     // convert LocalDateTime to ZonedDateTime to extract seconds
     ZonedDateTime zonedcurrentDate = currentDate.atZone(zoneId),
@@ -480,7 +444,57 @@ public class ModelTrainer {
     return filteredData;
   }
 
+  /**
+   * Adds forecast data to occupancy data
+   * Returns nothing, saves result in file
+   */
+  private Table addingWetter(Table parkingOccupacy) throws SQLException, Exception {
+      // weather from DB
+      //String query = "SELECT * FROM public.\"60_Minutes_Dataset_Air_Temperature_and_Humidity_38\";";
+      String query = "SELECT * FROM public.\"60_Minutes_Dataset_Air_Temperature_and_Humidity_634\";";
+      ResultSet resultSetForWeather = conn.createStatement().executeQuery(query);
+      Table weather = new DataFrameReader(new ReaderRegistry()).db(resultSetForWeather);
+      weather.column("MESS_DATUM").setName("Date"); // change column data name
+      weather.column("TT_TU").setName("Temp");
+      weather.column("RF_TU").setName("Humidity");
+      weather.removeColumns("STATIONS_ID", "QN_9", "eor"); // removing unnecessary data
+      resultSetForWeather.getStatement().close();
 
+      // Define the input and output date formats
+      DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyyMMddHH"), // how date data saved
+              // by import from csv pattern is "yyyy-MM-dd'T'HH:mm:ss.SSS"
+              outputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm"); // into what to format
+
+      // Use the map() method to apply the date conversion to each value in the column
+      StringColumn formattedDateColumn = StringColumn.create("periodStart");
+
+      // iteration over the rows: convert and format the dates, and add them to the new column periodStart
+      for (int i = 0; i < weather.rowCount(); i++) {
+        LocalDateTime date = LocalDateTime.parse(weather.getString(i, "Date"), inputFormatter);
+        String formattedDate = date.format(outputFormatter);
+        formattedDateColumn.append(formattedDate);
+      }
+      weather.replaceColumn("Date", formattedDateColumn);
+
+      // convert periodStart to String (initially LocalDate)
+      parkingOccupacy.addColumns(StringColumn.create("periodStartString", parkingOccupacy.rowCount()));
+      int columnIndex = parkingOccupacy.columnIndex("periodStart");
+      for (int i = 0; i < parkingOccupacy.rowCount(); i++) {
+        parkingOccupacy.row(i).setString("periodStartString", parkingOccupacy.getString(i, columnIndex));
+      }
+      parkingOccupacy.removeColumns("periodStart");
+      parkingOccupacy.column("periodStartString").setName("periodStart");
+
+      // concatenate tables based on "periodStart" column
+      Table parkingOccupancyWithWetter = weather.joinOn("periodStart").inner(parkingOccupacy);
+
+    parkingOccupancyWithWetter.removeColumns("periodEnd", "periodStart");
+      String allInstances38 = "src/parking38RowDataAllWithWeather.csv";
+      String only5000Instances38 = "src/parking38RowData5000WithWeather.csv";
+
+      parkingOccupancyWithWetter.write().csv(allInstances38);
+      return parkingOccupancyWithWetter;
+  }
 
   public static void main(String[] args) {
     try {
@@ -488,34 +502,17 @@ public class ModelTrainer {
       ModelTrainer trainer = new ModelTrainer(settings);
 
       trainer.createDBConnection();
+      ResultSet rs = trainer.queryDB();
 
-      ResultSet rs;
-      if (settings.preprocessTable != null) {
-        // use preprocessed data
-        rs = trainer.queryDB();
-      } else {
-        // do preprocessing first
-        if (settings.cattleId == null) {
-          throw new NullPointerException("cattleId required in current setting");
-        }
-        if (settings.round == null) {
-          throw new NullPointerException("round required in current setting");
-        }
-        rs = trainer.queryDB();
-      }
+      Table tableData = trainer.preprocessing(rs);
+      trainer.saveQueryAsInstances(tableData);
+      rs.getStatement().close(); // closes the resource
 
-      trainer.preprocessing(rs);
-     //trainer.saveQueryAsInstances(rs); // make batches of data
-      /* rs.getStatement().close(); // closes the resource
-
-      trainer.applyFilter();
-
-      System.out.println("Building classifier...");;
       trainer.m_Classifier.buildClassifier(trainer.m_Data);
+      trainer.applyFilter();
 
       trainer.testClassifier();
 
-      trainer.saveModelAsFile();*/
     } catch (Exception ex) {
       ex.printStackTrace();
     }
