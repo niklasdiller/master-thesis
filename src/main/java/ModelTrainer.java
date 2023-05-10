@@ -6,6 +6,7 @@ import tech.tablesaw.io.DataFrameReader;
 import tech.tablesaw.io.ReaderRegistry;
 import tech.tablesaw.io.jdbc.SqlResultSetReader;
 import weka.classifiers.Classifier;
+import weka.classifiers.functions.LinearRegression;
 import weka.classifiers.trees.RandomForest;
 import weka.core.*;
 import weka.filters.Filter;
@@ -52,8 +53,12 @@ public class ModelTrainer {
   /** The testing data gathered so far. */
   private Instances m_Test_Data;
 
-  /** The actual classifier. */
-  private final Classifier m_Classifier = new RandomForest();
+  /** The Random Forest classifier. */
+  private Classifier m_RandomForestClassifier = new RandomForest() {{setMaxDepth(500);}};
+
+  /** The Linear Regression classifiert **/
+  private Classifier m_LinearRegressionClassifier = new LinearRegression();
+
 
   /** The filter */
   private final StringToNominal m_Filter = new StringToNominal();
@@ -84,11 +89,11 @@ public class ModelTrainer {
     int targetAttributIndex = attributes.indexOf(occupancyAttribute);
 
     // Create dataset with initial capacity of 100, and set index of class.
-    m_Data = new Instances(nameOfDataset, attributes, 100);
+    m_Data = new Instances(nameOfDataset, attributes, 1000);
     // Add label at index 0 of output attributes
     m_Data.setClassIndex(targetAttributIndex);
 
-    m_Test_Data = new Instances(nameOfDataset, attributes, 100);
+    m_Test_Data = new Instances(nameOfDataset, attributes, 1000);
     m_Test_Data.setClassIndex(targetAttributIndex);
   }
 
@@ -112,43 +117,9 @@ public class ModelTrainer {
    */
   private ResultSet queryDB() throws SQLException {
     System.out.println("Querying preprocessed data...");
-    //String query = "SELECT * FROM public.\"Input_datasets_parkinglot_38\" ORDER BY arrival_unix_seconds ASC;";
-    //String query = "SELECT * FROM public.\"Input_datasets_parkinglot_38\" ORDER BY arrival_unix_seconds ASC LIMIT 5000;";
-    //String query = "SELECT * FROM public.\"Input_datasets_parkinglot_634\" ORDER BY arrival_unix_seconds ASC;";
-    String query = "SELECT * FROM public.\"Input_datasets_parkinglot_634\" ORDER BY arrival_unix_seconds ASC LIMIT 5000;";
+    String query = "SELECT * FROM public.\"" + settings.preprocessTable + "\" ORDER BY arrival_unix_seconds ASC LIMIT 5000;";
     Statement st = conn.createStatement();
     return st.executeQuery(query);
-  }
-  /**
-   * Find the label with the most occurrences in window
-   * @param windowData The windowed input data
-   * @return Label with most occurrences
-   * @throws Exception
-   */
-  private String getLabelForWindow(ArrayList<HashMap<String,String>> windowData) throws Exception {
-    String[] labels = new String[windowData.size()];
-    String binaryLabel = settings.binaryLabel;
-    for (int i = 0; i < labels.length; i++) {
-      String label = windowData.get(i).get("label");
-      if (binaryLabel != null && !Objects.equals(label, binaryLabel)) {
-        labels[i] = "Non" + binaryLabel;
-      } else {
-        labels[i] = label;
-      }
-    }
-
-    List<String> detectedLabels = Arrays.stream(labels).distinct().collect(Collectors.toList());
-    for (String x : detectedLabels){
-      if (!this.labels.contains(x))
-        this.labels.add(x);
-    }
-
-    // find label with most occurrences
-    return Stream.of(labels).collect(Collectors.groupingBy(s -> s, Collectors.counting()))
-            .entrySet().stream()
-            .max(Map.Entry.comparingByValue())
-            .map(Map.Entry::getKey)
-            .orElseThrow(() -> new Exception("No class label present"));
   }
 
   /**
@@ -167,27 +138,6 @@ public class ModelTrainer {
     instance.setValue(this.m_Data.attribute(occupancyPredictAttributes.get(3)), rowData.getDouble(occupancyPredictAttributes.get(3)));
 
     return instance;
-  }
-
-  /**
-   * Convert db result to hashmap
-   * @param rs db result
-   * @return
-   * @throws SQLException
-   */
-  private HashMap<String, String> extractDBResult(Row rs) throws Exception {
-    HashMap<String, String> map = new HashMap<>();
-    long arrivalSeconds = rs.getLong("periodStartSeconds");
-    double temperature = rs.getDouble("Temp"),
-            humidity = rs.getDouble("Humidity"),
-            occupancyPercent = rs.getDouble("occupancyPercent");
-
-    map.put("periodStartSeconds", Long.toString(arrivalSeconds));
-    map.put("temperature", String.valueOf(temperature));
-    map.put("humidity", String.valueOf(humidity));
-    map.put("occupancyPercent", String.valueOf(occupancyPercent));
-
-    return map;
   }
 
   /**
@@ -231,7 +181,7 @@ public class ModelTrainer {
   private void saveModelAsFile() throws IOException {
     String fileName = "./" + settings.modelName + ".model";
     ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(fileName));
-    oos.writeObject(m_Classifier);
+    oos.writeObject(m_RandomForestClassifier);
     oos.flush();
     oos.close();
     System.out.println("Saved model at location: " + fileName);
@@ -245,7 +195,7 @@ public class ModelTrainer {
   private String classifierToString() throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     ObjectOutputStream oos = new ObjectOutputStream(baos);
-    oos.writeObject(this.m_Classifier);
+    oos.writeObject(this.m_RandomForestClassifier);
     oos.close();
     return Base64.getEncoder().encodeToString(baos.toByteArray());
   }
@@ -284,17 +234,23 @@ public class ModelTrainer {
    */
   private void testClassifier() throws Exception {
     System.out.println("Testing model...");
-    int correctPred = 0;
+    int correctPredRF = 0, correctPredLR = 0;
     for (Instance i : m_Test_Data) {
       double value = i.classValue();
-      double prediction = m_Classifier.classifyInstance(i);
-      if (prediction >= value - 5 && prediction <= value + 5) {
-        correctPred++;
+      double predictionRF = m_RandomForestClassifier.classifyInstance(i),
+              predictionLR = m_LinearRegressionClassifier.classifyInstance(i);
+      if (predictionRF >= value - 5 && predictionRF <= value + 5) {
+        correctPredRF++;
+      }
+      if (predictionLR >= value - 5 && predictionLR <= value + 5) {
+        correctPredLR++;
       }
     }
-    double correctRate = correctPred / (double) m_Test_Data.size();
-    System.out.println("Correctly predicted: " + correctRate * 100 + "%");
-    testAccuracy = correctRate * 100;
+    double correctRateRF = correctPredRF / (double) m_Test_Data.size(),
+            correctRateLR = correctPredLR / (double) m_Test_Data.size();
+    System.out.println("Correctly predicted Random Forest: " + correctRateRF * 100 + "%");
+    System.out.println("Correctly predicted Linear Regression: " + correctRateLR * 100 + "%");
+    testAccuracy = correctRateRF * 100;
   }
 
   private Table preprocessing(ResultSet rs) throws Exception {
@@ -450,8 +406,8 @@ public class ModelTrainer {
    */
   private Table addingWetter(Table parkingOccupacy) throws SQLException, Exception {
       // weather from DB
-      //String query = "SELECT * FROM public.\"60_Minutes_Dataset_Air_Temperature_and_Humidity_38\";";
-      String query = "SELECT * FROM public.\"60_Minutes_Dataset_Air_Temperature_and_Humidity_634\";";
+      int parkingNum = 38;
+      String query = "SELECT * FROM public.\"60_Minutes_Dataset_Air_Temperature_and_Humidity_"+parkingNum+"\";";
       ResultSet resultSetForWeather = conn.createStatement().executeQuery(query);
       Table weather = new DataFrameReader(new ReaderRegistry()).db(resultSetForWeather);
       weather.column("MESS_DATUM").setName("Date"); // change column data name
@@ -508,7 +464,9 @@ public class ModelTrainer {
       trainer.saveQueryAsInstances(tableData);
       rs.getStatement().close(); // closes the resource
 
-      trainer.m_Classifier.buildClassifier(trainer.m_Data);
+      trainer.m_RandomForestClassifier.buildClassifier(trainer.m_Data);
+      trainer.m_LinearRegressionClassifier.buildClassifier(trainer.m_Data);
+
       trainer.applyFilter();
 
       trainer.testClassifier();
