@@ -1,12 +1,29 @@
 package main.java;
 
+import org.deeplearning4j.datasets.iterator.impl.ListDataSetIterator;
+import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
+import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
+import org.deeplearning4j.nn.conf.layers.DropoutLayer;
+import org.deeplearning4j.nn.conf.layers.LSTM;
+import org.deeplearning4j.nn.conf.layers.RnnOutputLayer;
+import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
+import org.deeplearning4j.nn.weights.WeightInit;
 import org.json.simple.JSONArray;
+import org.nd4j.evaluation.regression.RegressionEvaluation;
+import org.nd4j.linalg.activations.Activation;
+import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.dataset.DataSet;
+import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
+import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.learning.config.Adam;
+import org.nd4j.linalg.lossfunctions.LossFunctions;
 import tech.tablesaw.columns.Column;
 import tech.tablesaw.io.DataFrameReader;
 import tech.tablesaw.io.ReaderRegistry;
 import tech.tablesaw.io.jdbc.SqlResultSetReader;
 import weka.classifiers.Classifier;
 import weka.classifiers.functions.LinearRegression;
+import weka.classifiers.lazy.IBk;
 import weka.classifiers.trees.RandomForest;
 import weka.core.*;
 import weka.filters.Filter;
@@ -56,9 +73,13 @@ public class ModelTrainer {
   /** The Random Forest classifier. */
   private Classifier m_RandomForestClassifier = new RandomForest() {{setMaxDepth(500);}};
 
+  /** The k-Nearest Neighbors classifier. */
+  private Classifier m_KNN = new IBk();
+
   /** The Linear Regression classifiert **/
   private Classifier m_LinearRegressionClassifier = new LinearRegression();
 
+  private MultiLayerNetwork m_LSTM;
 
   /** The filter */
   private final StringToNominal m_Filter = new StringToNominal();
@@ -117,6 +138,7 @@ public class ModelTrainer {
    */
   private ResultSet queryDB() throws SQLException {
     System.out.println("Querying preprocessed data...");
+    System.out.println("Data from table " + settings.preprocessTable);
     String query = "SELECT * FROM public.\"" + settings.preprocessTable + "\" ORDER BY arrival_unix_seconds ASC LIMIT 5000;";
     Statement st = conn.createStatement();
     return st.executeQuery(query);
@@ -228,28 +250,130 @@ public class ModelTrainer {
     this.m_Test_Data = new Instances(this.m_Test_Data);
   }
 
+  private static MultiLayerNetwork RNNConfig() throws Exception {
+    // a regression model, which can predict continuous values
+    int featuresCount = 3;
+    MultiLayerConfiguration config = new NeuralNetConfiguration.Builder()
+            .seed(101)
+            .updater(new Adam())
+            .weightInit(WeightInit.XAVIER)
+            .list()
+            .layer(new LSTM.Builder().nIn(featuresCount).nOut(16).activation(Activation.TANH).build()) //LSTM(16), 1. lvl
+            .layer(new LSTM.Builder().nIn(16).nOut(8).activation(Activation.TANH).build()) //LSTM(8), 2. level
+            .layer(new DropoutLayer.Builder(0.2).build())
+            .layer(new LSTM.Builder().nIn(8).nOut(4).activation(Activation.TANH).build()) //LSTM(4), 3. level
+            .layer(4, new RnnOutputLayer.Builder().nIn(4).nOut(1) //output lvl, model.compile
+                    .activation(Activation.IDENTITY).lossFunction(LossFunctions.LossFunction.MSE).build())
+            .build();
+
+    MultiLayerNetwork model = new MultiLayerNetwork(config);
+    return model;
+  }
+
+  private DataSetIterator getIterators(int choiceValue) throws Exception {
+    int trainSize = m_Data.size(),
+            testSize = m_Test_Data.size(),
+            attributesSize = m_Data.numAttributes() - 1;
+
+    double[][][] trainX = new double[trainSize][attributesSize][1];
+    double[][] trainY = new double[trainSize][1];
+    double[][][] testX = new double[testSize][attributesSize][1];
+    double[][] testY = new double[testSize][1];
+
+
+    for (int i = 0; i < trainSize; i++) {
+      Instance instance = m_Data.get(i);
+      trainY[i][0] = instance.classValue();
+      for (int j = 0; j < instance.numAttributes() - 1; j++) {
+        trainX[i][j][0] = instance.value(j);
+      }
+    }
+
+    for (int i = 0; i < testSize; i++) {
+      Instance instance = m_Test_Data.get(i);
+      testY[i][0] = instance.classValue();
+      for (int j = 0; j < instance.numAttributes() - 1; j++) {
+        testX[i][j][0] = instance.value(j);
+      }
+    }
+
+    INDArray inputArr = Nd4j.create(trainX);
+    INDArray labelArr = Nd4j.create(trainY);
+    INDArray labelArr3d = labelArr.reshape(labelArr.size(0), 1, 1);
+
+    DataSet dataSetTrain = new DataSet(inputArr, labelArr3d);
+    DataSetIterator trainIterator = new ListDataSetIterator<>(Collections.singletonList(dataSetTrain));
+
+
+    INDArray inputArrTest = Nd4j.create(testX),
+            labelArrTest = Nd4j.create(testY),
+            labelArr3dTest = labelArrTest.reshape(labelArrTest.size(0), 1, 1);
+
+    DataSet dataSetTest = new DataSet(inputArrTest, labelArr3dTest);
+    DataSetIterator testIterator = new ListDataSetIterator<>(Collections.singletonList(dataSetTest));
+
+    if (choiceValue == 0) return trainIterator;
+    else return testIterator;
+  }
+
+  private void testRNN() {
+
+    try {
+      // a regression model, which can predict continuous values
+      MultiLayerNetwork model = RNNConfig();
+      model.init();
+
+      DataSetIterator trainIterator = getIterators(0),
+              testIterator = getIterators(1);
+
+      double correctPredRF = 0;
+
+      RegressionEvaluation testEvaluation = new RegressionEvaluation();
+      while (testIterator.hasNext()) {
+        DataSet dataSet = testIterator.next();
+        INDArray features = dataSet.getFeatures();
+        INDArray labels = dataSet.getLabels();
+        INDArray predicted = model.output(features, false);
+        testEvaluation.eval(labels, predicted);
+      }
+      System.out.println("\nTestEvaluation meanSquaredError: " + testEvaluation.meanSquaredError(0));
+      System.out.println("TestEvaluation meanAbsoluteError: " + testEvaluation.meanAbsoluteError(0));
+
+    }
+    catch (Exception e) {
+      System.out.println(e);
+    }
+  }
+
   /**
    * Test classifier on all test instances
    * @throws Exception
    */
   private void testClassifier() throws Exception {
     System.out.println("Testing model...");
-    int correctPredRF = 0, correctPredLR = 0;
+    int correctPredRF = 0, correctPredLR = 0, correctPredKNN = 0;
     for (Instance i : m_Test_Data) {
       double value = i.classValue();
       double predictionRF = m_RandomForestClassifier.classifyInstance(i),
-              predictionLR = m_LinearRegressionClassifier.classifyInstance(i);
+              predictionLR = m_LinearRegressionClassifier.classifyInstance(i),
+              predictionKNN = m_KNN.classifyInstance(i);
       if (predictionRF >= value - 5 && predictionRF <= value + 5) {
         correctPredRF++;
       }
       if (predictionLR >= value - 5 && predictionLR <= value + 5) {
         correctPredLR++;
       }
+      if (predictionKNN >= value - 5 && predictionKNN <= value + 5) {
+        correctPredKNN++;
+      }
     }
     double correctRateRF = correctPredRF / (double) m_Test_Data.size(),
-            correctRateLR = correctPredLR / (double) m_Test_Data.size();
+            correctRateLR = correctPredLR / (double) m_Test_Data.size(),
+            correctRateKNN = correctPredKNN / (double) m_Test_Data.size();
     System.out.println("Correctly predicted Random Forest: " + correctRateRF * 100 + "%");
     System.out.println("Correctly predicted Linear Regression: " + correctRateLR * 100 + "%");
+    System.out.println("Correctly predicted k-Nearest Neighbors: " + correctRateKNN * 100 + "%");
+
     testAccuracy = correctRateRF * 100;
   }
 
@@ -466,10 +590,12 @@ public class ModelTrainer {
 
       trainer.m_RandomForestClassifier.buildClassifier(trainer.m_Data);
       trainer.m_LinearRegressionClassifier.buildClassifier(trainer.m_Data);
+      trainer.m_KNN.buildClassifier(trainer.m_Data);
 
       trainer.applyFilter();
 
       trainer.testClassifier();
+      trainer.testRNN();
 
     } catch (Exception ex) {
       ex.printStackTrace();

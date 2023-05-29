@@ -26,6 +26,10 @@ dependencies {
     implementation group: 'com.google.guava', name: 'guava', version: '31.0.1-jre'
     implementation group: 'com.googlecode.json-simple', name: 'json-simple', version: '1.1.1'
     implementation 'tech.tablesaw:tablesaw-core:0.42.0'
+    implementation 'org.deeplearning4j:deeplearning4j-core:1.0.0-M1.1'
+    implementation "org.nd4j:nd4j-native-platform:1.0.0-M1"
+
+
 
 }
 
