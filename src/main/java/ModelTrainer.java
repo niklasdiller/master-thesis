@@ -8,7 +8,6 @@ import org.deeplearning4j.nn.conf.layers.LSTM;
 import org.deeplearning4j.nn.conf.layers.RnnOutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
-import org.json.simple.JSONArray;
 import org.nd4j.evaluation.regression.RegressionEvaluation;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.api.ndarray.INDArray;
@@ -17,10 +16,8 @@ import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.learning.config.Adam;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
-import tech.tablesaw.columns.Column;
 import tech.tablesaw.io.DataFrameReader;
 import tech.tablesaw.io.ReaderRegistry;
-import tech.tablesaw.io.jdbc.SqlResultSetReader;
 import weka.classifiers.Classifier;
 import weka.classifiers.functions.LinearRegression;
 import weka.classifiers.lazy.IBk;
@@ -32,11 +29,8 @@ import weka.filters.unsupervised.attribute.StringToNominal;
 import java.io.*;
 import java.sql.*;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import tech.tablesaw.api.*;
-import tech.tablesaw.io.csv.CsvReadOptions;
 import tech.tablesaw.selection.Selection;
 
 import java.time.LocalDateTime;
@@ -84,11 +78,6 @@ public class ModelTrainer {
   /** The filter */
   private final StringToNominal m_Filter = new StringToNominal();
 
-  /** The names of the model's attributes */
-  private ArrayList<String> outputAttributes = new ArrayList<>();
-
-  /** The model's accuracy determined by the test */
-  private double testAccuracy;
 
   /**
    * Create a model trainer
@@ -201,12 +190,19 @@ public class ModelTrainer {
    * @throws IOException
    */
   private void saveModelAsFile() throws IOException {
-    String fileName = "./" + settings.modelName + ".model";
-    ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(fileName));
+    ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("./" + settings.modelName + "RF.model"));
     oos.writeObject(m_RandomForestClassifier);
     oos.flush();
     oos.close();
-    System.out.println("Saved model at location: " + fileName);
+    oos = new ObjectOutputStream(new FileOutputStream("./" + settings.modelName + "LR.model"));
+    oos.writeObject(m_LinearRegressionClassifier);
+    oos.flush();
+    oos.close();
+    oos = new ObjectOutputStream(new FileOutputStream("./" + settings.modelName + "KNN.model"));
+    oos.writeObject(m_KNN);
+    oos.flush();
+    oos.close();
+    System.out.println("Models saved");
   }
 
   /**
@@ -250,9 +246,13 @@ public class ModelTrainer {
     this.m_Test_Data = new Instances(this.m_Test_Data);
   }
 
-  private static MultiLayerNetwork RNNConfig() throws Exception {
+  /**
+   * Create a new LSTM model
+   * @return LSTM (RNN) model
+   */
+  private MultiLayerNetwork RNNConfig() throws Exception {
     // a regression model, which can predict continuous values
-    int featuresCount = 3;
+    int featuresCount = m_Data.numAttributes() -1;
     MultiLayerConfiguration config = new NeuralNetConfiguration.Builder()
             .seed(101)
             .updater(new Adam())
@@ -270,6 +270,12 @@ public class ModelTrainer {
     return model;
   }
 
+  /**
+   * Return iterator object from train or test data set
+   * @param choiceValue Train (0) or test (1) iterator to get
+   * @throws Exception
+   * @return iterator
+   */
   private DataSetIterator getIterators(int choiceValue) throws Exception {
     int trainSize = m_Data.size(),
             testSize = m_Test_Data.size(),
@@ -284,7 +290,7 @@ public class ModelTrainer {
     for (int i = 0; i < trainSize; i++) {
       Instance instance = m_Data.get(i);
       trainY[i][0] = instance.classValue();
-      for (int j = 0; j < instance.numAttributes() - 1; j++) {
+      for (int j = 0; j < attributesSize; j++) {
         trainX[i][j][0] = instance.value(j);
       }
     }
@@ -292,7 +298,7 @@ public class ModelTrainer {
     for (int i = 0; i < testSize; i++) {
       Instance instance = m_Test_Data.get(i);
       testY[i][0] = instance.classValue();
-      for (int j = 0; j < instance.numAttributes() - 1; j++) {
+      for (int j = 0; j < attributesSize; j++) {
         testX[i][j][0] = instance.value(j);
       }
     }
@@ -304,7 +310,6 @@ public class ModelTrainer {
     DataSet dataSetTrain = new DataSet(inputArr, labelArr3d);
     DataSetIterator trainIterator = new ListDataSetIterator<>(Collections.singletonList(dataSetTrain));
 
-
     INDArray inputArrTest = Nd4j.create(testX),
             labelArrTest = Nd4j.create(testY),
             labelArr3dTest = labelArrTest.reshape(labelArrTest.size(0), 1, 1);
@@ -312,12 +317,17 @@ public class ModelTrainer {
     DataSet dataSetTest = new DataSet(inputArrTest, labelArr3dTest);
     DataSetIterator testIterator = new ListDataSetIterator<>(Collections.singletonList(dataSetTest));
 
-    if (choiceValue == 0) return trainIterator;
-    else return testIterator;
+    if (choiceValue == 0)
+      return trainIterator;
+    else
+      return testIterator;
   }
 
-  private void testRNN() {
-
+  /**
+   * Train and test LSTM model
+   * @throws Exception
+   */
+  private void RNNTrainAndTest() {
     try {
       // a regression model, which can predict continuous values
       MultiLayerNetwork model = RNNConfig();
@@ -326,7 +336,7 @@ public class ModelTrainer {
       DataSetIterator trainIterator = getIterators(0),
               testIterator = getIterators(1);
 
-      double correctPredRF = 0;
+      model.fit(trainIterator); // may be doesn't work
 
       RegressionEvaluation testEvaluation = new RegressionEvaluation();
       while (testIterator.hasNext()) {
@@ -336,11 +346,12 @@ public class ModelTrainer {
         INDArray predicted = model.output(features, false);
         testEvaluation.eval(labels, predicted);
       }
-      System.out.println("\nTestEvaluation meanSquaredError: " + testEvaluation.meanSquaredError(0));
-      System.out.println("TestEvaluation meanAbsoluteError: " + testEvaluation.meanAbsoluteError(0));
+      //there is only one column in testEvaluation
+      System.out.println("\nLSTM TestEvaluation meanSquaredError: " + testEvaluation.meanSquaredError(0));
 
     }
     catch (Exception e) {
+      System.out.println("Error in testRNN");
       System.out.println(e);
     }
   }
@@ -373,10 +384,14 @@ public class ModelTrainer {
     System.out.println("Correctly predicted Random Forest: " + correctRateRF * 100 + "%");
     System.out.println("Correctly predicted Linear Regression: " + correctRateLR * 100 + "%");
     System.out.println("Correctly predicted k-Nearest Neighbors: " + correctRateKNN * 100 + "%");
-
-    testAccuracy = correctRateRF * 100;
   }
 
+  /**
+   * Return processed table of occupancy data
+   * @param rs    Set of data to process
+   * @throws Exception
+   * @return Table object
+   */
   private Table preprocessing(ResultSet rs) throws Exception {
     Table data = new DataFrameReader(new ReaderRegistry()).db(rs);
 
@@ -465,7 +480,6 @@ public class ModelTrainer {
    * @param unfilteredData The data to be processed
    * @return filtered Table with time range and occupancy in this range
    */
-
   private static Table filterRecordsByHours(LocalDateTime currentDate, Table unfilteredData) {
     ZoneId zoneId = ZoneId.of("Europe/Paris"); // the timezone has to be defined
     // convert LocalDateTime to ZonedDateTime to extract seconds
@@ -526,7 +540,8 @@ public class ModelTrainer {
 
   /**
    * Adds forecast data to occupancy data
-   * Returns nothing, saves result in file
+   * @param parkingOccupacy Preprocessed occupancy table
+   * @return Table object
    */
   private Table addingWetter(Table parkingOccupacy) throws SQLException, Exception {
       // weather from DB
@@ -587,15 +602,14 @@ public class ModelTrainer {
       Table tableData = trainer.preprocessing(rs);
       trainer.saveQueryAsInstances(tableData);
       rs.getStatement().close(); // closes the resource
+      trainer.applyFilter();
 
       trainer.m_RandomForestClassifier.buildClassifier(trainer.m_Data);
       trainer.m_LinearRegressionClassifier.buildClassifier(trainer.m_Data);
       trainer.m_KNN.buildClassifier(trainer.m_Data);
 
-      trainer.applyFilter();
-
       trainer.testClassifier();
-      trainer.testRNN();
+      trainer.RNNTrainAndTest();
 
     } catch (Exception ex) {
       ex.printStackTrace();
