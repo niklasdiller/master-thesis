@@ -48,7 +48,7 @@ public class ModelTrainer {
     add("Humidity");
     add("periodStartSeconds");
     add("occupancyPercent");
-  }};
+  }}; // TODO: add to other functions
 
 
   /** All settings specified in properties file */
@@ -62,6 +62,9 @@ public class ModelTrainer {
 
   /** Period in minutes */
   private int periodMultiplier = 30;
+
+  /** Array of parking slots to predict **/
+  private int[] slotsIDs = new int[] {637, 600, 617};
 
   /** The training data gathered so far. */
   private Instances m_Data;
@@ -91,7 +94,7 @@ public class ModelTrainer {
   public ModelTrainer(Settings settings) {
     this.settings = settings;
 
-    String nameOfDataset = "ParkingOccupancyRegressionProblem";
+    String nameOfDataset = "ParkingOccupancyProblem";
 
     ArrayList<Attribute> attributes = new ArrayList<>();
 
@@ -398,7 +401,18 @@ public class ModelTrainer {
    * @return Table object
    */
   private Table preprocessing(ResultSet rs) throws Exception {
-    Table data = new DataFrameReader(new ReaderRegistry()).db(rs);
+    Table dataAllID = new DataFrameReader(new ReaderRegistry()).db(rs);
+    Table data = dataAllID.emptyCopy();
+    // if there are special slots to process and predict (e.g. for disabled people)
+    if (slotsIDs.length > 0) {
+      for (int id : slotsIDs) {
+        Table tmpTable = dataAllID.where(dataAllID.longColumn("parking_space_id").isEqualTo(id));
+        data.append(tmpTable);
+      }
+    }
+    else
+      data = dataAllID.copy();
+
     data.setName("Parking data");
     System.out.println("Parking data is imported from DB, data shape is " + data.shape());
     // get number of sensors (unique values)
@@ -479,7 +493,7 @@ public class ModelTrainer {
     dataWithOccupacy.column(dataWithOccupacy.columnCount() - 1).setName("occupancyPercent");
     //dataWithOccupacy.write().csv("src/dataWithOccupacyTest.csv");
 
-    System.out.println("Data is processed, data with weather: " + dataWithOccupacy.shape());
+    System.out.println("Data is processed. Data without weather " + dataWithOccupacy.shape());
     return addingWetter(dataWithOccupacy);
   }
 
@@ -582,15 +596,6 @@ public class ModelTrainer {
         formattedDateColumn.append(formattedDate);
       }
       weather.replaceColumn("Date", formattedDateColumn);
-
-      String startDateString = weather.getString(0, "periodStart");
-      LocalDateTime START_DATE = LocalDateTime.parse(startDateString);
-      // START_DATE rounded to hours
-      START_DATE = START_DATE.truncatedTo(ChronoUnit.HOURS); // Truncate to hours first // before java.time.temporal.ChronoUnit.HOURS
-      int remainder = START_DATE.getMinute() % periodMultiplier;
-      if (remainder != 0) {
-        START_DATE = START_DATE.plusMinutes(periodMultiplier - remainder); // Round up to the next 10-minute interval
-      }
 
       // copy of data to process in future
       Table weatherInPeriods = weather.emptyCopy();
