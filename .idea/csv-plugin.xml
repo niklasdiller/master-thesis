@@ -10,13 +10,6 @@
             </Attribute>
           </value>
         </entry>
-        <entry key="\src\parking38RowData5000.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
         <entry key="\src\parking38RowData5000WithWeather.csv">
           <value>
             <Attribute>
@@ -24,7 +17,14 @@
             </Attribute>
           </value>
         </entry>
-        <entry key="\src\parking38RowDataAll.csv">
+        <entry key="\src\wetterTest.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="\src\wetterTest2.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />

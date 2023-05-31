@@ -28,6 +28,7 @@ import weka.filters.unsupervised.attribute.StringToNominal;
 
 import java.io.*;
 import java.sql.*;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 import tech.tablesaw.api.*;
@@ -53,11 +54,15 @@ public class ModelTrainer {
   /** All settings specified in properties file */
   private final Settings settings;
 
+  /** Parking ID*/
+  private final int parkingId = 38;
+
   /** Database connection */
   private Connection conn;
 
-  /** The different labels used for classification */
-  private List<String> labels = new ArrayList<>();
+  /** Period in minutes */
+  private int periodMultiplier = 30;
+
   /** The training data gathered so far. */
   private Instances m_Data;
 
@@ -128,7 +133,7 @@ public class ModelTrainer {
   private ResultSet queryDB() throws SQLException {
     System.out.println("Querying preprocessed data...");
     System.out.println("Data from table " + settings.preprocessTable);
-    String query = "SELECT * FROM public.\"" + settings.preprocessTable + "\" ORDER BY arrival_unix_seconds ASC LIMIT 5000;";
+    String query = "SELECT * FROM public.\"" + settings.preprocessTable + parkingId + "\" ORDER BY arrival_unix_seconds ASC LIMIT 5000;";
     Statement st = conn.createStatement();
     return st.executeQuery(query);
   }
@@ -347,7 +352,7 @@ public class ModelTrainer {
         testEvaluation.eval(labels, predicted);
       }
       //there is only one column in testEvaluation
-      System.out.println("\nLSTM TestEvaluation meanSquaredError: " + testEvaluation.meanSquaredError(0));
+      System.out.println("\nLSTM TestEvaluation meanAbsoluteError: " + testEvaluation.meanAbsoluteError(0));
 
     }
     catch (Exception e) {
@@ -394,7 +399,6 @@ public class ModelTrainer {
    */
   private Table preprocessing(ResultSet rs) throws Exception {
     Table data = new DataFrameReader(new ReaderRegistry()).db(rs);
-
     data.setName("Parking data");
     System.out.println("Parking data is imported from DB, data shape is " + data.shape());
     // get number of sensors (unique values)
@@ -412,13 +416,19 @@ public class ModelTrainer {
     String startDateString = data.getString(0, "arrival_local_time");
     LocalDateTime START_DATE = LocalDateTime.parse(startDateString, formatter);
     // START_DATE rounded to hours
-    START_DATE = START_DATE.truncatedTo(java.time.temporal.ChronoUnit.HOURS);
-
+    START_DATE = START_DATE.truncatedTo(ChronoUnit.HOURS); // Truncate to hours first // before java.time.temporal.ChronoUnit.HOURS
+    int remainder = START_DATE.getMinute() % periodMultiplier;
+    if (remainder != 0) {
+      START_DATE = START_DATE.plusMinutes(periodMultiplier - remainder); // Round up to the next 10-minute interval
+    }
     // getting the last arrival time in "arrival_local_time" and process as START_DATE
     String endDateString = data.getString(data.rowCount() - 1, "arrival_local_time");
     LocalDateTime END_DATE = LocalDateTime.parse(endDateString, formatter);
-    END_DATE = END_DATE.truncatedTo(java.time.temporal.ChronoUnit.HOURS);
-
+    END_DATE = END_DATE.truncatedTo(ChronoUnit.HOURS); // Truncate to hours first // before java.time.temporal.ChronoUnit.HOURS
+    remainder = END_DATE.getMinute() % periodMultiplier;
+    if (remainder != 0) {
+      END_DATE = END_DATE.plusMinutes(periodMultiplier - remainder); // Round up to the next 10-minute interval
+    }
 
     // copy of data to process in future
     Table dataWithOccupacy = data.emptyCopy();
@@ -428,12 +438,12 @@ public class ModelTrainer {
             LongColumn.create("occupancySeconds", dataWithOccupacy.rowCount()),
             LongColumn.create("periodStartSeconds"));
 
-    // from start date to end date iterate for every hour
+    // from start date to end date iterate for every period periodMultiplier
     LocalDateTime tmpDate = START_DATE;
 
     while (!tmpDate.equals(END_DATE)) {
-      dataWithOccupacy.append(filterRecordsByHours(tmpDate, data));
-      tmpDate = tmpDate.plusHours(1);
+      dataWithOccupacy.append(filteredByExactPeriod(tmpDate, data, periodMultiplier));
+      tmpDate = tmpDate.plusMinutes(periodMultiplier);
     }
 
     dataWithOccupacy.removeColumns("arrival_unix_seconds", "departure_unix_seconds",
@@ -462,49 +472,50 @@ public class ModelTrainer {
 
     dataWithOccupacy.removeColumns("occupancySeconds");
     dataWithOccupacy = dataWithOccupacy.dropDuplicateRows();
+
     dataWithOccupacy.replaceColumn("occupancySum", // seconds to percents
-            dataWithOccupacy.intColumn("occupancySum").divide(sensorCount * 3600 / 100)
+            dataWithOccupacy.intColumn("occupancySum").divide(sensorCount * (periodMultiplier * 60) / 100)
                     .multiply(10).roundInt().divide(10)); // round .1 operation
     dataWithOccupacy.column(dataWithOccupacy.columnCount() - 1).setName("occupancyPercent");
-
+    //dataWithOccupacy.write().csv("src/dataWithOccupacyTest.csv");
 
     System.out.println("Data is processed, data with weather: " + dataWithOccupacy.shape());
     return addingWetter(dataWithOccupacy);
   }
 
   /**
-   * returns a Table with rows that refer to the time gap between currentDate and currentDate + 1 hour
-   * Additional columns: currentDate, currentDate + 1 hour and occupation time in seconds (maximum 3600 (1 hour))
+   * Return a Table with rows that refer to the time gap between currentDate and currentDate + duration
+   * Additional columns: currentDate, currentDate + duration and occupation time in seconds (maximum 60 * duration)
    *
    * @param currentDate    The time by which filtering is performed and the occupation time is calculated
    * @param unfilteredData The data to be processed
    * @return filtered Table with time range and occupancy in this range
    */
-  private static Table filterRecordsByHours(LocalDateTime currentDate, Table unfilteredData) {
+  private static Table filteredByExactPeriod(LocalDateTime currentDate, Table unfilteredData, int periodDuration) {
     ZoneId zoneId = ZoneId.of("Europe/Paris"); // the timezone has to be defined
     // convert LocalDateTime to ZonedDateTime to extract seconds
-    ZonedDateTime zonedcurrentDate = currentDate.atZone(zoneId),
-            zonedcurrentDatePlusHour = (currentDate.plusHours(1)).atZone(zoneId);
+    ZonedDateTime zonedPeriodStart = currentDate.atZone(zoneId),
+            zonedPeriodEnd = (currentDate.plusMinutes(periodDuration)).atZone(zoneId);
     // Get the epoch second value from ZonedDateTime
-    long currentDateSeconds = zonedcurrentDate.toEpochSecond(),
-            currentDatePlusHourSeconds = zonedcurrentDatePlusHour.toEpochSecond();
+    long periodStartSeconds = zonedPeriodStart.toEpochSecond(),
+            periodEndSeconds = zonedPeriodEnd.toEpochSecond();
 
     // define arrival and departure seconds columns for better readability
     LongColumn arrivalSecondsColumn = unfilteredData.longColumn("arrival_unix_seconds").asLongColumn();
     LongColumn departureSecondsColumn = unfilteredData.longColumn("departure_unix_seconds").asLongColumn();
 
-    // selectionBetween:        (hour)arrival       departure(hour +1)
-    Selection selectionBetween = arrivalSecondsColumn.isGreaterThanOrEqualTo(currentDateSeconds)
-            .and(departureSecondsColumn.isLessThan(currentDatePlusHourSeconds)),                 //here is a bug
-            // selectionBetween: arrival(hour)                       (hour +1)departure
-            selectionOverlap = arrivalSecondsColumn.isLessThanOrEqualTo(currentDateSeconds)
-                    .and(departureSecondsColumn.isGreaterThanOrEqualTo(currentDatePlusHourSeconds)),
-            // selectionBetween: arrival(hour)        departure      (hour +1)
-            selectionArrivalBefore = arrivalSecondsColumn.isLessThanOrEqualTo(currentDateSeconds)
-                    .and(departureSecondsColumn.isGreaterThanOrEqualTo(currentDateSeconds)),
-            // selectionBetween:        (hour)   arrival             (hour +1)departure
-            selectionDepartureLater = arrivalSecondsColumn.isLessThanOrEqualTo(currentDatePlusHourSeconds)
-                    .and(departureSecondsColumn.isGreaterThanOrEqualTo(currentDatePlusHourSeconds));
+    // selectionBetween:        (start)arrival       departure(end)
+    Selection selectionBetween = arrivalSecondsColumn.isGreaterThanOrEqualTo(periodStartSeconds)
+            .and(departureSecondsColumn.isLessThan(periodEndSeconds)),                 //here is a bug
+            // selectionBetween: arrival(start)                       (end)departure
+            selectionOverlap = arrivalSecondsColumn.isLessThanOrEqualTo(periodStartSeconds)
+                    .and(departureSecondsColumn.isGreaterThanOrEqualTo(periodEndSeconds)),
+            // selectionBetween: arrival(start)        departure      (end)
+            selectionArrivalBefore = arrivalSecondsColumn.isLessThanOrEqualTo(periodStartSeconds)
+                    .and(departureSecondsColumn.isGreaterThanOrEqualTo(periodStartSeconds)),
+            // selectionBetween:        (start)   arrival             (end)departure
+            selectionDepartureLater = arrivalSecondsColumn.isLessThanOrEqualTo(periodEndSeconds)
+                    .and(departureSecondsColumn.isGreaterThanOrEqualTo(periodEndSeconds));
 
     // filtering with for all 4 variants of intersection
     Table filteredData = unfilteredData.where(selectionBetween.or(selectionOverlap)
@@ -520,18 +531,18 @@ public class ModelTrainer {
       long stayStart = 0, stayFinish = 0;
       for (int i = 0; i < filteredData.rowCount(); i++) {
         // start time for duration seconds
-        if (Integer.valueOf(filteredData.getString(i, "arrival_unix_seconds")) > currentDateSeconds)
+        if (Integer.valueOf(filteredData.getString(i, "arrival_unix_seconds")) > periodStartSeconds)
           stayStart = Integer.valueOf(filteredData.getString(i, "arrival_unix_seconds"));
-        else stayStart = currentDateSeconds;
+        else stayStart = periodStartSeconds;
         // finish time for duration seconds
-        if (Integer.valueOf(filteredData.getString(i, "departure_unix_seconds")) < currentDatePlusHourSeconds)
+        if (Integer.valueOf(filteredData.getString(i, "departure_unix_seconds")) < periodEndSeconds)
           stayFinish = Integer.valueOf(filteredData.getString(i, "departure_unix_seconds"));
-        else stayFinish = currentDatePlusHourSeconds;
+        else stayFinish = periodEndSeconds;
 
         filteredData.row(i).setLong("occupancySeconds", stayFinish - stayStart); // occupancy duration
         filteredData.row(i).setString("periodStart", currentDate.toString());
-        filteredData.row(i).setString("periodEnd", currentDate.plusHours(1).toString());
-        filteredData.row(i).setLong("periodStartSeconds", currentDateSeconds);
+        filteredData.row(i).setString("periodEnd", currentDate.plusMinutes(periodDuration).toString());
+        filteredData.row(i).setLong("periodStartSeconds", periodStartSeconds);
       }
     }
 
@@ -545,8 +556,9 @@ public class ModelTrainer {
    */
   private Table addingWetter(Table parkingOccupacy) throws SQLException, Exception {
       // weather from DB
-      int parkingNum = 38;
-      String query = "SELECT * FROM public.\"60_Minutes_Dataset_Air_Temperature_and_Humidity_"+parkingNum+"\";";
+      String pattern = "dd.MM.yyyy HH:mm:ss"; // pattern to format the date from string
+      DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern); // instance to format the date with pattern
+      String query = "SELECT * FROM public.\"60_Minutes_Dataset_Air_Temperature_and_Humidity_"+ parkingId +"\";";
       ResultSet resultSetForWeather = conn.createStatement().executeQuery(query);
       Table weather = new DataFrameReader(new ReaderRegistry()).db(resultSetForWeather);
       weather.column("MESS_DATUM").setName("Date"); // change column data name
@@ -571,7 +583,36 @@ public class ModelTrainer {
       }
       weather.replaceColumn("Date", formattedDateColumn);
 
-      // convert periodStart to String (initially LocalDate)
+      String startDateString = weather.getString(0, "periodStart");
+      LocalDateTime START_DATE = LocalDateTime.parse(startDateString);
+      // START_DATE rounded to hours
+      START_DATE = START_DATE.truncatedTo(ChronoUnit.HOURS); // Truncate to hours first // before java.time.temporal.ChronoUnit.HOURS
+      int remainder = START_DATE.getMinute() % periodMultiplier;
+      if (remainder != 0) {
+        START_DATE = START_DATE.plusMinutes(periodMultiplier - remainder); // Round up to the next 10-minute interval
+      }
+
+      // copy of data to process in future
+      Table weatherInPeriods = weather.emptyCopy();
+      // from every hour (=row) in weather extract data and add to new row(s) in weatherInPeriods
+      // as example period duration = 30 minutes; then, pro 1 row in weather 2 rows in weatherInPeriods
+      for (Row rowInWeather : weather) {
+          LocalDateTime tmpStart = LocalDateTime.parse(rowInWeather.getString("periodStart"));
+        for (int i = 0; i < 60/periodMultiplier; i++) { // for every period which contains in 1 hour
+            Table tmpOneRowTable = Table.create(); // tmp table to save data
+            tmpOneRowTable.addColumns(StringColumn.create("periodStart", 1),
+                    DoubleColumn.create("Temp", 1),
+                    DoubleColumn.create("Humidity", 1));
+
+          tmpOneRowTable.row(0).setString("periodStart", tmpStart.plusMinutes(i*periodMultiplier).toString());
+          tmpOneRowTable.row(0).setDouble("Temp", rowInWeather.getDouble("Temp"));
+          tmpOneRowTable.row(0).setDouble("Humidity", rowInWeather.getDouble("Humidity"));
+          weatherInPeriods.append(tmpOneRowTable);
+
+          }
+      }
+
+    // convert periodStart to String (initially LocalDate)
       parkingOccupacy.addColumns(StringColumn.create("periodStartString", parkingOccupacy.rowCount()));
       int columnIndex = parkingOccupacy.columnIndex("periodStart");
       for (int i = 0; i < parkingOccupacy.rowCount(); i++) {
@@ -581,13 +622,14 @@ public class ModelTrainer {
       parkingOccupacy.column("periodStartString").setName("periodStart");
 
       // concatenate tables based on "periodStart" column
-      Table parkingOccupancyWithWetter = weather.joinOn("periodStart").inner(parkingOccupacy);
+      Table parkingOccupancyWithWetter = weatherInPeriods.joinOn("periodStart").inner(parkingOccupacy);
 
     parkingOccupancyWithWetter.removeColumns("periodEnd", "periodStart");
       String allInstances38 = "src/parking38RowDataAllWithWeather.csv";
       String only5000Instances38 = "src/parking38RowData5000WithWeather.csv";
 
-      parkingOccupancyWithWetter.write().csv(allInstances38);
+      //parkingOccupancyWithWetter.write().csv(only5000Instances38);
+      System.out.println("Tables joined, shape " + parkingOccupancyWithWetter.shape());
       return parkingOccupancyWithWetter;
   }
 
