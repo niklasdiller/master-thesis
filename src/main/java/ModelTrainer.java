@@ -32,6 +32,7 @@ public class ModelTrainer {
     add("Temp");
     add("Humidity");
     add("periodStartSeconds");
+    add("weekDay");
     add("occupancyPercent");
   }};
 
@@ -40,13 +41,13 @@ public class ModelTrainer {
   private final Settings settings;
 
   /** Parking ID*/
-  private final int parkingId = 634; //38, 634
+  private final int parkingId = 38; //38, 634
 
   /** Database connection */
   private Connection conn;
 
   /** Period in minutes */
-  private int periodMinutes = 60;
+  private int periodMinutes = 60*0 + 60 ;
 
   /** Array of parking slots to predict **/
   private int[] slotsIDs = new int[] {}; //637, 600, 617
@@ -85,7 +86,8 @@ public class ModelTrainer {
     attributes.add(new Attribute(occupancyPredictAttributes.get(0)));
     attributes.add(new Attribute(occupancyPredictAttributes.get(1)));
     attributes.add(new Attribute(occupancyPredictAttributes.get(2)));
-    Attribute occupancyAttribute = new Attribute(occupancyPredictAttributes.get(3));
+    attributes.add(new Attribute(occupancyPredictAttributes.get(3)));
+    Attribute occupancyAttribute = new Attribute(occupancyPredictAttributes.get(4));
     attributes.add(occupancyAttribute);
 
     int targetAttributIndex = attributes.indexOf(occupancyAttribute);
@@ -138,7 +140,8 @@ public class ModelTrainer {
     instance.setValue(this.m_Data.attribute(occupancyPredictAttributes.get(0)), rowData.getDouble(occupancyPredictAttributes.get(0)));
     instance.setValue(this.m_Data.attribute(occupancyPredictAttributes.get(1)), rowData.getDouble(occupancyPredictAttributes.get(1)));
     instance.setValue(this.m_Data.attribute(occupancyPredictAttributes.get(2)), rowData.getLong(occupancyPredictAttributes.get(2)));
-    instance.setValue(this.m_Data.attribute(occupancyPredictAttributes.get(3)), rowData.getDouble(occupancyPredictAttributes.get(3)));
+    instance.setValue(this.m_Data.attribute(occupancyPredictAttributes.get(3)), rowData.getInt(occupancyPredictAttributes.get(3)));
+    instance.setValue(this.m_Data.attribute(occupancyPredictAttributes.get(4)), rowData.getDouble(occupancyPredictAttributes.get(4)));
 
     return instance;
   }
@@ -245,15 +248,24 @@ public class ModelTrainer {
   private void testClassifier() throws Exception {
     System.out.println("Testing model...");
     int correctPredRF = 0, correctPredLR = 0, correctPredKNN = 0;
-    double meanAbsErrRF = 0, meanAbsErrLR = 0, meanAbsErrKNN = 0;
+    double meanAbsErrRF = 0, meanAbsErrLR = 0, meanAbsErrKNN = 0,
+    meanSqErrRF = 0, meanSqErrLR = 0, meanSqErrKNN = 0;
     for (Instance i : m_Test_Data) {
       double value = i.classValue();
       double predictionRF = m_RandomForestClassifier.classifyInstance(i),
               predictionLR = m_LinearRegressionClassifier.classifyInstance(i),
               predictionKNN = m_KNN.classifyInstance(i);
-      meanAbsErrRF += Math.abs(predictionRF);
-      meanAbsErrLR += Math.abs(predictionLR);
-      meanAbsErrKNN += Math.abs(predictionKNN);
+      double diffRF = predictionRF - value,
+          diffLR = predictionLR - value,
+          diffKNN = predictionKNN - value;
+
+      meanAbsErrRF += Math.abs(diffRF);
+      meanAbsErrLR += Math.abs(diffLR);
+      meanAbsErrKNN += Math.abs(diffKNN);
+      meanSqErrRF += diffRF*diffRF;
+      meanSqErrLR += diffLR*diffLR;
+      meanSqErrKNN += diffKNN*diffKNN;
+
       if (predictionRF >= value - 5 && predictionRF <= value + 5) {
         correctPredRF++;
       }
@@ -267,13 +279,17 @@ public class ModelTrainer {
     double correctRateRF = correctPredRF / (double) m_Test_Data.size(),
             correctRateLR = correctPredLR / (double) m_Test_Data.size(),
             correctRateKNN = correctPredKNN / (double) m_Test_Data.size();
-    System.out.println("Correctly predicted Random Forest: " + correctRateRF * 100 + "%");
-    System.out.println("Correctly predicted Linear Regression: " + correctRateLR * 100 + "%");
-    System.out.println("Correctly predicted k-Nearest Neighbors: " + correctRateKNN * 100 + "%");
-    System.out.println("\nRandom Forest meanAbsoluteError: " + meanAbsErrRF / (double)m_Test_Data.size());
-    System.out.println("Linear Regression meanAbsoluteError: " + meanAbsErrLR / (double)m_Test_Data.size());
-    System.out.println("KNN meanAbsoluteError: " + meanAbsErrKNN / (double)m_Test_Data.size());
+    System.out.println("Correctly predicted Random Forest: " + (double) Math.round(correctRateRF * 100 * 100)/100 + "%");
+    System.out.println("Correctly predicted Linear Regression: " + (double)Math.round(correctRateLR * 100 * 100)/100 + "%");
+    System.out.println("Correctly predicted k-Nearest Neighbors: " + (double) Math.round(correctRateKNN * 100 * 100)/100 + "%");
 
+    System.out.println("\nRandom Forest Mean Absolute Error: " + (double)Math.round(meanAbsErrRF / (double)m_Test_Data.size()* 100)/100);
+    System.out.println("Linear Regression Mean Absolute Error: " + (double)Math.round(meanAbsErrLR / (double)m_Test_Data.size()* 100)/100);
+    System.out.println("KNN Mean Absolute Error: " + (double)Math.round(meanAbsErrKNN / (double)m_Test_Data.size()* 100)/100);
+
+    System.out.println("\nRandom Forest Mean Squared Error : " + (double)Math.round(meanSqErrRF / (double)m_Test_Data.size()* 100)/100);
+    System.out.println("Linear Regression Mean Squared Error : " + (double)Math.round(meanSqErrLR / (double)m_Test_Data.size()* 100)/100);
+    System.out.println("KNN Mean Squared Error : " + (double)Math.round(meanSqErrKNN / (double)m_Test_Data.size()* 100)/100);
 
   }
 
@@ -339,17 +355,21 @@ public class ModelTrainer {
             LongColumn.create("occupancySeconds", dataWithOccupacy.rowCount()),
             LongColumn.create("periodStartSeconds"));
 
-    // from start date to end date iterate for every period periodMultiplier
-    LocalDateTime tmpDate = START_DATE;
 
-    while (tmpDate.isBefore(END_DATE)) {
-      dataWithOccupacy.append(filteredByExactPeriod(tmpDate, data, periodMinutes));
-      tmpDate = tmpDate.plusMinutes(periodMinutes);
+    while (START_DATE.isBefore(END_DATE)) {
+      dataWithOccupacy.append(filteredByExactPeriod(START_DATE, data, periodMinutes));
+      START_DATE = START_DATE.plusMinutes(periodMinutes);
     }
 
     dataWithOccupacy.removeColumns("arrival_unix_seconds", "departure_unix_seconds",
             "arrival_local_time", "departure_local_time");  // removing unnecessary columns
 
+    // adding day of the week parameter
+    dataWithOccupacy.addColumns(IntColumn.create("weekDay", dataWithOccupacy.rowCount()));
+    for (int i = 0; i < dataWithOccupacy.rowCount(); i++) {
+      LocalDateTime tmpDate = LocalDateTime.parse(dataWithOccupacy.getString(i, "periodStart"));
+      dataWithOccupacy.row(i).setInt("weekDay", tmpDate.getDayOfWeek().getValue());
+    }
 
     // processing occupancy sum
     dataWithOccupacy.addColumns(IntColumn.create("occupancySum", dataWithOccupacy.rowCount()));
@@ -505,6 +525,7 @@ public class ModelTrainer {
           tmpOneRowTable.row(0).setDouble("Temp", rowInWeather.getDouble("Temp"));
           tmpOneRowTable.row(0).setDouble("Humidity", rowInWeather.getDouble("Humidity"));
           weatherInPeriods.append(tmpOneRowTable);
+          START_DATE = START_DATE.plusMinutes(periodMinutes);
         }
       }
       else {
@@ -542,7 +563,7 @@ public class ModelTrainer {
       String allInstances38 = "src/parking38RowDataAllWithWeather.csv";
       String only5000Instances38 = "src/parking38RowData5000WithWeather.csv";
 
-      //parkingOccupancyWithWetter.write().csv(only5000Instances38);
+      parkingOccupancyWithWetter.write().csv(only5000Instances38);
       System.out.println("Tables joined, shape " + parkingOccupancyWithWetter.shape());
       return parkingOccupancyWithWetter;
   }
