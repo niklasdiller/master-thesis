@@ -1,21 +1,6 @@
 package main.java;
 
-import org.deeplearning4j.datasets.iterator.impl.ListDataSetIterator;
-import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
-import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
-import org.deeplearning4j.nn.conf.layers.DropoutLayer;
-import org.deeplearning4j.nn.conf.layers.LSTM;
-import org.deeplearning4j.nn.conf.layers.RnnOutputLayer;
-import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
-import org.deeplearning4j.nn.weights.WeightInit;
-import org.nd4j.evaluation.regression.RegressionEvaluation;
-import org.nd4j.linalg.activations.Activation;
-import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.dataset.DataSet;
-import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
-import org.nd4j.linalg.factory.Nd4j;
-import org.nd4j.linalg.learning.config.Adam;
-import org.nd4j.linalg.lossfunctions.LossFunctions;
+
 import tech.tablesaw.io.DataFrameReader;
 import tech.tablesaw.io.ReaderRegistry;
 import weka.classifiers.Classifier;
@@ -48,23 +33,23 @@ public class ModelTrainer {
     add("Humidity");
     add("periodStartSeconds");
     add("occupancyPercent");
-  }}; // TODO: add to other functions
+  }};
 
 
   /** All settings specified in properties file */
   private final Settings settings;
 
   /** Parking ID*/
-  private final int parkingId = 38;
+  private final int parkingId = 634; //38, 634
 
   /** Database connection */
   private Connection conn;
 
   /** Period in minutes */
-  private int periodMultiplier = 30;
+  private int periodMinutes = 60;
 
   /** Array of parking slots to predict **/
-  private int[] slotsIDs = new int[] {637, 600, 617};
+  private int[] slotsIDs = new int[] {}; //637, 600, 617
 
   /** The training data gathered so far. */
   private Instances m_Data;
@@ -81,7 +66,6 @@ public class ModelTrainer {
   /** The Linear Regression classifiert **/
   private Classifier m_LinearRegressionClassifier = new LinearRegression();
 
-  private MultiLayerNetwork m_LSTM;
 
   /** The filter */
   private final StringToNominal m_Filter = new StringToNominal();
@@ -255,127 +239,21 @@ public class ModelTrainer {
   }
 
   /**
-   * Create a new LSTM model
-   * @return LSTM (RNN) model
-   */
-  private MultiLayerNetwork RNNConfig() throws Exception {
-    // a regression model, which can predict continuous values
-    int featuresCount = m_Data.numAttributes() -1;
-    MultiLayerConfiguration config = new NeuralNetConfiguration.Builder()
-            .seed(101)
-            .updater(new Adam())
-            .weightInit(WeightInit.XAVIER)
-            .list()
-            .layer(new LSTM.Builder().nIn(featuresCount).nOut(16).activation(Activation.TANH).build()) //LSTM(16), 1. lvl
-            .layer(new LSTM.Builder().nIn(16).nOut(8).activation(Activation.TANH).build()) //LSTM(8), 2. level
-            .layer(new DropoutLayer.Builder(0.2).build())
-            .layer(new LSTM.Builder().nIn(8).nOut(4).activation(Activation.TANH).build()) //LSTM(4), 3. level
-            .layer(4, new RnnOutputLayer.Builder().nIn(4).nOut(1) //output lvl, model.compile
-                    .activation(Activation.IDENTITY).lossFunction(LossFunctions.LossFunction.MSE).build())
-            .build();
-
-    MultiLayerNetwork model = new MultiLayerNetwork(config);
-    return model;
-  }
-
-  /**
-   * Return iterator object from train or test data set
-   * @param choiceValue Train (0) or test (1) iterator to get
-   * @throws Exception
-   * @return iterator
-   */
-  private DataSetIterator getIterators(int choiceValue) throws Exception {
-    int trainSize = m_Data.size(),
-            testSize = m_Test_Data.size(),
-            attributesSize = m_Data.numAttributes() - 1;
-
-    double[][][] trainX = new double[trainSize][attributesSize][1];
-    double[][] trainY = new double[trainSize][1];
-    double[][][] testX = new double[testSize][attributesSize][1];
-    double[][] testY = new double[testSize][1];
-
-
-    for (int i = 0; i < trainSize; i++) {
-      Instance instance = m_Data.get(i);
-      trainY[i][0] = instance.classValue();
-      for (int j = 0; j < attributesSize; j++) {
-        trainX[i][j][0] = instance.value(j);
-      }
-    }
-
-    for (int i = 0; i < testSize; i++) {
-      Instance instance = m_Test_Data.get(i);
-      testY[i][0] = instance.classValue();
-      for (int j = 0; j < attributesSize; j++) {
-        testX[i][j][0] = instance.value(j);
-      }
-    }
-
-    INDArray inputArr = Nd4j.create(trainX);
-    INDArray labelArr = Nd4j.create(trainY);
-    INDArray labelArr3d = labelArr.reshape(labelArr.size(0), 1, 1);
-
-    DataSet dataSetTrain = new DataSet(inputArr, labelArr3d);
-    DataSetIterator trainIterator = new ListDataSetIterator<>(Collections.singletonList(dataSetTrain));
-
-    INDArray inputArrTest = Nd4j.create(testX),
-            labelArrTest = Nd4j.create(testY),
-            labelArr3dTest = labelArrTest.reshape(labelArrTest.size(0), 1, 1);
-
-    DataSet dataSetTest = new DataSet(inputArrTest, labelArr3dTest);
-    DataSetIterator testIterator = new ListDataSetIterator<>(Collections.singletonList(dataSetTest));
-
-    if (choiceValue == 0)
-      return trainIterator;
-    else
-      return testIterator;
-  }
-
-  /**
-   * Train and test LSTM model
-   * @throws Exception
-   */
-  private void RNNTrainAndTest() {
-    try {
-      // a regression model, which can predict continuous values
-      MultiLayerNetwork model = RNNConfig();
-      model.init();
-
-      DataSetIterator trainIterator = getIterators(0),
-              testIterator = getIterators(1);
-
-      model.fit(trainIterator); // may be doesn't work
-
-      RegressionEvaluation testEvaluation = new RegressionEvaluation();
-      while (testIterator.hasNext()) {
-        DataSet dataSet = testIterator.next();
-        INDArray features = dataSet.getFeatures();
-        INDArray labels = dataSet.getLabels();
-        INDArray predicted = model.output(features, false);
-        testEvaluation.eval(labels, predicted);
-      }
-      //there is only one column in testEvaluation
-      System.out.println("\nLSTM TestEvaluation meanAbsoluteError: " + testEvaluation.meanAbsoluteError(0));
-
-    }
-    catch (Exception e) {
-      System.out.println("Error in testRNN");
-      System.out.println(e);
-    }
-  }
-
-  /**
    * Test classifier on all test instances
    * @throws Exception
    */
   private void testClassifier() throws Exception {
     System.out.println("Testing model...");
     int correctPredRF = 0, correctPredLR = 0, correctPredKNN = 0;
+    double meanAbsErrRF = 0, meanAbsErrLR = 0, meanAbsErrKNN = 0;
     for (Instance i : m_Test_Data) {
       double value = i.classValue();
       double predictionRF = m_RandomForestClassifier.classifyInstance(i),
               predictionLR = m_LinearRegressionClassifier.classifyInstance(i),
               predictionKNN = m_KNN.classifyInstance(i);
+      meanAbsErrRF += Math.abs(predictionRF);
+      meanAbsErrLR += Math.abs(predictionLR);
+      meanAbsErrKNN += Math.abs(predictionKNN);
       if (predictionRF >= value - 5 && predictionRF <= value + 5) {
         correctPredRF++;
       }
@@ -392,6 +270,11 @@ public class ModelTrainer {
     System.out.println("Correctly predicted Random Forest: " + correctRateRF * 100 + "%");
     System.out.println("Correctly predicted Linear Regression: " + correctRateLR * 100 + "%");
     System.out.println("Correctly predicted k-Nearest Neighbors: " + correctRateKNN * 100 + "%");
+    System.out.println("\nRandom Forest meanAbsoluteError: " + meanAbsErrRF / (double)m_Test_Data.size());
+    System.out.println("Linear Regression meanAbsoluteError: " + meanAbsErrLR / (double)m_Test_Data.size());
+    System.out.println("KNN meanAbsoluteError: " + meanAbsErrKNN / (double)m_Test_Data.size());
+
+
   }
 
   /**
@@ -431,17 +314,21 @@ public class ModelTrainer {
     LocalDateTime START_DATE = LocalDateTime.parse(startDateString, formatter);
     // START_DATE rounded to hours
     START_DATE = START_DATE.truncatedTo(ChronoUnit.HOURS); // Truncate to hours first // before java.time.temporal.ChronoUnit.HOURS
-    int remainder = START_DATE.getMinute() % periodMultiplier;
-    if (remainder != 0) {
-      START_DATE = START_DATE.plusMinutes(periodMultiplier - remainder); // Round up to the next 10-minute interval
+    if (periodMinutes < 60) {
+      int remainder = START_DATE.getMinute() % periodMinutes;
+      if (remainder != 0) {
+        START_DATE = START_DATE.plusMinutes(periodMinutes - remainder); // Round up to the next 10-minute interval
+      }
     }
     // getting the last arrival time in "arrival_local_time" and process as START_DATE
     String endDateString = data.getString(data.rowCount() - 1, "arrival_local_time");
     LocalDateTime END_DATE = LocalDateTime.parse(endDateString, formatter);
     END_DATE = END_DATE.truncatedTo(ChronoUnit.HOURS); // Truncate to hours first // before java.time.temporal.ChronoUnit.HOURS
-    remainder = END_DATE.getMinute() % periodMultiplier;
-    if (remainder != 0) {
-      END_DATE = END_DATE.plusMinutes(periodMultiplier - remainder); // Round up to the next 10-minute interval
+    if (periodMinutes < 60) {
+      int remainder = END_DATE.getMinute() % periodMinutes;
+      if (remainder != 0) {
+        END_DATE = END_DATE.plusMinutes(periodMinutes - remainder); // Round up to the next 10-minute interval
+      }
     }
 
     // copy of data to process in future
@@ -455,9 +342,9 @@ public class ModelTrainer {
     // from start date to end date iterate for every period periodMultiplier
     LocalDateTime tmpDate = START_DATE;
 
-    while (!tmpDate.equals(END_DATE)) {
-      dataWithOccupacy.append(filteredByExactPeriod(tmpDate, data, periodMultiplier));
-      tmpDate = tmpDate.plusMinutes(periodMultiplier);
+    while (tmpDate.isBefore(END_DATE)) {
+      dataWithOccupacy.append(filteredByExactPeriod(tmpDate, data, periodMinutes));
+      tmpDate = tmpDate.plusMinutes(periodMinutes);
     }
 
     dataWithOccupacy.removeColumns("arrival_unix_seconds", "departure_unix_seconds",
@@ -488,7 +375,7 @@ public class ModelTrainer {
     dataWithOccupacy = dataWithOccupacy.dropDuplicateRows();
 
     dataWithOccupacy.replaceColumn("occupancySum", // seconds to percents
-            dataWithOccupacy.intColumn("occupancySum").divide(sensorCount * (periodMultiplier * 60) / 100)
+            dataWithOccupacy.intColumn("occupancySum").divide(sensorCount * (periodMinutes * 60) / 100)
                     .multiply(10).roundInt().divide(10)); // round .1 operation
     dataWithOccupacy.column(dataWithOccupacy.columnCount() - 1).setName("occupancyPercent");
     //dataWithOccupacy.write().csv("src/dataWithOccupacyTest.csv");
@@ -599,22 +486,44 @@ public class ModelTrainer {
 
       // copy of data to process in future
       Table weatherInPeriods = weather.emptyCopy();
-      // from every hour (=row) in weather extract data and add to new row(s) in weatherInPeriods
-      // as example period duration = 30 minutes; then, pro 1 row in weather 2 rows in weatherInPeriods
-      for (Row rowInWeather : weather) {
+
+      if (periodMinutes > 60) {
+        LocalDateTime START_DATE = LocalDateTime.parse(parkingOccupacy.getString(0, "periodStart"));
+        // START_DATE rounded to hours
+        START_DATE = START_DATE.truncatedTo(ChronoUnit.HOURS); // Truncate to hours first // before java.time.temporal.ChronoUnit.HOURS
+        for (Row rowInWeather : weather) {
+          LocalDateTime tmpDate = LocalDateTime.parse(rowInWeather.getString("periodStart"));
+          if (tmpDate.getHour() != START_DATE.getHour()) //if this hour is not start hour in occupancy table
+              continue;
+
+          Table tmpOneRowTable = Table.create(); // tmp table to save data
+          tmpOneRowTable.addColumns(StringColumn.create("periodStart", 1),
+                    DoubleColumn.create("Temp", 1),
+                    DoubleColumn.create("Humidity", 1));
+
+          tmpOneRowTable.row(0).setString("periodStart", tmpDate.toString());
+          tmpOneRowTable.row(0).setDouble("Temp", rowInWeather.getDouble("Temp"));
+          tmpOneRowTable.row(0).setDouble("Humidity", rowInWeather.getDouble("Humidity"));
+          weatherInPeriods.append(tmpOneRowTable);
+        }
+      }
+      else {
+        // from every hour (=row) in weather extract data and add to new row(s) in weatherInPeriods
+        // as example period duration = 30 minutes; then, pro 1 row in weather 2 rows in weatherInPeriods
+        for (Row rowInWeather : weather) {
           LocalDateTime tmpStart = LocalDateTime.parse(rowInWeather.getString("periodStart"));
-        for (int i = 0; i < 60/periodMultiplier; i++) { // for every period which contains in 1 hour
+          for (int i = 0; i < 60 / periodMinutes; i++) { // for every period which contains in 1 hour
             Table tmpOneRowTable = Table.create(); // tmp table to save data
             tmpOneRowTable.addColumns(StringColumn.create("periodStart", 1),
                     DoubleColumn.create("Temp", 1),
                     DoubleColumn.create("Humidity", 1));
 
-          tmpOneRowTable.row(0).setString("periodStart", tmpStart.plusMinutes(i*periodMultiplier).toString());
-          tmpOneRowTable.row(0).setDouble("Temp", rowInWeather.getDouble("Temp"));
-          tmpOneRowTable.row(0).setDouble("Humidity", rowInWeather.getDouble("Humidity"));
-          weatherInPeriods.append(tmpOneRowTable);
-
+            tmpOneRowTable.row(0).setString("periodStart", tmpStart.plusMinutes(i * periodMinutes).toString());
+            tmpOneRowTable.row(0).setDouble("Temp", rowInWeather.getDouble("Temp"));
+            tmpOneRowTable.row(0).setDouble("Humidity", rowInWeather.getDouble("Humidity"));
+            weatherInPeriods.append(tmpOneRowTable);
           }
+        }
       }
 
     // convert periodStart to String (initially LocalDate)
@@ -649,14 +558,14 @@ public class ModelTrainer {
       Table tableData = trainer.preprocessing(rs);
       trainer.saveQueryAsInstances(tableData);
       rs.getStatement().close(); // closes the resource
-      trainer.applyFilter();
+      //trainer.applyFilter();
 
       trainer.m_RandomForestClassifier.buildClassifier(trainer.m_Data);
       trainer.m_LinearRegressionClassifier.buildClassifier(trainer.m_Data);
       trainer.m_KNN.buildClassifier(trainer.m_Data);
 
       trainer.testClassifier();
-      trainer.RNNTrainAndTest();
+
 
     } catch (Exception ex) {
       ex.printStackTrace();
