@@ -8,6 +8,7 @@ import org.json.simple.parser.ParseException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Contains all the configurations
@@ -19,17 +20,25 @@ class Settings {
   String dbUri;
   String dbUsername;
   String dbPassword;
-  int windowSize;
-  int windowStride;
+  int parkingId;
+  int periodMinutes;
+  int tableLength;
+  int randomForestMaxDepth;
+  int kNeighbours;
+  int accuracyPercent;
   String featuresJSON;
+  String slotsIDJSON;
+  String classifiersJSON;
+  String attributesJSON;
   HashMap<String, ArrayList<String>> featureData;
+  List<Integer> slotsIDData;
+  List<Integer> classifiersData;
+  List<Integer> attributesData;
   String preprocessTable;
   String cattleId;
   String round;
   String binaryLabel;
   double trainProp;
-  String startTimestamp;
-  String endTimestamp;
   String saveIn;
   String modelName;
 
@@ -42,21 +51,24 @@ class Settings {
     dbUri = getSettingAsString("dbUri", false);
     dbUsername = getSettingAsString("dbUsername", false);
     dbPassword = getSettingAsString("dbPassword", false);
-    featuresJSON = getSettingAsString("features", false);
-    featureData = parseFeatureData(featuresJSON);
-    windowSize = getSettingAsInt("windowSize", false);
-    windowStride = getSettingAsInt("windowStride", false);
+    slotsIDJSON = getSettingAsString("slotsIDs", false);
+    classifiersJSON = getSettingAsString("classifiers", false);
+    attributesJSON = getSettingAsString("attributes", false);
+    slotsIDData = parseStringToIntList(slotsIDJSON);
+    classifiersData = parseStringToIntList(classifiersJSON);
+    attributesData = parseStringToIntList(attributesJSON);
+    parkingId = getSettingAsInt("parkingId", false);
+    periodMinutes = getSettingAsInt("periodMinutes", false);
+    tableLength = getSettingAsInt("tableLength", false);
     saveIn = getSettingAsString("saveIn", false);
     modelName = getSettingAsString("modelName", false);
 
     // optional parameters
     preprocessTable = getSettingAsString("preprocessTable", true);
-    cattleId = getSettingAsString("cattleId", true);
-    round = getSettingAsString("round", true);
-    binaryLabel = getSettingAsString("binaryLabel", true);
     trainProp = getTrainProp();
-    startTimestamp = getSettingAsString("startTimestamp", true);
-    endTimestamp = getSettingAsString("endTimestamp", true);
+    randomForestMaxDepth = getSettingAsInt("randomForestMaxDepth", true);
+    accuracyPercent = getSettingAsInt("accuracyPercent", true);
+    kNeighbours = getSettingAsInt("kNeighbours", true);
   }
 
   private String getSettingAsString(String property, boolean optional) {
@@ -96,6 +108,25 @@ class Settings {
     });
 
     return featureData;
+  }
+
+  /**
+   * Parse String input into a Integer List
+   * @param stringToParse input string from settings
+   * @return an Integer List containing extracted numbers from string
+   * @throws ParseException
+   */
+  private static List<Integer> parseStringToIntList(String stringToParse) throws ParseException {
+    String cleanedString = stringToParse.replace("{", "").replace("}", "")
+            .replace(" ", "").replace(",", " ");
+    List<Integer> slotsIDList = new ArrayList<>();
+
+    if (!cleanedString.isBlank()) {
+      slotsIDList = Arrays.stream(cleanedString.split("\\s"))
+              .map(Integer::parseInt)
+              .collect(Collectors.toList());
+    }
+    return slotsIDList;
   }
 
   private double getTrainProp() {

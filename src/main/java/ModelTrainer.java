@@ -1,11 +1,13 @@
 package main.java;
 
 
+import org.json.simple.parser.ParseException;
 import tech.tablesaw.io.DataFrameReader;
 import tech.tablesaw.io.ReaderRegistry;
 import weka.classifiers.Classifier;
 import weka.classifiers.functions.LinearRegression;
 import weka.classifiers.lazy.IBk;
+import weka.classifiers.trees.M5P;
 import weka.classifiers.trees.RandomForest;
 import weka.core.*;
 import weka.filters.Filter;
@@ -31,8 +33,8 @@ public class ModelTrainer {
   private ArrayList<String> occupancyPredictAttributes = new ArrayList<String>() {{
     add("Temp");
     add("Humidity");
-    add("periodStartSeconds");
     add("weekDay");
+    add("periodStartSeconds");
     add("occupancyPercent");
   }};
 
@@ -41,32 +43,43 @@ public class ModelTrainer {
   private final Settings settings;
 
   /** Parking ID*/
-  private final int parkingId = 38; //38, 634
+  private int parkingId;
 
   /** Database connection */
   private Connection conn;
 
   /** Period in minutes */
-  private int periodMinutes = 60*0 + 60 ;
-
-  /** Array of parking slots to predict **/
-  private int[] slotsIDs = new int[] {}; //637, 600, 617
+  private int periodMinutes;
 
   /** The training data gathered so far. */
-  private Instances m_Data;
+  private Instances m_Train_Data;
 
   /** The testing data gathered so far. */
   private Instances m_Test_Data;
 
-  /** The Random Forest classifier. */
-  private Classifier m_RandomForestClassifier = new RandomForest() {{setMaxDepth(500);}};
+  /** Random Forest maximal depth */
+  private int randomForstMaxDepth = (new Settings("main/java/config.properties")).randomForestMaxDepth;
 
-  /** The k-Nearest Neighbors classifier. */
-  private Classifier m_KNN = new IBk();
+  /** k-Nearest Neighbors number of neighbours */
+  private int kNeighbours = (new Settings("main/java/config.properties")).kNeighbours; //TODO: fix it
+
+  /** The Decision Tree classifier. */
+  private Classifier m_DecisionTreeClassifier = new M5P();
+
+  /** The Random Forest classifier. */
+  private Classifier m_RandomForestClassifier = new RandomForest() {{setMaxDepth(randomForstMaxDepth);}};
 
   /** The Linear Regression classifiert **/
   private Classifier m_LinearRegressionClassifier = new LinearRegression();
 
+  /** The k-Nearest Neighbors classifier. */
+  private Classifier m_KNNClassifier = new IBk() {{setKNN(kNeighbours);}};
+
+  /** Map for classifier choice **/
+  private Map<Integer, Classifier> classifierMap = new HashMap<Integer, Classifier>();
+
+  /** Map for classifier names **/
+  private Map<Integer, String> classifierNamesMap = new HashMap<Integer, String>();
 
   /** The filter */
   private final StringToNominal m_Filter = new StringToNominal();
@@ -76,29 +89,83 @@ public class ModelTrainer {
    * Create a model trainer
    * @param settings Contains all settings to run training pipeline
    */
-  public ModelTrainer(Settings settings) {
+  public ModelTrainer(Settings settings) throws IOException, ParseException {
     this.settings = settings;
+    this.periodMinutes = settings.periodMinutes;
+    this.parkingId = settings.parkingId;
 
     String nameOfDataset = "ParkingOccupancyProblem";
 
     ArrayList<Attribute> attributes = new ArrayList<>();
-
-    attributes.add(new Attribute(occupancyPredictAttributes.get(0)));
-    attributes.add(new Attribute(occupancyPredictAttributes.get(1)));
-    attributes.add(new Attribute(occupancyPredictAttributes.get(2)));
-    attributes.add(new Attribute(occupancyPredictAttributes.get(3)));
-    Attribute occupancyAttribute = new Attribute(occupancyPredictAttributes.get(4));
+    if (settings.attributesData.isEmpty()) {
+      for (int i = 0; i < occupancyPredictAttributes.size()-1; i++) {
+        attributes.add(new Attribute(occupancyPredictAttributes.get(i)));
+      }
+    }
+    else {
+      for (int i : settings.attributesData) {
+        attributes.add(new Attribute(occupancyPredictAttributes.get(i)));
+      }
+    }
+    Attribute occupancyAttribute = new Attribute(occupancyPredictAttributes.get(occupancyPredictAttributes.size()-1));
     attributes.add(occupancyAttribute);
 
     int targetAttributIndex = attributes.indexOf(occupancyAttribute);
 
-    // Create dataset with initial capacity of 100, and set index of class.
-    m_Data = new Instances(nameOfDataset, attributes, 1000);
-    // Add label at index 0 of output attributes
-    m_Data.setClassIndex(targetAttributIndex);
+    // create dataset with initial capacity of 10000 (?)
+    m_Train_Data = new Instances(nameOfDataset, attributes, 10000);
+    // add label at index targetAttributIndex of output attributes
+    m_Train_Data.setClassIndex(targetAttributIndex);
 
-    m_Test_Data = new Instances(nameOfDataset, attributes, 1000);
+    m_Test_Data = new Instances(nameOfDataset, attributes, 10000);
     m_Test_Data.setClassIndex(targetAttributIndex);
+
+    this.randomForstMaxDepth = settings.randomForestMaxDepth;
+    this.kNeighbours = settings.kNeighbours;
+
+    // fill a map with classifiers
+    this.classifierMap.put(0, m_DecisionTreeClassifier);
+    this.classifierMap.put(1, m_RandomForestClassifier);
+    this.classifierMap.put(2, m_LinearRegressionClassifier);
+    this.classifierMap.put(3, m_KNNClassifier);
+
+    // fill a name map with classifier names
+    this.classifierNamesMap.put(0, "Decision Tree");
+    this.classifierNamesMap.put(1, "Random Forest");
+    this.classifierNamesMap.put(2, "Linear Regression");
+    this.classifierNamesMap.put(3, "K-Nearest Neighbours");
+  }
+
+  private void handInputTest() throws Exception {
+    Attribute attribute1 = new Attribute("periodStartSeconds");
+    Attribute attribute2 = new Attribute("weekDay");
+    Attribute classAttribute = new Attribute("occupancyPercent");
+
+
+    // Create an empty Instances object with the defined attributes
+    Instances dataset = new Instances("Instance", new ArrayList<>(Arrays.asList(attribute1, attribute2, classAttribute)), 0);
+    dataset.setClassIndex(dataset.numAttributes() - 1);
+
+    // Create the instance and set its values
+    Instance instance = new DenseInstance(3);
+    instance.setValue(attribute1, 1623628800);
+    instance.setValue(attribute2, 1);
+
+    // Add the instance to the dataset
+    dataset.add(instance);
+
+    Instance instance2 = new DenseInstance(3);
+    instance.setValue(attribute1, 1623675600);
+    instance.setValue(attribute2, 1);
+
+    // Add the instance to the dataset
+    dataset.add(instance);
+    for (Instance ins : dataset) {
+      System.out.println("Random Forest: " + this.m_RandomForestClassifier.classifyInstance(ins));
+      System.out.println("Linear Regression: " + this.m_LinearRegressionClassifier.classifyInstance(ins));
+      System.out.println("KNN: " + this.m_KNNClassifier.classifyInstance(ins));
+    }
+
   }
 
   /**
@@ -121,8 +188,9 @@ public class ModelTrainer {
    */
   private ResultSet queryDB() throws SQLException {
     System.out.println("Querying preprocessed data...");
-    System.out.println("Data from table " + settings.preprocessTable);
-    String query = "SELECT * FROM public.\"" + settings.preprocessTable + parkingId + "\" ORDER BY arrival_unix_seconds ASC LIMIT 5000;";
+    System.out.println("Data from table " + settings.preprocessTable + parkingId );
+    String query = "SELECT * FROM public.\"" + settings.preprocessTable + parkingId +
+            "\" ORDER BY arrival_unix_seconds ASC LIMIT "+ settings.tableLength +";";
     Statement st = conn.createStatement();
     return st.executeQuery(query);
   }
@@ -134,14 +202,25 @@ public class ModelTrainer {
    * @throws Exception
    */
   private Instance createInstance(Row rowData) throws Exception {
-    Instance instance = new DenseInstance(this.m_Data.numAttributes());
-    instance.setDataset(this.m_Data);
+    Instance instance = new DenseInstance(this.m_Train_Data.numAttributes());
+    instance.setDataset(this.m_Train_Data);
 
-    instance.setValue(this.m_Data.attribute(occupancyPredictAttributes.get(0)), rowData.getDouble(occupancyPredictAttributes.get(0)));
-    instance.setValue(this.m_Data.attribute(occupancyPredictAttributes.get(1)), rowData.getDouble(occupancyPredictAttributes.get(1)));
-    instance.setValue(this.m_Data.attribute(occupancyPredictAttributes.get(2)), rowData.getLong(occupancyPredictAttributes.get(2)));
-    instance.setValue(this.m_Data.attribute(occupancyPredictAttributes.get(3)), rowData.getInt(occupancyPredictAttributes.get(3)));
-    instance.setValue(this.m_Data.attribute(occupancyPredictAttributes.get(4)), rowData.getDouble(occupancyPredictAttributes.get(4)));
+    for (int attribute : settings.attributesData) {
+      if (attribute == 0) {
+        instance.setValue(this.m_Train_Data.attribute(occupancyPredictAttributes.get(attribute)),
+                rowData.getDouble(occupancyPredictAttributes.get(attribute)));
+      }
+      else if (attribute == 2) {
+        instance.setValue(this.m_Train_Data.attribute(occupancyPredictAttributes.get(attribute)),
+                rowData.getInt(occupancyPredictAttributes.get(attribute)));
+      }
+      else if (attribute == 3) {
+        instance.setValue(this.m_Train_Data.attribute(occupancyPredictAttributes.get(attribute)),
+                rowData.getLong(occupancyPredictAttributes.get(attribute)));
+      }
+    }
+    instance.setValue(this.m_Train_Data.attribute(occupancyPredictAttributes.get(occupancyPredictAttributes.size()-1)),
+            rowData.getDouble(occupancyPredictAttributes.get(occupancyPredictAttributes.size()-1)));
 
     return instance;
   }
@@ -164,7 +243,7 @@ public class ModelTrainer {
       instance = createInstance(currentRow);
 
       if (i < validSize) {
-        m_Data.add(instance);
+        m_Train_Data.add(instance);
         i++;
       } else if (i < 10) {
         m_Test_Data.add(instance);
@@ -177,6 +256,20 @@ public class ModelTrainer {
       currentRow = table.row(currentRowIndex);
     }
 
+    /* to extract test data after train data, not to mix
+    double validSizeTest = this.settings.trainProp * table.rowCount();
+    while (currentRowIndex < table.rowCount()) {
+      instance = createInstance(currentRow);
+
+      if (currentRowIndex < validSizeTest) {
+        m_Data.add(instance);
+      } else
+        m_Test_Data.add(instance);
+
+      currentRowIndex++;
+      currentRow = table.row(currentRowIndex);
+    }*/
+
     System.out.println("Converted data to instances.");
   }
 
@@ -185,19 +278,67 @@ public class ModelTrainer {
    * @throws IOException
    */
   private void saveModelAsFile() throws IOException {
-    ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("./" + settings.modelName + "RF.model"));
-    oos.writeObject(m_RandomForestClassifier);
+    String fileNameRF = "./" + settings.modelName + ".model";
+    ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(fileNameRF));
+    oos.writeObject(this.m_RandomForestClassifier);
     oos.flush();
     oos.close();
-    oos = new ObjectOutputStream(new FileOutputStream("./" + settings.modelName + "LR.model"));
-    oos.writeObject(m_LinearRegressionClassifier);
-    oos.flush();
-    oos.close();
-    oos = new ObjectOutputStream(new FileOutputStream("./" + settings.modelName + "KNN.model"));
-    oos.writeObject(m_KNN);
-    oos.flush();
-    oos.close();
-    System.out.println("Models saved");
+
+    System.out.println("Models saved at location " + fileNameRF);
+  }
+
+  /**
+   * Save the model and all its parameters to the DB
+   * @throws IOException
+   * @throws SQLException
+   */
+  //@SuppressWarnings("SqlResolve")
+  private void saveModelToDB() throws IOException, SQLException {
+    System.out.println("Saving model to database...");
+    PreparedStatement ps = conn.prepareStatement("" +
+            "INSERT INTO alex_trained_models(" +
+            "1model_name, 2parking_id, 3table_length, 4period_minutes, 5slotsIDs" +
+            "6classifiers, 7attributes, 8trainingDataProportion" +
+            "9accuracyPercent, 10randomForestMaxDepth. 11kNeighbours)" +
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?);");
+
+    // model_name
+    ps.setString(1, settings.modelName);
+    // parking id
+    ps.setInt(2, settings.parkingId);
+    // length of table
+    ps.setInt(3, settings.tableLength);
+    // divided in timestamps periodMinutes minutes
+    ps.setInt(4, settings.periodMinutes);
+
+    // TODO: ps.setString(5, slotsID? );
+    // TODO: ps.setString(6, classifiers? );
+    // TODO: ps.setString(7, attributes? );
+
+    // train percent
+    ps.setDouble(8, settings.trainProp);
+    // deviation percentage for accuracy calculation
+    ps.setInt(9, settings.accuracyPercent);
+    // max depth for Random Forest Classifier
+    ps.setInt(10, settings.randomForestMaxDepth);
+    // number of neighbours for k-Nearest Neighbours Classifier
+    ps.setInt(11, settings.kNeighbours);
+
+
+    // model_content (the binary classifier)
+    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+    ObjectOutputStream out = new ObjectOutputStream(bos);
+    out.writeObject(this.m_RandomForestClassifier); // TODO: NotSerializableException :(
+    out.flush();
+    byte[] serializedClassifier = bos.toByteArray();
+    bos.close();
+    ByteArrayInputStream bis = new ByteArrayInputStream(serializedClassifier);
+    //ps.setBinaryStream(17, bis, serializedClassifier.length);
+
+    ps.executeUpdate();
+    bis.close();
+    ps.close();
+    System.out.println("Saved model to database.");
   }
 
   /**
@@ -234,9 +375,9 @@ public class ModelTrainer {
   private void applyFilter() throws Exception {
     System.out.println("Applying filter...");
     this.m_Filter.setAttributeRange("first");
-    this.m_Filter.setInputFormat(this.m_Data);
-    this.m_Data = Filter.useFilter(this.m_Data, this.m_Filter);
-    this.m_Data = new Instances(this.m_Data);
+    this.m_Filter.setInputFormat(this.m_Train_Data);
+    this.m_Train_Data = Filter.useFilter(this.m_Train_Data, this.m_Filter);
+    this.m_Train_Data = new Instances(this.m_Train_Data);
     this.m_Test_Data = Filter.useFilter(this.m_Test_Data, this.m_Filter);
     this.m_Test_Data = new Instances(this.m_Test_Data);
   }
@@ -247,50 +388,45 @@ public class ModelTrainer {
    */
   private void testClassifier() throws Exception {
     System.out.println("Testing model...");
-    int correctPredRF = 0, correctPredLR = 0, correctPredKNN = 0;
-    double meanAbsErrRF = 0, meanAbsErrLR = 0, meanAbsErrKNN = 0,
-    meanSqErrRF = 0, meanSqErrLR = 0, meanSqErrKNN = 0;
-    for (Instance i : m_Test_Data) {
-      double value = i.classValue();
-      double predictionRF = m_RandomForestClassifier.classifyInstance(i),
-              predictionLR = m_LinearRegressionClassifier.classifyInstance(i),
-              predictionKNN = m_KNN.classifyInstance(i);
-      double diffRF = predictionRF - value,
-          diffLR = predictionLR - value,
-          diffKNN = predictionKNN - value;
+    int correctPredicted = 0;
+    double meanAbsErr = 0, meanSqErr = 0;
+    int percentForAccuracy = settings.accuracyPercent;
 
-      meanAbsErrRF += Math.abs(diffRF);
-      meanAbsErrLR += Math.abs(diffLR);
-      meanAbsErrKNN += Math.abs(diffKNN);
-      meanSqErrRF += diffRF*diffRF;
-      meanSqErrLR += diffLR*diffLR;
-      meanSqErrKNN += diffKNN*diffKNN;
+    List<Integer> classifiersIndexes = new ArrayList<>();
 
-      if (predictionRF >= value - 5 && predictionRF <= value + 5) {
-        correctPredRF++;
-      }
-      if (predictionLR >= value - 5 && predictionLR <= value + 5) {
-        correctPredLR++;
-      }
-      if (predictionKNN >= value - 5 && predictionKNN <= value + 5) {
-        correctPredKNN++;
+    if (settings.classifiersData.isEmpty()) {
+      for (int i = 0; i < this.classifierMap.size(); i++) {
+          classifiersIndexes.add(i);
       }
     }
-    double correctRateRF = correctPredRF / (double) m_Test_Data.size(),
-            correctRateLR = correctPredLR / (double) m_Test_Data.size(),
-            correctRateKNN = correctPredKNN / (double) m_Test_Data.size();
-    System.out.println("Correctly predicted Random Forest: " + (double) Math.round(correctRateRF * 100 * 100)/100 + "%");
-    System.out.println("Correctly predicted Linear Regression: " + (double)Math.round(correctRateLR * 100 * 100)/100 + "%");
-    System.out.println("Correctly predicted k-Nearest Neighbors: " + (double) Math.round(correctRateKNN * 100 * 100)/100 + "%");
+    else {
+      for (int i : settings.classifiersData) {
+          classifiersIndexes.add(i);
+      }
+    }
 
-    System.out.println("\nRandom Forest Mean Absolute Error: " + (double)Math.round(meanAbsErrRF / (double)m_Test_Data.size()* 100)/100);
-    System.out.println("Linear Regression Mean Absolute Error: " + (double)Math.round(meanAbsErrLR / (double)m_Test_Data.size()* 100)/100);
-    System.out.println("KNN Mean Absolute Error: " + (double)Math.round(meanAbsErrKNN / (double)m_Test_Data.size()* 100)/100);
-
-    System.out.println("\nRandom Forest Mean Squared Error : " + (double)Math.round(meanSqErrRF / (double)m_Test_Data.size()* 100)/100);
-    System.out.println("Linear Regression Mean Squared Error : " + (double)Math.round(meanSqErrLR / (double)m_Test_Data.size()* 100)/100);
-    System.out.println("KNN Mean Squared Error : " + (double)Math.round(meanSqErrKNN / (double)m_Test_Data.size()* 100)/100);
-
+    for (int index : classifiersIndexes) {
+      correctPredicted = 0;
+      meanAbsErr = 0;
+      meanSqErr = 0;
+      for (Instance instance : m_Test_Data) {
+        double value = instance.classValue();
+        double prediction = this.classifierMap.get(index).classifyInstance(instance);
+        double difference = prediction - value;
+        meanAbsErr += Math.abs(difference);
+        meanSqErr += difference*difference;
+        if (prediction >= value - percentForAccuracy && prediction <= value + percentForAccuracy) {
+          correctPredicted++;
+        }
+      }
+      double correctRate = correctPredicted / (double) m_Test_Data.size();
+      System.out.println("\nCorrectly predicted " + classifierNamesMap.get(index) + " "
+              + (double) Math.round(correctRate * 100 * 100)/100 + "%");
+      System.out.println(classifierNamesMap.get(index) + " Mean Absolute Error: "
+              + (double) Math.round(meanAbsErr / (double)m_Test_Data.size()* 100)/100);
+      System.out.println(classifierNamesMap.get(index) + " Mean Squared Error: " +
+              (double)Math.round(meanSqErr / (double)m_Test_Data.size()* 100)/100);
+    }
   }
 
   /**
@@ -303,8 +439,10 @@ public class ModelTrainer {
     Table dataAllID = new DataFrameReader(new ReaderRegistry()).db(rs);
     Table data = dataAllID.emptyCopy();
     // if there are special slots to process and predict (e.g. for disabled people)
-    if (slotsIDs.length > 0) {
-      for (int id : slotsIDs) {
+    if (!this.settings.slotsIDData.isEmpty()) {
+      System.out.println("ID of parking slots to parse: ");
+      for (int id : settings.slotsIDData) {
+        System.out.print(id + " ");
         Table tmpTable = dataAllID.where(dataAllID.longColumn("parking_space_id").isEqualTo(id));
         data.append(tmpTable);
       }
@@ -563,7 +701,8 @@ public class ModelTrainer {
       String allInstances38 = "src/parking38RowDataAllWithWeather.csv";
       String only5000Instances38 = "src/parking38RowData5000WithWeather.csv";
 
-      parkingOccupancyWithWetter.write().csv(only5000Instances38);
+      System.out.println("Die letzten Zeilen: ");
+      //parkingOccupancyWithWetter.write().csv(only5000Instances38);
       System.out.println("Tables joined, shape " + parkingOccupancyWithWetter.shape());
       return parkingOccupancyWithWetter;
   }
@@ -581,12 +720,22 @@ public class ModelTrainer {
       rs.getStatement().close(); // closes the resource
       //trainer.applyFilter();
 
-      trainer.m_RandomForestClassifier.buildClassifier(trainer.m_Data);
-      trainer.m_LinearRegressionClassifier.buildClassifier(trainer.m_Data);
-      trainer.m_KNN.buildClassifier(trainer.m_Data);
-
+      if (settings.classifiersData.isEmpty()) {
+        for (int i = 0; i < trainer.classifierMap.size(); i++) {
+          trainer.classifierMap.get(i).buildClassifier(trainer.m_Train_Data);
+        }
+      }
+      else {
+        for (int i : settings.classifiersData) {
+          trainer.classifierMap.get(i).buildClassifier(trainer.m_Train_Data);
+        }
+      }
       trainer.testClassifier();
 
+
+      //trainer.handInputTest();
+
+    trainer.saveModelToDB();
 
     } catch (Exception ex) {
       ex.printStackTrace();
