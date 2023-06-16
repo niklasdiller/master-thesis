@@ -1,7 +1,9 @@
 package main.java;
 
 
+import com.google.gson.Gson;
 import org.json.simple.parser.ParseException;
+import org.nd4j.shade.jackson.databind.ObjectMapper;
 import tech.tablesaw.io.DataFrameReader;
 import tech.tablesaw.io.ReaderRegistry;
 import weka.classifiers.Classifier;
@@ -28,7 +30,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ModelTrainer {
+public class ModelTrainer implements Serializable {
 
   private ArrayList<String> occupancyPredictAttributes = new ArrayList<String>() {{
     add("Temp");
@@ -61,25 +63,45 @@ public class ModelTrainer {
   private int randomForstMaxDepth = (new Settings("main/java/config.properties")).randomForestMaxDepth;
 
   /** k-Nearest Neighbors number of neighbours */
-  private int kNeighbours = (new Settings("main/java/config.properties")).kNeighbours; //TODO: fix it
+  private int kNeighbours = (new Settings("main/java/config.properties")).kNeighbours;
 
   /** The Decision Tree classifier. */
   private Classifier m_DecisionTreeClassifier = new M5P();
+  /** Decision Tree accuracy variables */
+  private int correctPredictedDT;
+  private double MAE_DT;
+  private double MSE_DT;
 
   /** The Random Forest classifier. */
-  private Classifier m_RandomForestClassifier = new RandomForest() {{setMaxDepth(randomForstMaxDepth);}};
+  //private RandomForest rf = new RandomForest(); TODO
+  private Classifier m_RandomForestClassifier = new RandomForest(); // {{setMaxDepth(randomForstMaxDepth);}}
+  /** Random Forest accuracy variables */
+  private int correctPredictedRF;
+  private double MAE_RF;
+  private double MSE_RF;
 
   /** The Linear Regression classifiert **/
   private Classifier m_LinearRegressionClassifier = new LinearRegression();
+  /** Linear Regression accuracy variables */
+  private int correctPredictedLR;
+  private double MAE_LR;
+  private double MSE_LR;
 
   /** The k-Nearest Neighbors classifier. */
   private Classifier m_KNNClassifier = new IBk() {{setKNN(kNeighbours);}};
+  /** k-Nearest Neighbors accuracy variables */
+  private int correctPredictedKNN;
+  private double MAE_KNN;
+  private double MSE_KNN;
 
   /** Map for classifier choice **/
   private Map<Integer, Classifier> classifierMap = new HashMap<Integer, Classifier>();
 
   /** Map for classifier names **/
   private Map<Integer, String> classifierNamesMap = new HashMap<Integer, String>();
+
+  /** Map for classifier names **/
+  private Map<Integer, String> attributesNamesMap = new HashMap<Integer, String>();
 
   /** The filter */
   private final StringToNominal m_Filter = new StringToNominal();
@@ -134,6 +156,12 @@ public class ModelTrainer {
     this.classifierNamesMap.put(1, "Random Forest");
     this.classifierNamesMap.put(2, "Linear Regression");
     this.classifierNamesMap.put(3, "K-Nearest Neighbours");
+
+    this.attributesNamesMap.put(0, "temperature");
+    this.attributesNamesMap.put(1, "humidity");
+    this.attributesNamesMap.put(2, "day of the week");
+    this.attributesNamesMap.put(2, "timestamp");
+
   }
 
   private void handInputTest() throws Exception {
@@ -294,13 +322,83 @@ public class ModelTrainer {
    */
   //@SuppressWarnings("SqlResolve")
   private void saveModelToDB() throws IOException, SQLException {
-    System.out.println("Saving model to database...");
+    // preparing to save
+    String slotIDsString = "", classifierNamesString = "", attributesString = "";
+
+    if (settings.slotsIDData.isEmpty()) {
+      slotIDsString += "all IDs";
+    }
+    else {
+      for (int id : settings.slotsIDData) {
+        slotIDsString += (id + " ");
+      }
+    }
+
+    if (settings.classifiersData.isEmpty()) {
+      classifierNamesString += "all";
+    }
+    else {
+      for (int classifierNumber : settings.classifiersData) {
+        classifierNamesString += (classifierNamesMap.get(classifierNumber) + " ");
+      }
+    }
+
+    if (settings.attributesData.isEmpty()) {
+      attributesString += "all";
+    }
+    else {
+      for (int attributNumber : settings.attributesData) {
+        attributesString += (classifierNamesMap.get(attributNumber) + " ");
+      }
+    }
+
+    String accuracyInfoDTString = "no classifier", accuracyInfoRFString = "no classifier",
+            accuracyInfoLRString = "no classifier", accuracyInfoKNNString = "no classifier";
+    int[] tmpArrayForClassifierIndexes;
+    if (settings.classifiersData.isEmpty()) {
+      tmpArrayForClassifierIndexes = new int[] {0, 1, 2, 3};
+    }
+    else {
+      tmpArrayForClassifierIndexes = new int[settings.classifiersData.size()];
+      for (int i = 0; i < tmpArrayForClassifierIndexes.length; i++) {
+        tmpArrayForClassifierIndexes[i] = settings.classifiersData.get(i);
+      }
+    }
+    for (int i = 0; i < tmpArrayForClassifierIndexes.length; i++) {
+      if (tmpArrayForClassifierIndexes[i] == 0) {
+        accuracyInfoDTString = "Correctly predicted: "
+                + (double)Math.round((correctPredictedDT / (double)m_Test_Data.size()) * 100 * 100)/100 + "%"
+                + " MAE: " + (double)Math.round(MAE_DT / (double)m_Test_Data.size()* 100)/100
+                + " MSE: " +  (double)Math.round(MSE_DT / (double)m_Test_Data.size()* 100)/100;
+      }
+      else if (tmpArrayForClassifierIndexes[i] == 1) {
+        accuracyInfoRFString = "Correctly predicted: "
+                + (double)Math.round((correctPredictedRF / (double) m_Test_Data.size()) * 100 * 100)/100 + "%"
+        + " MAE: " + (double)Math.round(MAE_RF / (double)m_Test_Data.size()* 100)/100
+        + " MSE: " +  (double)Math.round(MSE_RF / (double)m_Test_Data.size()* 100)/100;
+      }
+      else if (tmpArrayForClassifierIndexes[i] == 2) {
+        accuracyInfoLRString = "Correctly predicted: "
+                + (double)Math.round((correctPredictedLR / (double)m_Test_Data.size()) * 100 * 100)/100 + "%"
+                + " MAE: " + (double)Math.round(MAE_LR / (double)m_Test_Data.size()* 100)/100
+                + " MSE: " +  (double)Math.round(MSE_LR / (double)m_Test_Data.size()* 100)/100;
+      }
+      else if (tmpArrayForClassifierIndexes[i] == 3) {
+        accuracyInfoKNNString = "Correctly predicted: "
+                + (double) Math.round((correctPredictedKNN / (double) m_Test_Data.size()) * 100 * 100)/100 + "%"
+                + " MAE: " + (double) Math.round(MAE_KNN / (double)m_Test_Data.size()* 100)/100
+                + " MSE: " +  (double)Math.round(MSE_KNN / (double)m_Test_Data.size()* 100)/100;
+      }
+    }
+
+      System.out.println("Saving model to database...");
     PreparedStatement ps = conn.prepareStatement("" +
-            "INSERT INTO alex_trained_models(" +
-            "1model_name, 2parking_id, 3table_length, 4period_minutes, 5slotsIDs" +
-            "6classifiers, 7attributes, 8trainingDataProportion" +
-            "9accuracyPercent, 10randomForestMaxDepth. 11kNeighbours)" +
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?);");
+            "INSERT INTO alex_trained_models (" +
+            "model_name, parking_id, table_length, period_minutes, slotsIDs," +
+            "classifiers, attributes, trainingDataProportion," +
+            "accuracyPercent, randomForestMaxDepth, kNeighbours, " +
+            "accuracyDT, accuracyRF, accuracyLR, accuracyKNN, random_forest) " +
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);");
 
     // model_name
     ps.setString(1, settings.modelName);
@@ -308,13 +406,14 @@ public class ModelTrainer {
     ps.setInt(2, settings.parkingId);
     // length of table
     ps.setInt(3, settings.tableLength);
-    // divided in timestamps periodMinutes minutes
+    // periods duration in minutes
     ps.setInt(4, settings.periodMinutes);
-
-    // TODO: ps.setString(5, slotsID? );
-    // TODO: ps.setString(6, classifiers? );
-    // TODO: ps.setString(7, attributes? );
-
+    // ids of parking slots to parse
+    ps.setString(5, slotIDsString);
+    // classifier names
+    ps.setString(6, classifierNamesString);
+    // attributes
+    ps.setString(7, attributesString);
     // train percent
     ps.setDouble(8, settings.trainProp);
     // deviation percentage for accuracy calculation
@@ -324,11 +423,30 @@ public class ModelTrainer {
     // number of neighbours for k-Nearest Neighbours Classifier
     ps.setInt(11, settings.kNeighbours);
 
+     // accuracy results
+    ps.setString(12, accuracyInfoDTString);
+    ps.setString(13, accuracyInfoRFString);
+    ps.setString(14, accuracyInfoLRString);
+    ps.setString(15, accuracyInfoKNNString);
 
-    // model_content (the binary classifier)
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     ObjectOutputStream out = new ObjectOutputStream(bos);
-    out.writeObject(this.m_RandomForestClassifier); // TODO: NotSerializableException :(
+    out.writeObject(m_RandomForestClassifier);
+    out.flush();
+    byte[] serializedClassifier = bos.toByteArray();
+    bos.close();
+    ByteArrayInputStream bis = new ByteArrayInputStream(serializedClassifier);
+    ps.setBinaryStream(16, bis, serializedClassifier.length);
+
+    ps.executeUpdate();
+    bis.close();
+
+    ps.close();
+
+    // model_content (the binary classifier)
+    /*ByteArrayOutputStream bos = new ByteArrayOutputStream();
+    ObjectOutputStream out = new ObjectOutputStream(bos);
+    out.writeObject(this.m_RandomForestClassifier); // NotSerializableException :(
     out.flush();
     byte[] serializedClassifier = bos.toByteArray();
     bos.close();
@@ -337,7 +455,7 @@ public class ModelTrainer {
 
     ps.executeUpdate();
     bis.close();
-    ps.close();
+    ps.close();*/
     System.out.println("Saved model to database.");
   }
 
@@ -419,9 +537,28 @@ public class ModelTrainer {
           correctPredicted++;
         }
       }
-      double correctRate = correctPredicted / (double) m_Test_Data.size();
+      if (index == 0) {
+        correctPredictedDT = correctPredicted;
+        MAE_DT = meanAbsErr;
+        MSE_DT = meanSqErr;
+      }
+      else if (index == 1) {
+        correctPredictedRF = correctPredicted;
+        MAE_RF = meanAbsErr;
+        MSE_RF = meanSqErr;
+      }
+      else if (index == 2) {
+        correctPredictedLR = correctPredicted;
+        MAE_LR = meanAbsErr;
+        MSE_LR = meanSqErr;
+      }
+      else if (index == 3) {
+        correctPredictedKNN = correctPredicted;
+        MAE_KNN = meanAbsErr;
+        MSE_KNN = meanSqErr;
+      }
       System.out.println("\nCorrectly predicted " + classifierNamesMap.get(index) + " "
-              + (double) Math.round(correctRate * 100 * 100)/100 + "%");
+              + (double) Math.round((correctPredicted / (double) m_Test_Data.size()) * 100 * 100)/100 + "%");
       System.out.println(classifierNamesMap.get(index) + " Mean Absolute Error: "
               + (double) Math.round(meanAbsErr / (double)m_Test_Data.size()* 100)/100);
       System.out.println(classifierNamesMap.get(index) + " Mean Squared Error: " +
@@ -731,7 +868,6 @@ public class ModelTrainer {
         }
       }
       trainer.testClassifier();
-
 
       //trainer.handInputTest();
 
