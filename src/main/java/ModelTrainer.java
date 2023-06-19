@@ -157,7 +157,7 @@ public class ModelTrainer implements Serializable {
     this.attributesNamesMap.put(0, "temperature");
     this.attributesNamesMap.put(1, "humidity");
     this.attributesNamesMap.put(2, "day of the week");
-    this.attributesNamesMap.put(2, "timestamp");
+    this.attributesNamesMap.put(3, "timestamp");
 
     // hyperparameter
     this.m_RandomForestClassifier.setMaxDepth(settings.randomForestMaxDepth);
@@ -340,7 +340,7 @@ public class ModelTrainer implements Serializable {
     }
     else {
       for (int classifierNumber : settings.classifiersData) {
-        classifierNamesString += (classifierNamesMap.get(classifierNumber) + " ");
+        classifierNamesString += (classifierNamesMap.get(classifierNumber) + ", ");
       }
     }
 
@@ -349,7 +349,7 @@ public class ModelTrainer implements Serializable {
     }
     else {
       for (int attributNumber : settings.attributesData) {
-        attributesString += (classifierNamesMap.get(attributNumber) + " ");
+        attributesString += (attributesNamesMap.get(attributNumber) + ", ");
       }
     }
 
