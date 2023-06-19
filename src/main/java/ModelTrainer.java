@@ -1,9 +1,7 @@
 package main.java;
 
 
-import com.google.gson.Gson;
 import org.json.simple.parser.ParseException;
-import org.nd4j.shade.jackson.databind.ObjectMapper;
 import tech.tablesaw.io.DataFrameReader;
 import tech.tablesaw.io.ReaderRegistry;
 import weka.classifiers.Classifier;
@@ -66,29 +64,28 @@ public class ModelTrainer implements Serializable {
   private int kNeighbours = (new Settings("main/java/config.properties")).kNeighbours;
 
   /** The Decision Tree classifier. */
-  private Classifier m_DecisionTreeClassifier = new M5P();
+  private M5P m_DecisionTreeClassifier = new M5P();
   /** Decision Tree accuracy variables */
   private int correctPredictedDT;
   private double MAE_DT;
   private double MSE_DT;
 
   /** The Random Forest classifier. */
-  //private RandomForest rf = new RandomForest(); TODO
-  private Classifier m_RandomForestClassifier = new RandomForest(); // {{setMaxDepth(randomForstMaxDepth);}}
+  private RandomForest m_RandomForestClassifier = new RandomForest();
   /** Random Forest accuracy variables */
   private int correctPredictedRF;
   private double MAE_RF;
   private double MSE_RF;
 
   /** The Linear Regression classifiert **/
-  private Classifier m_LinearRegressionClassifier = new LinearRegression();
+  private LinearRegression m_LinearRegressionClassifier = new LinearRegression();
   /** Linear Regression accuracy variables */
   private int correctPredictedLR;
   private double MAE_LR;
   private double MSE_LR;
 
   /** The k-Nearest Neighbors classifier. */
-  private Classifier m_KNNClassifier = new IBk() {{setKNN(kNeighbours);}};
+  private IBk m_KNNClassifier = new IBk();
   /** k-Nearest Neighbors accuracy variables */
   private int correctPredictedKNN;
   private double MAE_KNN;
@@ -161,6 +158,10 @@ public class ModelTrainer implements Serializable {
     this.attributesNamesMap.put(1, "humidity");
     this.attributesNamesMap.put(2, "day of the week");
     this.attributesNamesMap.put(2, "timestamp");
+
+    // hyperparameter
+    this.m_RandomForestClassifier.setMaxDepth(settings.randomForestMaxDepth);
+    this.m_KNNClassifier.setKNN(settings.kNeighbours);
 
   }
 
@@ -354,36 +355,38 @@ public class ModelTrainer implements Serializable {
 
     String accuracyInfoDTString = "no classifier", accuracyInfoRFString = "no classifier",
             accuracyInfoLRString = "no classifier", accuracyInfoKNNString = "no classifier";
-    int[] tmpArrayForClassifierIndexes;
+    List<Integer> listForClassifierIndexes = new ArrayList<Integer>();
     if (settings.classifiersData.isEmpty()) {
-      tmpArrayForClassifierIndexes = new int[] {0, 1, 2, 3};
+      listForClassifierIndexes.add(0);
+      listForClassifierIndexes.add(1);
+      listForClassifierIndexes.add(2);
+      listForClassifierIndexes.add(3);
     }
     else {
-      tmpArrayForClassifierIndexes = new int[settings.classifiersData.size()];
-      for (int i = 0; i < tmpArrayForClassifierIndexes.length; i++) {
-        tmpArrayForClassifierIndexes[i] = settings.classifiersData.get(i);
+      for (int i = 0; i < settings.classifiersData.size(); i++) {
+        listForClassifierIndexes.add(settings.classifiersData.get(i));
       }
     }
-    for (int i = 0; i < tmpArrayForClassifierIndexes.length; i++) {
-      if (tmpArrayForClassifierIndexes[i] == 0) {
+    for (int i = 0; i < listForClassifierIndexes.size(); i++) {
+      if (listForClassifierIndexes.get(i) == 0) {
         accuracyInfoDTString = "Correctly predicted: "
                 + (double)Math.round((correctPredictedDT / (double)m_Test_Data.size()) * 100 * 100)/100 + "%"
                 + " MAE: " + (double)Math.round(MAE_DT / (double)m_Test_Data.size()* 100)/100
                 + " MSE: " +  (double)Math.round(MSE_DT / (double)m_Test_Data.size()* 100)/100;
       }
-      else if (tmpArrayForClassifierIndexes[i] == 1) {
+      else if (listForClassifierIndexes.get(i) == 1) {
         accuracyInfoRFString = "Correctly predicted: "
                 + (double)Math.round((correctPredictedRF / (double) m_Test_Data.size()) * 100 * 100)/100 + "%"
         + " MAE: " + (double)Math.round(MAE_RF / (double)m_Test_Data.size()* 100)/100
         + " MSE: " +  (double)Math.round(MSE_RF / (double)m_Test_Data.size()* 100)/100;
       }
-      else if (tmpArrayForClassifierIndexes[i] == 2) {
+      else if (listForClassifierIndexes.get(i) == 2) {
         accuracyInfoLRString = "Correctly predicted: "
                 + (double)Math.round((correctPredictedLR / (double)m_Test_Data.size()) * 100 * 100)/100 + "%"
                 + " MAE: " + (double)Math.round(MAE_LR / (double)m_Test_Data.size()* 100)/100
                 + " MSE: " +  (double)Math.round(MSE_LR / (double)m_Test_Data.size()* 100)/100;
       }
-      else if (tmpArrayForClassifierIndexes[i] == 3) {
+      else if (listForClassifierIndexes.get(i) == 3) {
         accuracyInfoKNNString = "Correctly predicted: "
                 + (double) Math.round((correctPredictedKNN / (double) m_Test_Data.size()) * 100 * 100)/100 + "%"
                 + " MAE: " + (double) Math.round(MAE_KNN / (double)m_Test_Data.size()* 100)/100
@@ -397,8 +400,9 @@ public class ModelTrainer implements Serializable {
             "model_name, parking_id, table_length, period_minutes, slotsIDs," +
             "classifiers, attributes, trainingDataProportion," +
             "accuracyPercent, randomForestMaxDepth, kNeighbours, " +
-            "accuracyDT, accuracyRF, accuracyLR, accuracyKNN, random_forest) " +
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);");
+            "accuracyDT, accuracyRF, accuracyLR, accuracyKNN, decision_tree," +
+            "random_forest, linear_regression, k_nearest_neighbors) " +
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);");
 
     // model_name
     ps.setString(1, settings.modelName);
@@ -429,45 +433,63 @@ public class ModelTrainer implements Serializable {
     ps.setString(14, accuracyInfoLRString);
     ps.setString(15, accuracyInfoKNNString);
 
-    ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    ObjectOutputStream out = new ObjectOutputStream(bos);
-    out.writeObject(m_RandomForestClassifier);
-    out.flush();
-    byte[] serializedClassifier = bos.toByteArray();
-    bos.close();
-    ByteArrayInputStream bis = new ByteArrayInputStream(serializedClassifier);
-    ps.setBinaryStream(16, bis, serializedClassifier.length);
+    int parameterIndexToWrite = 16;
+    for (int i = 0; i < 4; i++) {
+      if (listForClassifierIndexes.isEmpty() || listForClassifierIndexes.contains(i)) {
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutputStream out = new ObjectOutputStream(bos);
+        if (i == 0) {
+          out.writeObject(this.m_DecisionTreeClassifier);
+        }
+        else if (i == 1) {
+          out.writeObject(this.m_RandomForestClassifier);
+        }
+        else if (i == 2) {
+          out.writeObject(this.m_LinearRegressionClassifier);
+        }
+        else if (i == 3) {
+          out.writeObject(this.m_KNNClassifier);
+        }
+        out.flush();
+        byte[] serializedClassifier = bos.toByteArray();
+        bos.close();
+        ByteArrayInputStream bis = new ByteArrayInputStream(serializedClassifier);
+        ps.setBinaryStream(parameterIndexToWrite+i, bis, serializedClassifier.length);
+        bis.close();
+      }
+      else {
+        ps.setString(parameterIndexToWrite+i, "no classifier");
+      }
+    }
 
     ps.executeUpdate();
-    bis.close();
-
     ps.close();
 
-    // model_content (the binary classifier)
-    /*ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    ObjectOutputStream out = new ObjectOutputStream(bos);
-    out.writeObject(this.m_RandomForestClassifier); // NotSerializableException :(
-    out.flush();
-    byte[] serializedClassifier = bos.toByteArray();
-    bos.close();
-    ByteArrayInputStream bis = new ByteArrayInputStream(serializedClassifier);
-    //ps.setBinaryStream(17, bis, serializedClassifier.length);
-
-    ps.executeUpdate();
-    bis.close();
-    ps.close();*/
-    System.out.println("Saved model to database.");
+    System.out.println("Model saved in database.");
   }
 
   /**
    * Convert classifier object to base64 encoded string
+   * @param classifierIndex index of classifier to convert
    * @return Classifier encoded in base64 string
    * @throws IOException
    */
-  private String classifierToString() throws IOException {
+  private String classifierToString(int classifierIndex) throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     ObjectOutputStream oos = new ObjectOutputStream(baos);
-    oos.writeObject(this.m_RandomForestClassifier);
+    if (classifierIndex == 0) {
+      oos.writeObject(this.m_DecisionTreeClassifier);
+    }
+    else if (classifierIndex == 1) {
+      oos.writeObject(this.m_RandomForestClassifier);
+    }
+    else if (classifierIndex == 2) {
+      oos.writeObject(this.m_LinearRegressionClassifier);
+    }
+    else if (classifierIndex == 3) {
+      oos.writeObject(this.m_KNNClassifier);
+    }
     oos.close();
     return Base64.getEncoder().encodeToString(baos.toByteArray());
   }
