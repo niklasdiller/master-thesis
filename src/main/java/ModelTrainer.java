@@ -15,6 +15,7 @@ import weka.filters.unsupervised.attribute.StringToNominal;
 
 import java.io.*;
 import java.sql.*;
+import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
@@ -34,7 +35,9 @@ public class ModelTrainer implements Serializable {
     add("Temp");
     add("Humidity");
     add("weekDay");
-    add("periodStartSeconds");
+    add("month");
+    add("predictionHorizon");
+    add("previousOccupancy");
     add("occupancyPercent");
   }};
 
@@ -158,6 +161,9 @@ public class ModelTrainer implements Serializable {
     this.attributesNamesMap.put(1, "humidity");
     this.attributesNamesMap.put(2, "day of the week");
     this.attributesNamesMap.put(3, "timestamp");
+
+
+
 
     // hyperparameter
     this.m_RandomForestClassifier.setMaxDepth(settings.randomForestMaxDepth);
@@ -508,24 +514,6 @@ public class ModelTrainer implements Serializable {
     System.out.println("Saved base64 string at location: " + fileName);
   }
 
-   /**
-   * Apply filter on saved instances
-   * @throws Exception
-   */
-  private void applyFilter() throws Exception {
-    System.out.println("Applying filter...");
-    this.m_Filter.setAttributeRange("first");
-    this.m_Filter.setInputFormat(this.m_Train_Data);
-    this.m_Train_Data = Filter.useFilter(this.m_Train_Data, this.m_Filter);
-    this.m_Train_Data = new Instances(this.m_Train_Data);
-    this.m_Test_Data = Filter.useFilter(this.m_Test_Data, this.m_Filter);
-    this.m_Test_Data = new Instances(this.m_Test_Data);
-  }
-
-  /**
-   * Test classifier on all test instances
-   * @throws Exception
-   */
   private void testClassifier() throws Exception {
     System.out.println("Testing model...");
     int correctPredicted = 0;
@@ -645,37 +633,30 @@ public class ModelTrainer implements Serializable {
     }
 
     // copy of data to process in future
-    Table dataWithOccupacy = data.emptyCopy();
+    Table dataWithOccupancy = data.emptyCopy();
     // adding column to concatenate with new rows in future
-    dataWithOccupacy.addColumns(StringColumn.create("periodStart", dataWithOccupacy.rowCount()),
-            StringColumn.create("periodEnd", dataWithOccupacy.rowCount()),
-            LongColumn.create("occupancySeconds", dataWithOccupacy.rowCount()),
+    dataWithOccupancy.addColumns(StringColumn.create("periodStart", dataWithOccupancy.rowCount()),
+            StringColumn.create("periodEnd", dataWithOccupancy.rowCount()),
+            LongColumn.create("occupancySeconds", dataWithOccupancy.rowCount()),
             LongColumn.create("periodStartSeconds"));
 
 
     while (START_DATE.isBefore(END_DATE)) {
-      dataWithOccupacy.append(filteredByExactPeriod(START_DATE, data, periodMinutes));
+      dataWithOccupancy.append(filteredByExactPeriod(START_DATE, data, periodMinutes));
       START_DATE = START_DATE.plusMinutes(periodMinutes);
     }
 
-    dataWithOccupacy.removeColumns("arrival_unix_seconds", "departure_unix_seconds",
+    dataWithOccupancy.removeColumns("arrival_unix_seconds", "departure_unix_seconds",
             "arrival_local_time", "departure_local_time");  // removing unnecessary columns
 
-    // adding day of the week parameter
-    dataWithOccupacy.addColumns(IntColumn.create("weekDay", dataWithOccupacy.rowCount()));
-    for (int i = 0; i < dataWithOccupacy.rowCount(); i++) {
-      LocalDateTime tmpDate = LocalDateTime.parse(dataWithOccupacy.getString(i, "periodStart"));
-      dataWithOccupacy.row(i).setInt("weekDay", tmpDate.getDayOfWeek().getValue());
-    }
-
     // processing occupancy sum
-    dataWithOccupacy.addColumns(IntColumn.create("occupancySum", dataWithOccupacy.rowCount()));
+    dataWithOccupancy.addColumns(IntColumn.create("occupancySum", dataWithOccupancy.rowCount()));
     Map<String, Integer> occupancySumDataMap = new HashMap<String, Integer>();
 
     // for every periodStart save the sum or add to sum of occupancy in HashMap
-    for (int i = 0; i < dataWithOccupacy.rowCount(); i++) {
-      String getKey = dataWithOccupacy.getString(i, "periodStart"); // the time and date
-      int getValue = Integer.valueOf(dataWithOccupacy.getString(i, "occupancySeconds")); //occupancy
+    for (int i = 0; i < dataWithOccupancy.rowCount(); i++) {
+      String getKey = dataWithOccupancy.getString(i, "periodStart"); // the time and date
+      int getValue = Integer.valueOf(dataWithOccupancy.getString(i, "occupancySeconds")); //occupancy
       if (occupancySumDataMap.containsKey(getKey))
         occupancySumDataMap.put(getKey, getValue + occupancySumDataMap.get(getKey));
       else
@@ -683,22 +664,54 @@ public class ModelTrainer implements Serializable {
     }
 
     // and put the occupancy value in "occupancySum" column
-    for (int i = 0; i < dataWithOccupacy.rowCount(); i++) {
-      String getKey = dataWithOccupacy.getString(i, "periodStart");
-      dataWithOccupacy.row(i).setInt("occupancySum", occupancySumDataMap.get(getKey));
+    for (int i = 0; i < dataWithOccupancy.rowCount(); i++) {
+      String getKey = dataWithOccupancy.getString(i, "periodStart");
+      dataWithOccupancy.row(i).setInt("occupancySum", occupancySumDataMap.get(getKey));
     }
 
-    dataWithOccupacy.removeColumns("occupancySeconds");
-    dataWithOccupacy = dataWithOccupacy.dropDuplicateRows();
+    dataWithOccupancy.removeColumns("occupancySeconds");
+    dataWithOccupancy = dataWithOccupancy.dropDuplicateRows();
 
-    dataWithOccupacy.replaceColumn("occupancySum", // seconds to percents
-            dataWithOccupacy.intColumn("occupancySum").divide(sensorCount * (periodMinutes * 60) / 100)
+    dataWithOccupancy.replaceColumn("occupancySum", // seconds to percents
+            dataWithOccupancy.intColumn("occupancySum").divide(sensorCount * (periodMinutes * 60) / 100)
                     .multiply(10).roundInt().divide(10)); // round .1 operation
-    dataWithOccupacy.column(dataWithOccupacy.columnCount() - 1).setName("occupancyPercent");
-    //dataWithOccupacy.write().csv("src/dataWithOccupacyTest.csv");
+    dataWithOccupancy.column(dataWithOccupancy.columnCount() - 1).setName("occupancyPercent");
+    //dataWithOccupancy.write().csv("src/dataWithOccupacyTest.csv");
 
-    System.out.println("Data is processed. Data without weather " + dataWithOccupacy.shape());
-    return addingWetter(dataWithOccupacy);
+    System.out.println("Data is processed. Data without weather " + dataWithOccupancy.shape());
+    Table dataWithOccupancyAndWeather = addingWetter(dataWithOccupancy);
+    System.out.println(dataWithOccupancyAndWeather.first(5));
+    // adding day of the week parameter
+    dataWithOccupancyAndWeather.addColumns(IntColumn.create("weekDay", dataWithOccupancyAndWeather.rowCount()),
+            IntColumn.create("month", dataWithOccupancyAndWeather.rowCount()),
+            IntColumn.create("predictionHorizon", dataWithOccupancyAndWeather.rowCount()),
+            DoubleColumn.create("previousOccupancy", dataWithOccupancyAndWeather.rowCount()));
+    int periodsInHour = 1;
+    if (periodMinutes < 60)
+      periodsInHour = 60/periodMinutes;
+
+    for (int i = 0; i < dataWithOccupancyAndWeather.rowCount(); i++) {
+      LocalDateTime tmpDate =  LocalDateTime.ofInstant(Instant.ofEpochSecond(dataWithOccupancyAndWeather
+                      .row(i).getLong("periodStartSeconds")),
+              TimeZone.getDefault().toZoneId());
+      dataWithOccupancyAndWeather.row(i).setInt("weekDay", tmpDate.getDayOfWeek().getValue());
+      dataWithOccupancyAndWeather.row(i).setInt("month", tmpDate.getMonthValue());
+      dataWithOccupancyAndWeather.row(i).setInt("predictionHorizon",
+              (tmpDate.getMinute()+tmpDate.getHour()*60)/(60/periodsInHour));
+      double previousOccupancy = 0;
+      if (i > 0) {
+        previousOccupancy = dataWithOccupancyAndWeather.row(i - 1).getDouble("occupancyPercent");
+      }
+      else {
+        previousOccupancy = dataWithOccupancyAndWeather.row(i).getDouble("occupancyPercent");
+      }
+      dataWithOccupancyAndWeather.row(i).setDouble("previousOccupancy", previousOccupancy);
+      }
+    dataWithOccupancyAndWeather.removeColumns("periodStartSeconds");
+
+    System.out.println(dataWithOccupancyAndWeather.first(5));
+
+    return dataWithOccupancyAndWeather;
   }
 
   /**
@@ -875,7 +888,7 @@ public class ModelTrainer implements Serializable {
       ResultSet rs = trainer.queryDB();
 
       Table tableData = trainer.preprocessing(rs);
-      trainer.saveQueryAsInstances(tableData);
+      /*trainer.saveQueryAsInstances(tableData);
       rs.getStatement().close(); // closes the resource
       //trainer.applyFilter();
 
@@ -893,7 +906,7 @@ public class ModelTrainer implements Serializable {
 
       //trainer.handInputTest();
 
-    trainer.saveModelToDB();
+    trainer.saveModelToDB();*/
 
     } catch (Exception ex) {
       ex.printStackTrace();
