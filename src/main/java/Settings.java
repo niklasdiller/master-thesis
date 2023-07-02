@@ -26,6 +26,7 @@ class Settings {
   int randomForestMaxDepth;
   int kNeighbours;
   int accuracyPercent;
+  int trainTestStrategy;
   String featuresJSON;
   String slotsIDJSON;
   String classifiersJSON;
@@ -62,6 +63,7 @@ class Settings {
     tableLength = getSettingAsInt("tableLength", false);
     saveIn = getSettingAsString("saveIn", false);
     modelName = getSettingAsString("modelName", false);
+    trainTestStrategy = getSettingAsInt("trainTestStrategy", false);
 
     // optional parameters
     preprocessTable = getSettingAsString("preprocessTable", true);

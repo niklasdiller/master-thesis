@@ -10,8 +10,6 @@ import weka.classifiers.lazy.IBk;
 import weka.classifiers.trees.M5P;
 import weka.classifiers.trees.RandomForest;
 import weka.core.*;
-import weka.filters.Filter;
-import weka.filters.unsupervised.attribute.StringToNominal;
 
 import java.io.*;
 import java.sql.*;
@@ -31,19 +29,24 @@ import java.util.Map;
 
 public class ModelTrainer implements Serializable {
 
+  /** list of all possible attributes  */
   private ArrayList<String> occupancyPredictAttributes = new ArrayList<String>() {{
     add("Temp");
     add("Humidity");
     add("weekDay");
     add("month");
+    add("year");
     add("predictionHorizon");
     add("previousOccupancy");
-    add("occupancyPercent");
+    add("occupancy");
   }};
+
+  /** attribute indexes for actual model */
+  private ArrayList<Integer> attributeIndexes = new ArrayList<>();
 
 
   /** All settings specified in properties file */
-  private final Settings settings;
+  private Settings settings;
 
   /** Parking ID*/
   private int parkingId;
@@ -103,9 +106,6 @@ public class ModelTrainer implements Serializable {
   /** Map for classifier names **/
   private Map<Integer, String> attributesNamesMap = new HashMap<Integer, String>();
 
-  /** The filter */
-  private final StringToNominal m_Filter = new StringToNominal();
-
 
   /**
    * Create a model trainer
@@ -122,11 +122,13 @@ public class ModelTrainer implements Serializable {
     if (settings.attributesData.isEmpty()) {
       for (int i = 0; i < occupancyPredictAttributes.size()-1; i++) {
         attributes.add(new Attribute(occupancyPredictAttributes.get(i)));
+        this.attributeIndexes.add(i);
       }
     }
     else {
       for (int i : settings.attributesData) {
         attributes.add(new Attribute(occupancyPredictAttributes.get(i)));
+        this.attributeIndexes.add(i);
       }
     }
     Attribute occupancyAttribute = new Attribute(occupancyPredictAttributes.get(occupancyPredictAttributes.size()-1));
@@ -160,10 +162,10 @@ public class ModelTrainer implements Serializable {
     this.attributesNamesMap.put(0, "temperature");
     this.attributesNamesMap.put(1, "humidity");
     this.attributesNamesMap.put(2, "day of the week");
-    this.attributesNamesMap.put(3, "timestamp");
-
-
-
+    this.attributesNamesMap.put(3, "month");
+    this.attributesNamesMap.put(4, "year");
+    this.attributesNamesMap.put(5, "predictions horizon");
+    this.attributesNamesMap.put(6, "previous occupancy");
 
     // hyperparameter
     this.m_RandomForestClassifier.setMaxDepth(settings.randomForestMaxDepth);
@@ -240,20 +242,17 @@ public class ModelTrainer implements Serializable {
     Instance instance = new DenseInstance(this.m_Train_Data.numAttributes());
     instance.setDataset(this.m_Train_Data);
 
-    for (int attribute : settings.attributesData) {
-      if (attribute == 0) {
+    for (int attribute : this.attributeIndexes) {
+      if (attribute == 0 || attribute == 1 || attribute == 6) {
         instance.setValue(this.m_Train_Data.attribute(occupancyPredictAttributes.get(attribute)),
                 rowData.getDouble(occupancyPredictAttributes.get(attribute)));
       }
-      else if (attribute == 2) {
+      else if (attribute == 2 || attribute == 3 ||  attribute == 4 || attribute == 5) {
         instance.setValue(this.m_Train_Data.attribute(occupancyPredictAttributes.get(attribute)),
                 rowData.getInt(occupancyPredictAttributes.get(attribute)));
       }
-      else if (attribute == 3) {
-        instance.setValue(this.m_Train_Data.attribute(occupancyPredictAttributes.get(attribute)),
-                rowData.getLong(occupancyPredictAttributes.get(attribute)));
-      }
     }
+    // target is proceed separately, because attributesData contains only attributes
     instance.setValue(this.m_Train_Data.attribute(occupancyPredictAttributes.get(occupancyPredictAttributes.size()-1)),
             rowData.getDouble(occupancyPredictAttributes.get(occupancyPredictAttributes.size()-1)));
 
@@ -274,36 +273,41 @@ public class ModelTrainer implements Serializable {
       throw new NullPointerException("The table is empty");
     int currentRowIndex = 0;
     Row currentRow = table.row(currentRowIndex);
-    while (currentRowIndex < table.rowCount()) {
-      instance = createInstance(currentRow);
 
-      if (i < validSize) {
-        m_Train_Data.add(instance);
-        i++;
-      } else if (i < 10) {
-        m_Test_Data.add(instance);
-        i++;
-        if (i == 10) {
-          i = 0;
+    if (settings.trainTestStrategy == 0) {
+      // to mix train and test data
+      while (currentRowIndex < table.rowCount()) {
+        instance = createInstance(currentRow);
+
+        if (i < validSize) {
+          m_Train_Data.add(instance);
+          i++;
+        } else if (i < 10) {
+          m_Test_Data.add(instance);
+          i++;
+          if (i == 10) {
+            i = 0;
+          }
         }
+        currentRowIndex++;
+        currentRow = table.row(currentRowIndex);
       }
-      currentRowIndex++;
-      currentRow = table.row(currentRowIndex);
     }
+    else {
+      // to extract test data after train data, not to mix
+      double validSizeTest = this.settings.trainProp * table.rowCount();
+      while (currentRowIndex < table.rowCount()) {
+        instance = createInstance(currentRow);
 
-    /* to extract test data after train data, not to mix
-    double validSizeTest = this.settings.trainProp * table.rowCount();
-    while (currentRowIndex < table.rowCount()) {
-      instance = createInstance(currentRow);
+        if (currentRowIndex < validSizeTest) {
+          m_Train_Data.add(instance);
+        } else
+          m_Test_Data.add(instance);
 
-      if (currentRowIndex < validSizeTest) {
-        m_Data.add(instance);
-      } else
-        m_Test_Data.add(instance);
-
-      currentRowIndex++;
-      currentRow = table.row(currentRowIndex);
-    }*/
+        currentRowIndex++;
+        currentRow = table.row(currentRowIndex);
+      }
+    }
 
     System.out.println("Converted data to instances.");
   }
@@ -684,8 +688,10 @@ public class ModelTrainer implements Serializable {
     // adding day of the week parameter
     dataWithOccupancyAndWeather.addColumns(IntColumn.create("weekDay", dataWithOccupancyAndWeather.rowCount()),
             IntColumn.create("month", dataWithOccupancyAndWeather.rowCount()),
+            IntColumn.create("year", dataWithOccupancyAndWeather.rowCount()),
             IntColumn.create("predictionHorizon", dataWithOccupancyAndWeather.rowCount()),
-            DoubleColumn.create("previousOccupancy", dataWithOccupancyAndWeather.rowCount()));
+            DoubleColumn.create("previousOccupancy", dataWithOccupancyAndWeather.rowCount()),
+            DoubleColumn.create("occupancy", dataWithOccupancyAndWeather.rowCount()));
     int periodsInHour = 1;
     if (periodMinutes < 60)
       periodsInHour = 60/periodMinutes;
@@ -696,6 +702,7 @@ public class ModelTrainer implements Serializable {
               TimeZone.getDefault().toZoneId());
       dataWithOccupancyAndWeather.row(i).setInt("weekDay", tmpDate.getDayOfWeek().getValue());
       dataWithOccupancyAndWeather.row(i).setInt("month", tmpDate.getMonthValue());
+      dataWithOccupancyAndWeather.row(i).setInt("year", tmpDate.getYear());
       dataWithOccupancyAndWeather.row(i).setInt("predictionHorizon",
               (tmpDate.getMinute()+tmpDate.getHour()*60)/(60/periodsInHour));
       double previousOccupancy = 0;
@@ -706,8 +713,10 @@ public class ModelTrainer implements Serializable {
         previousOccupancy = dataWithOccupancyAndWeather.row(i).getDouble("occupancyPercent");
       }
       dataWithOccupancyAndWeather.row(i).setDouble("previousOccupancy", previousOccupancy);
-      }
-    dataWithOccupancyAndWeather.removeColumns("periodStartSeconds");
+      dataWithOccupancyAndWeather.row(i).setDouble("occupancy",
+              dataWithOccupancyAndWeather.row(i).getDouble("occupancyPercent"));
+    }
+    dataWithOccupancyAndWeather.removeColumns("periodStartSeconds", "occupancyPercent");
 
     System.out.println(dataWithOccupancyAndWeather.first(5));
 
@@ -888,7 +897,7 @@ public class ModelTrainer implements Serializable {
       ResultSet rs = trainer.queryDB();
 
       Table tableData = trainer.preprocessing(rs);
-      /*trainer.saveQueryAsInstances(tableData);
+      trainer.saveQueryAsInstances(tableData);
       rs.getStatement().close(); // closes the resource
       //trainer.applyFilter();
 
@@ -906,7 +915,7 @@ public class ModelTrainer implements Serializable {
 
       //trainer.handInputTest();
 
-    trainer.saveModelToDB();*/
+    //trainer.saveModelToDB();
 
     } catch (Exception ex) {
       ex.printStackTrace();
