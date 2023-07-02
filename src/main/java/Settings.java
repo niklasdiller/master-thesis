@@ -36,9 +36,7 @@ class Settings {
   List<Integer> classifiersData;
   List<Integer> attributesData;
   String preprocessTable;
-  String cattleId;
-  String round;
-  String binaryLabel;
+  String tableName;
   double trainProp;
   String saveIn;
   String modelName;
@@ -64,6 +62,7 @@ class Settings {
     saveIn = getSettingAsString("saveIn", false);
     modelName = getSettingAsString("modelName", false);
     trainTestStrategy = getSettingAsInt("trainTestStrategy", false);
+    tableName = getSettingAsString("tableName", false);
 
     // optional parameters
     preprocessTable = getSettingAsString("preprocessTable", true);

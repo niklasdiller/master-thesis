@@ -1,6 +1,5 @@
 package main.java;
 
-
 import org.json.simple.parser.ParseException;
 import tech.tablesaw.io.DataFrameReader;
 import tech.tablesaw.io.ReaderRegistry;
@@ -136,7 +135,7 @@ public class ModelTrainer implements Serializable {
 
     int targetAttributIndex = attributes.indexOf(occupancyAttribute);
 
-    // create dataset with initial capacity of 10000 (?)
+    // create dataset with initial capacity of 10000
     m_Train_Data = new Instances(nameOfDataset, attributes, 10000);
     // add label at index targetAttributIndex of output attributes
     m_Train_Data.setClassIndex(targetAttributIndex);
@@ -159,6 +158,7 @@ public class ModelTrainer implements Serializable {
     this.classifierNamesMap.put(2, "Linear Regression");
     this.classifierNamesMap.put(3, "K-Nearest Neighbours");
 
+    // fill an attributes map with attribute names
     this.attributesNamesMap.put(0, "temperature");
     this.attributesNamesMap.put(1, "humidity");
     this.attributesNamesMap.put(2, "day of the week");
@@ -167,46 +167,15 @@ public class ModelTrainer implements Serializable {
     this.attributesNamesMap.put(5, "predictions horizon");
     this.attributesNamesMap.put(6, "previous occupancy");
 
-    // hyperparameter
+    // hyperparameter, for RF and KNN
     this.m_RandomForestClassifier.setMaxDepth(settings.randomForestMaxDepth);
     this.m_KNNClassifier.setKNN(settings.kNeighbours);
 
   }
 
-  private void handInputTest() throws Exception {
-    Attribute attribute1 = new Attribute("periodStartSeconds");
-    Attribute attribute2 = new Attribute("weekDay");
-    Attribute classAttribute = new Attribute("occupancyPercent");
-
-
-    // Create an empty Instances object with the defined attributes
-    Instances dataset = new Instances("Instance", new ArrayList<>(Arrays.asList(attribute1, attribute2, classAttribute)), 0);
-    dataset.setClassIndex(dataset.numAttributes() - 1);
-
-    // Create the instance and set its values
-    Instance instance = new DenseInstance(3);
-    instance.setValue(attribute1, 1623628800);
-    instance.setValue(attribute2, 1);
-
-    // Add the instance to the dataset
-    dataset.add(instance);
-
-    Instance instance2 = new DenseInstance(3);
-    instance.setValue(attribute1, 1623675600);
-    instance.setValue(attribute2, 1);
-
-    // Add the instance to the dataset
-    dataset.add(instance);
-    for (Instance ins : dataset) {
-      System.out.println("Random Forest: " + this.m_RandomForestClassifier.classifyInstance(ins));
-      System.out.println("Linear Regression: " + this.m_LinearRegressionClassifier.classifyInstance(ins));
-      System.out.println("KNN: " + this.m_KNNClassifier.classifyInstance(ins));
-    }
-
-  }
 
   /**
-   * Create a connection to the CattleDB
+   * Create a connection to the database
    * @throws SQLException
    */
   private void createDBConnection() throws SQLException {
@@ -282,7 +251,8 @@ public class ModelTrainer implements Serializable {
         if (i < validSize) {
           m_Train_Data.add(instance);
           i++;
-        } else if (i < 10) {
+        }
+        else if (i < 10) {
           m_Test_Data.add(instance);
           i++;
           if (i == 10) {
@@ -301,8 +271,10 @@ public class ModelTrainer implements Serializable {
 
         if (currentRowIndex < validSizeTest) {
           m_Train_Data.add(instance);
-        } else
+        }
+        else {
           m_Test_Data.add(instance);
+        }
 
         currentRowIndex++;
         currentRow = table.row(currentRowIndex);
@@ -313,27 +285,13 @@ public class ModelTrainer implements Serializable {
   }
 
   /**
-   * Save the built classifier as a model file
-   * @throws IOException
-   */
-  private void saveModelAsFile() throws IOException {
-    String fileNameRF = "./" + settings.modelName + ".model";
-    ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(fileNameRF));
-    oos.writeObject(this.m_RandomForestClassifier);
-    oos.flush();
-    oos.close();
-
-    System.out.println("Models saved at location " + fileNameRF);
-  }
-
-  /**
    * Save the model and all its parameters to the DB
    * @throws IOException
    * @throws SQLException
    */
   //@SuppressWarnings("SqlResolve")
   private void saveModelToDB() throws IOException, SQLException {
-    // preparing to save
+    // preparation for saving
     String slotIDsString = "", classifierNamesString = "", attributesString = "";
 
     if (settings.slotsIDData.isEmpty()) {
@@ -404,46 +362,38 @@ public class ModelTrainer implements Serializable {
       }
     }
 
-      System.out.println("Saving model to database...");
+    // saving in database
+    System.out.println("Saving model to database...");
+    // columns from table to save
     PreparedStatement ps = conn.prepareStatement("" +
-            "INSERT INTO alex_trained_models (" +
+            "INSERT INTO " + settings.tableName + " (" +
             "model_name, parking_id, table_length, period_minutes, slotsIDs," +
             "classifiers, attributes, trainingDataProportion," +
             "accuracyPercent, randomForestMaxDepth, kNeighbours, " +
             "accuracyDT, accuracyRF, accuracyLR, accuracyKNN, decision_tree," +
             "random_forest, linear_regression, k_nearest_neighbors) " +
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);");
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"); // number of ? has to be the same as the number of columns
 
-    // model_name
     ps.setString(1, settings.modelName);
-    // parking id
     ps.setInt(2, settings.parkingId);
-    // length of table
     ps.setInt(3, settings.tableLength);
-    // periods duration in minutes
-    ps.setInt(4, settings.periodMinutes);
-    // ids of parking slots to parse
-    ps.setString(5, slotIDsString);
-    // classifier names
-    ps.setString(6, classifierNamesString);
-    // attributes
-    ps.setString(7, attributesString);
-    // train percent
-    ps.setDouble(8, settings.trainProp);
-    // deviation percentage for accuracy calculation
-    ps.setInt(9, settings.accuracyPercent);
-    // max depth for Random Forest Classifier
-    ps.setInt(10, settings.randomForestMaxDepth);
-    // number of neighbours for k-Nearest Neighbours Classifier
-    ps.setInt(11, settings.kNeighbours);
+    ps.setInt(4, settings.periodMinutes);     // periods duration in minutes
+    ps.setString(5, slotIDsString);     // ids of parking slots to parse
+    ps.setString(6, classifierNamesString);     // classifier names
+    ps.setString(7, attributesString); // attributes
+    ps.setDouble(8, settings.trainProp); // train part
+    ps.setInt(9, settings.accuracyPercent);     // deviation percentage for accuracy calculation
+    ps.setInt(10, settings.randomForestMaxDepth);     // max depth for Random Forest Classifier
+    ps.setInt(11, settings.kNeighbours);     // number of neighbours for k-Nearest Neighbours Classifier
 
-     // accuracy results
+    // accuracy results
     ps.setString(12, accuracyInfoDTString);
     ps.setString(13, accuracyInfoRFString);
     ps.setString(14, accuracyInfoLRString);
     ps.setString(15, accuracyInfoKNNString);
 
-    int parameterIndexToWrite = 16;
+    // writing trained classifiers (if exist) binary data
+    int columnIndexToWrite = 16;
     for (int i = 0; i < 4; i++) {
       if (listForClassifierIndexes.isEmpty() || listForClassifierIndexes.contains(i)) {
 
@@ -465,22 +415,22 @@ public class ModelTrainer implements Serializable {
         byte[] serializedClassifier = bos.toByteArray();
         bos.close();
         ByteArrayInputStream bis = new ByteArrayInputStream(serializedClassifier);
-        ps.setBinaryStream(parameterIndexToWrite+i, bis, serializedClassifier.length);
+        ps.setBinaryStream(columnIndexToWrite+i, bis, serializedClassifier.length);
         bis.close();
       }
       else {
-        ps.setString(parameterIndexToWrite+i, "no classifier");
+        ps.setString(columnIndexToWrite+i, "no classifier");
       }
     }
 
-    ps.executeUpdate();
+    ps.executeUpdate(); // execution
     ps.close();
 
     System.out.println("Model saved in database.");
   }
 
   /**
-   * Convert classifier object to base64 encoded string
+   * additional function which convert the chosen classifier object to base64 encoded string
    * @param classifierIndex index of classifier to convert
    * @return Classifier encoded in base64 string
    * @throws IOException
@@ -589,6 +539,7 @@ public class ModelTrainer implements Serializable {
   private Table preprocessing(ResultSet rs) throws Exception {
     Table dataAllID = new DataFrameReader(new ReaderRegistry()).db(rs);
     Table data = dataAllID.emptyCopy();
+
     // if there are special slots to process and predict (e.g. for disabled people)
     if (!this.settings.slotsIDData.isEmpty()) {
       System.out.println("ID of parking slots to parse: ");
@@ -610,35 +561,33 @@ public class ModelTrainer implements Serializable {
     data.removeColumns("parking_lot_id", "xml_id", "parking_space_id");
     data.sortAscendingOn("arrival_unix_seconds");
 
-    // seconds to data convertation
+    // seconds to data converting
     String pattern = "dd.MM.yyyy HH:mm:ss"; // pattern to format the date from string
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern); // instance to format the date with pattern
 
     // getting the first arrival time in "arrival_local_time"
     String startDateString = data.getString(0, "arrival_local_time");
     LocalDateTime START_DATE = LocalDateTime.parse(startDateString, formatter);
-    // START_DATE rounded to hours
-    START_DATE = START_DATE.truncatedTo(ChronoUnit.HOURS); // Truncate to hours first // before java.time.temporal.ChronoUnit.HOURS
+    START_DATE = START_DATE.truncatedTo(ChronoUnit.HOURS);     // START_DATE rounded to hours to get the first hour
     if (periodMinutes < 60) {
       int remainder = START_DATE.getMinute() % periodMinutes;
       if (remainder != 0) {
-        START_DATE = START_DATE.plusMinutes(periodMinutes - remainder); // Round up to the next 10-minute interval
+        START_DATE = START_DATE.plusMinutes(periodMinutes - remainder); // Round up to the next N-minute interval
       }
     }
     // getting the last arrival time in "arrival_local_time" and process as START_DATE
     String endDateString = data.getString(data.rowCount() - 1, "arrival_local_time");
     LocalDateTime END_DATE = LocalDateTime.parse(endDateString, formatter);
-    END_DATE = END_DATE.truncatedTo(ChronoUnit.HOURS); // Truncate to hours first // before java.time.temporal.ChronoUnit.HOURS
+    END_DATE = END_DATE.truncatedTo(ChronoUnit.HOURS);
     if (periodMinutes < 60) {
       int remainder = END_DATE.getMinute() % periodMinutes;
       if (remainder != 0) {
-        END_DATE = END_DATE.plusMinutes(periodMinutes - remainder); // Round up to the next 10-minute interval
+        END_DATE = END_DATE.plusMinutes(periodMinutes - remainder);
       }
     }
 
-    // copy of data to process in future
-    Table dataWithOccupancy = data.emptyCopy();
-    // adding column to concatenate with new rows in future
+    Table dataWithOccupancy = data.emptyCopy();     // copy of data to filter
+    // adding column to concatenate with new rows
     dataWithOccupancy.addColumns(StringColumn.create("periodStart", dataWithOccupancy.rowCount()),
             StringColumn.create("periodEnd", dataWithOccupancy.rowCount()),
             LongColumn.create("occupancySeconds", dataWithOccupancy.rowCount()),
@@ -650,6 +599,7 @@ public class ModelTrainer implements Serializable {
       START_DATE = START_DATE.plusMinutes(periodMinutes);
     }
 
+    // removing unnecessary information
     dataWithOccupancy.removeColumns("arrival_unix_seconds", "departure_unix_seconds",
             "arrival_local_time", "departure_local_time");  // removing unnecessary columns
 
@@ -680,18 +630,19 @@ public class ModelTrainer implements Serializable {
             dataWithOccupancy.intColumn("occupancySum").divide(sensorCount * (periodMinutes * 60) / 100)
                     .multiply(10).roundInt().divide(10)); // round .1 operation
     dataWithOccupancy.column(dataWithOccupancy.columnCount() - 1).setName("occupancyPercent");
-    //dataWithOccupancy.write().csv("src/dataWithOccupacyTest.csv");
 
     System.out.println("Data is processed. Data without weather " + dataWithOccupancy.shape());
     Table dataWithOccupancyAndWeather = addingWetter(dataWithOccupancy);
-    System.out.println(dataWithOccupancyAndWeather.first(5));
-    // adding day of the week parameter
+
+    // adding attributes of the base of processed table
     dataWithOccupancyAndWeather.addColumns(IntColumn.create("weekDay", dataWithOccupancyAndWeather.rowCount()),
             IntColumn.create("month", dataWithOccupancyAndWeather.rowCount()),
             IntColumn.create("year", dataWithOccupancyAndWeather.rowCount()),
-            IntColumn.create("predictionHorizon", dataWithOccupancyAndWeather.rowCount()),
-            DoubleColumn.create("previousOccupancy", dataWithOccupancyAndWeather.rowCount()),
-            DoubleColumn.create("occupancy", dataWithOccupancyAndWeather.rowCount()));
+            IntColumn.create("predictionHorizon", dataWithOccupancyAndWeather.rowCount()), // timeslot in day
+            DoubleColumn.create("previousOccupancy", dataWithOccupancyAndWeather.rowCount()), // occupancy N minutes ago
+            DoubleColumn.create("occupancy", dataWithOccupancyAndWeather.rowCount())); // occupancy now
+
+    // if horizon is less than an hour, hour
     int periodsInHour = 1;
     if (periodMinutes < 60)
       periodsInHour = 60/periodMinutes;
@@ -797,7 +748,6 @@ public class ModelTrainer implements Serializable {
   private Table addingWetter(Table parkingOccupacy) throws SQLException, Exception {
       // weather from DB
       String pattern = "dd.MM.yyyy HH:mm:ss"; // pattern to format the date from string
-      DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern); // instance to format the date with pattern
       String query = "SELECT * FROM public.\"60_Minutes_Dataset_Air_Temperature_and_Humidity_"+ parkingId +"\";";
       ResultSet resultSetForWeather = conn.createStatement().executeQuery(query);
       Table weather = new DataFrameReader(new ReaderRegistry()).db(resultSetForWeather);
@@ -829,7 +779,7 @@ public class ModelTrainer implements Serializable {
       if (periodMinutes > 60) {
         LocalDateTime START_DATE = LocalDateTime.parse(parkingOccupacy.getString(0, "periodStart"));
         // START_DATE rounded to hours
-        START_DATE = START_DATE.truncatedTo(ChronoUnit.HOURS); // Truncate to hours first // before java.time.temporal.ChronoUnit.HOURS
+        START_DATE = START_DATE.truncatedTo(ChronoUnit.HOURS);
         for (Row rowInWeather : weather) {
           LocalDateTime tmpDate = LocalDateTime.parse(rowInWeather.getString("periodStart"));
           if (tmpDate.getHour() != START_DATE.getHour()) //if this hour is not start hour in occupancy table
@@ -875,15 +825,10 @@ public class ModelTrainer implements Serializable {
       parkingOccupacy.removeColumns("periodStart");
       parkingOccupacy.column("periodStartString").setName("periodStart");
 
-      // concatenate tables based on "periodStart" column
+      // join tables based on "periodStart" column
       Table parkingOccupancyWithWetter = weatherInPeriods.joinOn("periodStart").inner(parkingOccupacy);
+      parkingOccupancyWithWetter.removeColumns("periodEnd", "periodStart");
 
-    parkingOccupancyWithWetter.removeColumns("periodEnd", "periodStart");
-      String allInstances38 = "src/parking38RowDataAllWithWeather.csv";
-      String only5000Instances38 = "src/parking38RowData5000WithWeather.csv";
-
-      System.out.println("Die letzten Zeilen: ");
-      //parkingOccupancyWithWetter.write().csv(only5000Instances38);
       System.out.println("Tables joined, shape " + parkingOccupancyWithWetter.shape());
       return parkingOccupancyWithWetter;
   }
@@ -899,8 +844,8 @@ public class ModelTrainer implements Serializable {
       Table tableData = trainer.preprocessing(rs);
       trainer.saveQueryAsInstances(tableData);
       rs.getStatement().close(); // closes the resource
-      //trainer.applyFilter();
 
+      // classifiers building
       if (settings.classifiersData.isEmpty()) {
         for (int i = 0; i < trainer.classifierMap.size(); i++) {
           trainer.classifierMap.get(i).buildClassifier(trainer.m_Train_Data);
@@ -911,11 +856,9 @@ public class ModelTrainer implements Serializable {
           trainer.classifierMap.get(i).buildClassifier(trainer.m_Train_Data);
         }
       }
+
       trainer.testClassifier();
-
-      //trainer.handInputTest();
-
-    //trainer.saveModelToDB();
+      trainer.saveModelToDB();
 
     } catch (Exception ex) {
       ex.printStackTrace();
