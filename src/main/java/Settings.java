@@ -88,30 +88,6 @@ class Settings {
   }
 
   /**
-   * Parse features input string into a java object
-   * @param featuresJSON input string from settings
-   * @return a Hashmap containing the feature which will be calculated
-   * @throws ParseException
-   */
-  private static HashMap<String, ArrayList<String>> parseFeatureData(String featuresJSON) throws ParseException {
-    featuresJSON = featuresJSON.toLowerCase();
-    HashMap<String, ArrayList<String>> featureData = new HashMap<>();
-    JSONParser parser = new JSONParser();
-    JSONObject json = (JSONObject) parser.parse(featuresJSON);
-
-    Set<?> keys = json.keySet();
-    keys.forEach(key -> {
-      ArrayList<String> features = new ArrayList<>();
-      JSONArray featureArr = (JSONArray) json.get(key);
-      Object[] featureObjs =  featureArr.toArray();
-      Arrays.stream(featureObjs).iterator().forEachRemaining(x -> features.add(x.toString()));
-      featureData.put(key.toString(), features);
-    });
-
-    return featureData;
-  }
-
-  /**
    * Parse String input into a Integer List
    * @param stringToParse input string from settings
    * @return an Integer List containing extracted numbers from string

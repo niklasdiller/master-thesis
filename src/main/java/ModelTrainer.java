@@ -43,12 +43,11 @@ public class ModelTrainer implements Serializable {
   /** attribute indexes for actual model */
   private ArrayList<Integer> attributeIndexes = new ArrayList<>();
 
+  /** Map for attribute names **/
+  private Map<Integer, String> attributesNamesMap = new HashMap<Integer, String>();
 
   /** All settings specified in properties file */
   private Settings settings;
-
-  /** Parking ID*/
-  private int parkingId;
 
   /** Database connection */
   private Connection conn;
@@ -61,12 +60,6 @@ public class ModelTrainer implements Serializable {
 
   /** The testing data gathered so far. */
   private Instances m_Test_Data;
-
-  /** Random Forest maximal depth */
-  private int randomForstMaxDepth = (new Settings("main/java/config.properties")).randomForestMaxDepth;
-
-  /** k-Nearest Neighbors number of neighbours */
-  private int kNeighbours = (new Settings("main/java/config.properties")).kNeighbours;
 
   /** The Decision Tree classifier. */
   private M5P m_DecisionTreeClassifier = new M5P();
@@ -102,8 +95,6 @@ public class ModelTrainer implements Serializable {
   /** Map for classifier names **/
   private Map<Integer, String> classifierNamesMap = new HashMap<Integer, String>();
 
-  /** Map for classifier names **/
-  private Map<Integer, String> attributesNamesMap = new HashMap<Integer, String>();
 
 
   /**
@@ -113,7 +104,6 @@ public class ModelTrainer implements Serializable {
   public ModelTrainer(Settings settings) throws IOException, ParseException {
     this.settings = settings;
     this.periodMinutes = settings.periodMinutes;
-    this.parkingId = settings.parkingId;
 
     String nameOfDataset = "ParkingOccupancyProblem";
 
@@ -142,9 +132,6 @@ public class ModelTrainer implements Serializable {
 
     m_Test_Data = new Instances(nameOfDataset, attributes, 10000);
     m_Test_Data.setClassIndex(targetAttributIndex);
-
-    this.randomForstMaxDepth = settings.randomForestMaxDepth;
-    this.kNeighbours = settings.kNeighbours;
 
     // fill a map with classifiers
     this.classifierMap.put(0, m_DecisionTreeClassifier);
@@ -194,8 +181,8 @@ public class ModelTrainer implements Serializable {
    */
   private ResultSet queryDB() throws SQLException {
     System.out.println("Querying preprocessed data...");
-    System.out.println("Data from table " + settings.preprocessTable + parkingId );
-    String query = "SELECT * FROM public.\"" + settings.preprocessTable + parkingId +
+    System.out.println("Data from table " + settings.preprocessTable + settings.parkingId );
+    String query = "SELECT * FROM public.\"" + settings.preprocessTable + settings.parkingId +
             "\" ORDER BY arrival_unix_seconds ASC LIMIT "+ settings.tableLength +";";
     Statement st = conn.createStatement();
     return st.executeQuery(query);
@@ -671,6 +658,7 @@ public class ModelTrainer implements Serializable {
 
     System.out.println(dataWithOccupancyAndWeather.first(5));
 
+
     return dataWithOccupancyAndWeather;
   }
 
@@ -748,7 +736,7 @@ public class ModelTrainer implements Serializable {
   private Table addingWetter(Table parkingOccupacy) throws SQLException, Exception {
       // weather from DB
       String pattern = "dd.MM.yyyy HH:mm:ss"; // pattern to format the date from string
-      String query = "SELECT * FROM public.\"60_Minutes_Dataset_Air_Temperature_and_Humidity_"+ parkingId +"\";";
+      String query = "SELECT * FROM public.\"60_Minutes_Dataset_Air_Temperature_and_Humidity_"+ settings.parkingId +"\";";
       ResultSet resultSetForWeather = conn.createStatement().executeQuery(query);
       Table weather = new DataFrameReader(new ReaderRegistry()).db(resultSetForWeather);
       weather.column("MESS_DATUM").setName("Date"); // change column data name
