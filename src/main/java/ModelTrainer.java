@@ -278,6 +278,14 @@ public class ModelTrainer implements Serializable {
    */
   //@SuppressWarnings("SqlResolve")
   private void saveModelToDB() throws IOException, SQLException {
+
+    //Created Time
+    Instant instant = Instant.now();
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyy, HH:mm:ss ")
+            .withZone(ZoneId.systemDefault());
+    String formattedInstant = formatter.format(instant);
+
+
     // preparation for saving
     String slotIDsString = "", classifierNamesString = "", attributesString = "";
 
@@ -290,6 +298,7 @@ public class ModelTrainer implements Serializable {
       }
     }
 
+    //Classifier
     if (settings.classifiersData.isEmpty()) {
       classifierNamesString += "all";
     }
@@ -298,6 +307,13 @@ public class ModelTrainer implements Serializable {
         classifierNamesString += (classifierNamesMap.get(classifierNumber) + ", ");
       }
     }
+
+    //Binary Model
+    boolean binaryModel = settings.classifiersData.size() == 1;
+
+
+    //Modelsize
+    int modelSize = 0;
 
     if (settings.attributesData.isEmpty()) {
       attributesString += "all";
@@ -354,33 +370,39 @@ public class ModelTrainer implements Serializable {
     // columns from table to save
     PreparedStatement ps = conn.prepareStatement("" +
             "INSERT INTO " + settings.tableName + " (" +
-            "model_name, parking_id, table_length, period_minutes, slotsIDs," +
-            "classifiers, attributes, trainingDataProportion," +
+            "model_name, developer, train_test_strategy, created_time, model_size_in_bytes," +
+            "parking_id, table_length, period_minutes, slotsIDs," +
+            "classifiers, binary_model, attributes, trainingDataProportion," +
             "accuracyPercent, randomForestMaxDepth, kNeighbours, " +
             "accuracyDT, accuracyRF, accuracyLR, accuracyKNN, decision_tree," +
             "random_forest, linear_regression, k_nearest_neighbors) " +
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"); // number of ? has to be the same as the number of columns
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"); // number of ? has to be the same as the number of columns
 
     ps.setString(1, settings.modelName);
-    ps.setInt(2, settings.parkingId);
-    ps.setInt(3, settings.tableLength);
-    ps.setInt(4, settings.periodMinutes);     // periods duration in minutes
-    ps.setString(5, slotIDsString);     // ids of parking slots to parse
-    ps.setString(6, classifierNamesString);     // classifier names
-    ps.setString(7, attributesString); // attributes
-    ps.setDouble(8, settings.trainProp); // train part
-    ps.setInt(9, settings.accuracyPercent);     // deviation percentage for accuracy calculation
-    ps.setInt(10, settings.randomForestMaxDepth);     // max depth for Random Forest Classifier
-    ps.setInt(11, settings.kNeighbours);     // number of neighbours for k-Nearest Neighbours Classifier
+    ps.setString(2, settings.developer);
+    ps.setString(3, settings.trainTestText);
+    ps.setString(4, formattedInstant);
+  // ModelSize: parameterIndex 5. See down below
+    ps.setInt(6, settings.parkingId);
+    ps.setInt(7, settings.tableLength);
+    ps.setInt(8, settings.periodMinutes);     // periods duration in minutes
+    ps.setString(9, slotIDsString);     // ids of parking slots to parse
+    ps.setString(10, classifierNamesString);     // classifier names
+    ps.setBoolean(11, binaryModel); //TODO: parameterIndex anpassen
+    ps.setString(12, attributesString); // attributes
+    ps.setDouble(13, settings.trainProp); // train part
+    ps.setInt(14, settings.accuracyPercent);     // deviation percentage for accuracy calculation
+    ps.setInt(15, settings.randomForestMaxDepth);     // max depth for Random Forest Classifier
+    ps.setInt(16, settings.kNeighbours);     // number of neighbours for k-Nearest Neighbours Classifier
 
     // accuracy results
-    ps.setString(12, accuracyInfoDTString);
-    ps.setString(13, accuracyInfoRFString);
-    ps.setString(14, accuracyInfoLRString);
-    ps.setString(15, accuracyInfoKNNString);
+    ps.setString(17, accuracyInfoDTString);
+    ps.setString(18, accuracyInfoRFString);
+    ps.setString(19, accuracyInfoLRString);
+    ps.setString(20, accuracyInfoKNNString);
 
     // writing trained classifiers (if exist) binary data
-    int columnIndexToWrite = 16;
+    int columnIndexToWrite = 21;
     for (int i = 0; i < 4; i++) {
       if (listForClassifierIndexes.isEmpty() || listForClassifierIndexes.contains(i)) {
 
@@ -400,6 +422,7 @@ public class ModelTrainer implements Serializable {
         }
         out.flush();
         byte[] serializedClassifier = bos.toByteArray();
+        modelSize =+ serializedClassifier.length;
         bos.close();
         ByteArrayInputStream bis = new ByteArrayInputStream(serializedClassifier);
         ps.setBinaryStream(columnIndexToWrite+i, bis, serializedClassifier.length);
@@ -409,6 +432,7 @@ public class ModelTrainer implements Serializable {
         ps.setString(columnIndexToWrite+i, "no classifier");
       }
     }
+    ps.setInt(5, modelSize);
 
     ps.executeUpdate(); // execution
     ps.close();

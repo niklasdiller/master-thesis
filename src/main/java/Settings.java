@@ -20,6 +20,7 @@ class Settings {
   String dbUri;
   String dbUsername;
   String dbPassword;
+  String developer;
   int parkingId;
   int periodMinutes;
   int tableLength;
@@ -27,6 +28,7 @@ class Settings {
   int kNeighbours;
   int accuracyPercent;
   int trainTestStrategy;
+  String trainTestText;
   String featuresJSON;
   String slotsIDJSON;
   String classifiersJSON;
@@ -50,6 +52,7 @@ class Settings {
     dbUri = getSettingAsString("dbUri", false);
     dbUsername = getSettingAsString("dbUsername", false);
     dbPassword = getSettingAsString("dbPassword", false);
+    developer = getSettingAsString("developer", false);
     slotsIDJSON = getSettingAsString("slotsIDs", false);
     classifiersJSON = getSettingAsString("classifiers", false);
     attributesJSON = getSettingAsString("attributes", false);
@@ -62,6 +65,12 @@ class Settings {
     saveIn = getSettingAsString("saveIn", false);
     modelName = getSettingAsString("modelName", false);
     trainTestStrategy = getSettingAsInt("trainTestStrategy", false);
+    if (trainTestStrategy == 0) {
+      trainTestText = "Test and Train Data Mixed";
+    } else {
+      trainTestText = "Test Data after Train Data";
+    }
+
     tableName = getSettingAsString("tableName", false);
 
     // optional parameters
