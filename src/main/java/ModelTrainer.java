@@ -422,7 +422,7 @@ public class ModelTrainer implements Serializable {
         }
         out.flush();
         byte[] serializedClassifier = bos.toByteArray();
-        modelSize =+ serializedClassifier.length;
+        modelSize += serializedClassifier.length;
         bos.close();
         ByteArrayInputStream bis = new ByteArrayInputStream(serializedClassifier);
         ps.setBinaryStream(columnIndexToWrite+i, bis, serializedClassifier.length);
