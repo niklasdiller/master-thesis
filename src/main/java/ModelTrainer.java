@@ -124,6 +124,7 @@ public class ModelTrainer implements Serializable {
      * The k-Nearest Neighbors classifier.
      */
     private IBk m_KNNClassifier = new IBk();
+
     /**
      * k-Nearest Neighbors accuracy variables
      */
@@ -144,7 +145,7 @@ public class ModelTrainer implements Serializable {
     /**
      * Map for periodMinute values
      **/
-    private static Map<Integer, Integer> periodMinuteMap = new HashMap<Integer, Integer>();
+    private Map<Integer, Integer> periodMinuteMap = new HashMap<Integer, Integer>();
 
     /**
      * Create a model trainer
@@ -203,6 +204,14 @@ public class ModelTrainer implements Serializable {
         this.attributesNamesMap.put(5, "predictions horizon");
         this.attributesNamesMap.put(6, "previous occupancy");
 
+        //fill a periodMinuteMap with values for the training pipeline
+        this.periodMinuteMap.put(0, 5);
+        this.periodMinuteMap.put(1, 15);
+        this.periodMinuteMap.put(2, 30);
+        this.periodMinuteMap.put(3, 60);
+        this.periodMinuteMap.put(4, 180);
+
+
         // hyperparameter, for RF and KNN
         this.m_RandomForestClassifier.setMaxDepth(settings.randomForestMaxDepth);
         this.m_KNNClassifier.setKNN(settings.kNeighbours);
@@ -223,23 +232,6 @@ public class ModelTrainer implements Serializable {
 
         System.out.println("Database connection established.");
     }
-
-
-    /**
-     * Create a connection to the database: Hardcoded to only establish one connection in mass training and from a
-     * static context
-     *
-     * @throws SQLException
-     */
-    private static void createDBConnectionHardcoded() throws SQLException {
-        Properties props = new Properties();
-        props.setProperty("user", "ndiller");
-        props.setProperty("password", "1Wk8cvB3SkjP1ZUc");
-        conn = DriverManager.getConnection("jdbc:postgresql://141.13.162.160:5432/parking", props);
-
-        System.out.println("Database connection established.");
-    }
-
 
     /**
      * Get preprocessed data from previously existing table in db
@@ -374,7 +366,6 @@ public class ModelTrainer implements Serializable {
 
         //Binary Model
         boolean binaryModel = settings.classifiersData.size() == 1;
-
 
         //Modelsize
         int modelSize = 0;
@@ -894,7 +885,7 @@ public class ModelTrainer implements Serializable {
         return parkingOccupancyWithWetter;
     }
 
-    private static Properties changeValues(String settingsPath, String att, String clas, int perMin, int tts) {
+    private Properties changeValues(String settingsPath, String att, String clas, int perMin, int tts) {
         try {
             FileInputStream in = new FileInputStream("src/" + settingsPath);
             Properties props = new Properties();
@@ -917,26 +908,15 @@ public class ModelTrainer implements Serializable {
         }
     }
 
-    private static void initializeMaps() {
-        periodMinuteMap.put(0, 5);
-        periodMinuteMap.put(1, 15);
-        periodMinuteMap.put(2, 30);
-        periodMinuteMap.put(3, 60);
-        periodMinuteMap.put(4, 180);
-
-
-    }
-
     public static void main(String[] args) {
-
-        //This works, but is rather ugly and cumbersome
-        //TODO: Put Classifier & Attribute combinations into Map like Period Minutes -> Aufwändiger als jetzt?
-        //TODO: Get rid of static methods by creating dummy ModelTrainer ?
-
         try {
-            String settingsPath = "main/java/test.properties";
-            initializeMaps();
-            createDBConnectionHardcoded();
+            String settingsPath = "main/java/pipeline.properties";
+            InputStream input = ModelTrainer.class.getClassLoader().getResourceAsStream(settingsPath);
+            Properties props = new Properties();
+            props.load(input);
+            Settings settings = new Settings(settingsPath, props);
+            ModelTrainer trainer = new ModelTrainer(settings);
+            trainer.createDBConnection();
 
             String clas_val;
             String att_val;
@@ -947,7 +927,7 @@ public class ModelTrainer implements Serializable {
 
                 //Period Minutes
                 for (int perMin = 0; perMin <= 5; perMin++) {
-                    perMin_val = periodMinuteMap.get(perMin);
+                    perMin_val = trainer.periodMinuteMap.get(perMin);
 
                     //Classifier
                     for (int clas0 = 0; clas0 <= 1; clas0++) {
@@ -1007,11 +987,10 @@ public class ModelTrainer implements Serializable {
                                                                 }
 
                                                                 //Initialize new Object for every iteration
-                                                                Properties props = changeValues(settingsPath, att_val,
+                                                                props = trainer.changeValues(settingsPath, att_val,
                                                                         clas_val, perMin_val, tts);
-                                                                Settings settings = new Settings(settingsPath, props);
-                                                                ModelTrainer trainer = new ModelTrainer(settings);
-
+                                                                settings = new Settings(settingsPath, props);
+                                                                trainer = new ModelTrainer(settings);
 
                                                                 ResultSet rs = trainer.queryDB();
                                                                 Table tableData = trainer.preprocessing(rs);
@@ -1030,7 +1009,6 @@ public class ModelTrainer implements Serializable {
                                                                                 (trainer.m_Train_Data);
                                                                     }
                                                                 }
-
                                                                 trainer.testClassifier();
                                                                 trainer.saveModelToDB();
                                                             }

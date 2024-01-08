@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
  * Parsed from config.properties file
  */
 class Settings {
-  public Properties properties;
+    public Properties properties;
 
     String dbUri;
     String dbUsername;
@@ -42,20 +42,7 @@ class Settings {
 
     Settings(String propertiesFile, Properties props) throws IOException, ParseException {
         InputStream input = ModelTrainer.class.getClassLoader().getResourceAsStream(propertiesFile);
-//    properties = new Properties();
-//    properties.load(input);
         properties = props;
-//        properties.load(input);
-//        System.out.println(properties.getProperty(developer));
-
-
-
-
-//    FileOutputStream out = new FileOutputStream("src/" + propertiesFile);
-//    properties.setProperty("classifiers", "{3}");
-//    properties.store(out, null);
-//    out.close();
-
 
         // mandatory parameters
         dbUri = getSettingAsString("dbUri", false);
