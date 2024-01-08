@@ -141,12 +141,10 @@ public class ModelTrainer implements Serializable {
      **/
     private Map<Integer, String> classifierNamesMap = new HashMap<Integer, String>();
 
-
     /**
      * Map for periodMinute values
      **/
     private static Map<Integer, Integer> periodMinuteMap = new HashMap<Integer, Integer>();
-
 
     /**
      * Create a model trainer
@@ -919,24 +917,25 @@ public class ModelTrainer implements Serializable {
         }
     }
 
-    private static void initializeMap() {
+    private static void initializeMaps() {
         periodMinuteMap.put(0, 5);
         periodMinuteMap.put(1, 15);
         periodMinuteMap.put(2, 30);
         periodMinuteMap.put(3, 60);
         periodMinuteMap.put(4, 180);
+
+
     }
 
     public static void main(String[] args) {
 
         //This works, but is rather ugly and cumbersome
-        //TODO: Put Classifier & Attribute combinations into Map like Period Minutes
+        //TODO: Put Classifier & Attribute combinations into Map like Period Minutes -> Aufwändiger als jetzt?
         //TODO: Get rid of static methods by creating dummy ModelTrainer ?
-        //TODO: Skip double training: Don't train if all clas or att are 1 (already covered by all 0 case)
 
         try {
             String settingsPath = "main/java/test.properties";
-            initializeMap();
+            initializeMaps();
             createDBConnectionHardcoded();
 
             String clas_val;
@@ -956,6 +955,9 @@ public class ModelTrainer implements Serializable {
                             for (int clas2 = 0; clas2 <= 1; clas2++) {
                                 for (int clas3 = 0; clas3 <= 1; clas3++) {
                                     clas_val = "";
+                                    if (clas0 + clas1 + clas2 + clas3 == 4) { //if all classifiers are selected = same as all 0
+                                        continue;
+                                    }
                                     if (clas0 == 1) {
                                         clas_val = clas_val + "0, ";
                                     }
@@ -978,6 +980,10 @@ public class ModelTrainer implements Serializable {
                                                         for (int att5 = 0; att5 <= 1; att5++) {
                                                             for (int att6 = 0; att6 <= 1; att6++) {
                                                                 att_val = "";
+                                                                if (att0 + att1 + att2 + att3 + att4 + att5 + att6 == 7) {
+                                                                    //if all attributes are selected = same as all 0
+                                                                    continue;
+                                                                }
                                                                 if (att0 == 1) {
                                                                     att_val = att_val + "0, ";
                                                                 }
@@ -1001,7 +1007,8 @@ public class ModelTrainer implements Serializable {
                                                                 }
 
                                                                 //Initialize new Object for every iteration
-                                                                Properties props = changeValues(settingsPath, att_val, clas_val, perMin_val, tts);
+                                                                Properties props = changeValues(settingsPath, att_val,
+                                                                        clas_val, perMin_val, tts);
                                                                 Settings settings = new Settings(settingsPath, props);
                                                                 ModelTrainer trainer = new ModelTrainer(settings);
 
@@ -1014,11 +1021,13 @@ public class ModelTrainer implements Serializable {
                                                                 // classifiers building
                                                                 if (settings.classifiersData.isEmpty()) {
                                                                     for (int i = 0; i < trainer.classifierMap.size(); i++) {
-                                                                        trainer.classifierMap.get(i).buildClassifier(trainer.m_Train_Data);
+                                                                        trainer.classifierMap.get(i).buildClassifier
+                                                                                (trainer.m_Train_Data);
                                                                     }
                                                                 } else {
                                                                     for (int i : settings.classifiersData) {
-                                                                        trainer.classifierMap.get(i).buildClassifier(trainer.m_Train_Data);
+                                                                        trainer.classifierMap.get(i).buildClassifier
+                                                                                (trainer.m_Train_Data);
                                                                     }
                                                                 }
 
