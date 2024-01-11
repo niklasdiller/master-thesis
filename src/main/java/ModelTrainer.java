@@ -375,11 +375,11 @@ public class ModelTrainer implements Serializable {
         }
 
         //Classifier
-        if (settings.classifiersData.isEmpty()) {
-            classifierNamesString += "all";
+        if (settings.classifiersData.isEmpty()) { //multiple Classifiers in same model not possible
+            System.err.println("Classifier cannot be empty!");;
         } else {
             for (int classifierNumber : settings.classifiersData) {
-                classifierNamesString += (classifierNamesMap.get(classifierNumber) + ", ");
+                classifierNamesString = (classifierNamesMap.get(classifierNumber));
             }
         }
 
@@ -390,11 +390,12 @@ public class ModelTrainer implements Serializable {
         int modelSize = 0;
 
         if (settings.attributesData.isEmpty()) {
-            attributesString += "all";
+            System.err.println("Attributes cannot be empty!"); //emtpy case handled through all selected
         } else {
             for (int attributNumber : settings.attributesData) {
                 attributesString += (attributesNamesMap.get(attributNumber) + ", ");
             }
+            attributesString= attributesString.substring(0, attributesString.length() - 2); //remove last ", "
         }
 
         String accuracyInfoDTString = "no classifier", accuracyInfoRFString = "no classifier",
@@ -444,8 +445,8 @@ public class ModelTrainer implements Serializable {
                 "classifiers, binary_model, attributes, trainingDataProportion," +
                 "accuracyPercent, randomForestMaxDepth, kNeighbours, " +
                 "accuracyDT, accuracyRF, accuracyLR, accuracyKNN, decision_tree," +
-                "random_forest, linear_regression, k_nearest_neighbors) " +
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"); // number of ? has to be the same as the number of columns
+                "random_forest, linear_regression, k_nearest_neighbors, window_stride) " +
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"); // number of ? has to be the same as the number of columns
 
         ps.setString(1, settings.modelName);
         ps.setString(2, settings.developer);
@@ -498,6 +499,7 @@ public class ModelTrainer implements Serializable {
             }
         }
         ps.setInt(5, modelSize);
+        ps.setInt(25, settings.periodMinutes); //Window Stride always same as Window Size (period minutes)
 
         ps.executeUpdate(); // execution
         ps.close();
@@ -962,59 +964,55 @@ public class ModelTrainer implements Serializable {
                                 for (int att2 = 0; att2 <= 1; att2++) {
                                     for (int att3 = 0; att3 <= 1; att3++) {
                                         for (int att4 = 0; att4 <= 1; att4++) {
-                                            for (int att5 = 0; att5 <= 1; att5++) {
-                                                for (int att6 = 0; att6 <= 1; att6++) {
-                                                    att_val = "";
-                                                    if (att0 + att1 + att2 + att3 + att4 + att5 + att6 == 7) {
-                                                        //if all attributes are selected = same as all 0
-                                                        continue;
-                                                    }
-                                                    if (att0 == 1) {
-                                                        att_val = att_val + "0, ";
-                                                    }
-                                                    if (att1 == 1) {
-                                                        att_val = att_val + "1, ";
-                                                    }
-                                                    if (att2 == 1) {
-                                                        att_val = att_val + "2, ";
-                                                    }
-                                                    if (att3 == 1) {
-                                                        att_val = att_val + "3, ";
-                                                    }
-                                                    if (att4 == 1) {
-                                                        att_val = att_val + "4, ";
-                                                    }
-                                                    if (att5 == 1) {
-                                                        att_val = att_val + "5, ";
-                                                    }
-                                                    if (att6 == 1) {
-                                                        att_val = att_val + "6, ";
-                                                    }
-
-                                                    //Initialize new Object for every iteration
-                                                    props = trainer.changeValues(settingsPath, att_val,
-                                                            clas_val, perMin_val, tdSize_val);
-                                                    settings = new Settings(settingsPath, props);
-                                                    trainer = new ModelTrainer(settings);
-
-                                                    ResultSet rs = trainer.queryDB();
-                                                    Table tableData = trainer.preprocessing(rs);
-                                                    trainer.saveQueryAsInstances(tableData);
-                                                    rs.getStatement().close(); // closes the resource
-
-                                                    // classifiers building
-                                                    if (settings.classifiersData.isEmpty()) {
-                                                        System.err.println("Classifier cannot be empty!");
-                                                        break;
-                                                    } else {
-                                                        for (int i : settings.classifiersData) {
-                                                            trainer.classifierMap.get(i).buildClassifier
-                                                                    (trainer.m_Train_Data);
-                                                        }
-                                                    }
-                                                    trainer.testClassifier();
-                                                    trainer.saveModelToDB();
+                                            //ignore prediction horizon
+                                            for (int att6 = 0; att6 <= 1; att6++) {
+                                                att_val = "";
+                                                if (att0 + att1 + att2 + att3 + att4 + att6 == 0) {
+                                                    // all attributes 0 = same as all 1
+                                                    continue;
                                                 }
+                                                if (att0 == 1) {
+                                                    att_val = att_val + "0, ";
+                                                }
+                                                if (att1 == 1) {
+                                                    att_val = att_val + "1, ";
+                                                }
+                                                if (att2 == 1) {
+                                                    att_val = att_val + "2, ";
+                                                }
+                                                if (att3 == 1) {
+                                                    att_val = att_val + "3, ";
+                                                }
+                                                if (att4 == 1) {
+                                                    att_val = att_val + "4, ";
+                                                }
+                                                if (att6 == 1) {
+                                                    att_val = att_val + "6, ";
+                                                }
+
+                                                //Initialize new Object for every iteration
+                                                props = trainer.changeValues(settingsPath, att_val,
+                                                        clas_val, perMin_val, tdSize_val);
+                                                settings = new Settings(settingsPath, props);
+                                                trainer = new ModelTrainer(settings);
+
+                                                ResultSet rs = trainer.queryDB();
+                                                Table tableData = trainer.preprocessing(rs);
+                                                trainer.saveQueryAsInstances(tableData);
+                                                rs.getStatement().close(); // closes the resource
+
+                                                // classifiers building
+                                                if (settings.classifiersData.isEmpty()) {
+                                                    System.err.println("Classifier cannot be empty!");
+                                                    break;
+                                                } else {
+                                                    for (int i : settings.classifiersData) {
+                                                        trainer.classifierMap.get(i).buildClassifier
+                                                                (trainer.m_Train_Data);
+                                                    }
+                                                }
+                                                trainer.testClassifier();
+                                                trainer.saveModelToDB();
                                             }
                                         }
                                     }
