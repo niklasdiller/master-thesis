@@ -201,8 +201,9 @@ public class ModelTrainer implements Serializable {
         this.attributesNamesMap.put(2, "day of the week");
         this.attributesNamesMap.put(3, "month");
         this.attributesNamesMap.put(4, "year");
-        this.attributesNamesMap.put(5, "predictions horizon");
-        this.attributesNamesMap.put(6, "previous occupancy");
+        this.attributesNamesMap.put(5, "previous occupancy");
+        this.attributesNamesMap.put(6, "predictions horizon");
+
 
         //fill a periodMinuteMap with values for the training pipeline and their corresponding trainingDataSize
         //first value: periodMinutes
@@ -376,7 +377,8 @@ public class ModelTrainer implements Serializable {
 
         //Classifier
         if (settings.classifiersData.isEmpty()) { //multiple Classifiers in same model not possible
-            System.err.println("Classifier cannot be empty!");;
+            System.err.println("Classifier cannot be empty!");
+            ;
         } else {
             for (int classifierNumber : settings.classifiersData) {
                 classifierNamesString = (classifierNamesMap.get(classifierNumber));
@@ -390,12 +392,12 @@ public class ModelTrainer implements Serializable {
         int modelSize = 0;
 
         if (settings.attributesData.isEmpty()) {
-            System.err.println("Attributes cannot be empty!"); //emtpy case handled through all selected
+            System.err.println("Attributes cannot be empty!"); //empty case handled through all selected
         } else {
             for (int attributNumber : settings.attributesData) {
                 attributesString += (attributesNamesMap.get(attributNumber) + ", ");
             }
-            attributesString= attributesString.substring(0, attributesString.length() - 2); //remove last ", "
+            attributesString = attributesString.substring(0, attributesString.length() - 2); //remove last ", "
         }
 
         String accuracyInfoDTString = "no classifier", accuracyInfoRFString = "no classifier",
@@ -906,8 +908,31 @@ public class ModelTrainer implements Serializable {
         return parkingOccupancyWithWetter;
     }
 
+    private String generateModelName (String att, String clas, int perMin, int td_size){
+        String cleanedAtt = att.replace(" ", "");
+        String shortClas = null;
+        switch(clas) {
+            case "0":
+                shortClas = "dt";
+                break;
+            case "1":
+                shortClas = "rf";
+                break;
+            case "2":
+                shortClas = "lr";
+                break;
+            case "3":
+                shortClas = "knn";
+                break;
+        }
+
+        return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + td_size;
+    }
+
     private Properties changeValues(String settingsPath, String att, String clas, int perMin, int td_size) {
         try {
+            att = att.substring(0, att.length() - 2); //remove last ", "
+
             FileInputStream in = new FileInputStream("src/" + settingsPath);
             Properties props = new Properties();
             props.load(in);
@@ -918,6 +943,7 @@ public class ModelTrainer implements Serializable {
             props.setProperty("classifiers", "{" + clas + "}");
             props.setProperty("periodMinutes", String.valueOf(perMin));
             props.setProperty("trainingDataSize", String.valueOf(td_size));
+            props.setProperty("modelName", generateModelName(att, clas, perMin, td_size));
 
             props.store(out, null);
             out.close();
@@ -930,7 +956,9 @@ public class ModelTrainer implements Serializable {
     }
 
     public static void main(String[] args) {
+        //TODO: Add timeSlot attribute
         //TODO: Implement periodMinutes Case 3: 60min in 24h
+
 
         try {
             String settingsPath = "main/java/pipeline.properties";
@@ -964,10 +992,10 @@ public class ModelTrainer implements Serializable {
                                 for (int att2 = 0; att2 <= 1; att2++) {
                                     for (int att3 = 0; att3 <= 1; att3++) {
                                         for (int att4 = 0; att4 <= 1; att4++) {
-                                            //ignore prediction horizon
-                                            for (int att6 = 0; att6 <= 1; att6++) {
+                                            for (int att5 = 0; att5 <= 1; att5++) {
+                                                //ignore prediction horizon
                                                 att_val = "";
-                                                if (att0 + att1 + att2 + att3 + att4 + att6 == 0) {
+                                                if (att0 + att1 + att2 + att3 + att4 + att5 == 0) {
                                                     // all attributes 0 = same as all 1
                                                     continue;
                                                 }
@@ -986,8 +1014,8 @@ public class ModelTrainer implements Serializable {
                                                 if (att4 == 1) {
                                                     att_val = att_val + "4, ";
                                                 }
-                                                if (att6 == 1) {
-                                                    att_val = att_val + "6, ";
+                                                if (att5 == 1) {
+                                                    att_val = att_val + "5, ";
                                                 }
 
                                                 //Initialize new Object for every iteration
