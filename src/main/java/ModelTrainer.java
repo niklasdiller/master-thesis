@@ -440,7 +440,7 @@ public class ModelTrainer implements Serializable {
         PreparedStatement ps = conn.prepareStatement("" +
                 "INSERT INTO " + settings.tableName + " (" +
                 "model_name, developer, train_test_strategy, created_time, model_size_in_bytes," +
-                "parking_id, table_length, period_minutes, slotsIDs," +
+                "parking_id, training_data_size, period_minutes, slotsIDs," +
                 "classifiers, binary_model, attributes, trainingDataProportion," +
                 "accuracyPercent, randomForestMaxDepth, kNeighbours, " +
                 "accuracyDT, accuracyRF, accuracyLR, accuracyKNN, decision_tree," +
@@ -948,94 +948,72 @@ public class ModelTrainer implements Serializable {
             for (int perMin = 0; perMin <= 5; perMin++) {
                 perMin_val = trainer.periodMinuteMap.get(perMin).get(0);
 
+                //Training Data Size
                 for (int tdSize = 1; tdSize <= 2; tdSize++) {
                     tdSize_val = trainer.periodMinuteMap.get(perMin).get(tdSize);
 
                     //Classifier
-                    for (int clas0 = 0; clas0 <= 1; clas0++) {
-                        for (int clas1 = 0; clas1 <= 1; clas1++) {
-                            for (int clas2 = 0; clas2 <= 1; clas2++) {
-                                for (int clas3 = 0; clas3 <= 1; clas3++) {
-                                    clas_val = "";
-                                    if (clas0 + clas1 + clas2 + clas3 == 4) { //if all classifiers are selected = same as all 0
-                                        continue;
-                                    }
-                                    if (clas0 == 1) {
-                                        clas_val = clas_val + "0, ";
-                                    }
-                                    if (clas1 == 1) {
-                                        clas_val = clas_val + "1, ";
-                                    }
-                                    if (clas2 == 1) {
-                                        clas_val = clas_val + "2, ";
-                                    }
-                                    if (clas3 == 1) {
-                                        clas_val = clas_val + "3, ";
-                                    }
+                    for (int clas = 0; clas <= 3; clas++) {
+                        clas_val = String.valueOf(clas);
 
-                                    //Attributes
-                                    for (int att0 = 0; att0 <= 1; att0++) {
-                                        for (int att1 = 0; att1 <= 1; att1++) {
-                                            for (int att2 = 0; att2 <= 1; att2++) {
-                                                for (int att3 = 0; att3 <= 1; att3++) {
-                                                    for (int att4 = 0; att4 <= 1; att4++) {
-                                                        for (int att5 = 0; att5 <= 1; att5++) {
-                                                            for (int att6 = 0; att6 <= 1; att6++) {
-                                                                att_val = "";
-                                                                if (att0 + att1 + att2 + att3 + att4 + att5 + att6 == 7) {
-                                                                    //if all attributes are selected = same as all 0
-                                                                    continue;
-                                                                }
-                                                                if (att0 == 1) {
-                                                                    att_val = att_val + "0, ";
-                                                                }
-                                                                if (att1 == 1) {
-                                                                    att_val = att_val + "1, ";
-                                                                }
-                                                                if (att2 == 1) {
-                                                                    att_val = att_val + "2, ";
-                                                                }
-                                                                if (att3 == 1) {
-                                                                    att_val = att_val + "3, ";
-                                                                }
-                                                                if (att4 == 1) {
-                                                                    att_val = att_val + "4, ";
-                                                                }
-                                                                if (att5 == 1) {
-                                                                    att_val = att_val + "5, ";
-                                                                }
-                                                                if (att6 == 1) {
-                                                                    att_val = att_val + "6, ";
-                                                                }
+                        //Attributes
+                        for (int att0 = 0; att0 <= 1; att0++) {
+                            for (int att1 = 0; att1 <= 1; att1++) {
+                                for (int att2 = 0; att2 <= 1; att2++) {
+                                    for (int att3 = 0; att3 <= 1; att3++) {
+                                        for (int att4 = 0; att4 <= 1; att4++) {
+                                            for (int att5 = 0; att5 <= 1; att5++) {
+                                                for (int att6 = 0; att6 <= 1; att6++) {
+                                                    att_val = "";
+                                                    if (att0 + att1 + att2 + att3 + att4 + att5 + att6 == 7) {
+                                                        //if all attributes are selected = same as all 0
+                                                        continue;
+                                                    }
+                                                    if (att0 == 1) {
+                                                        att_val = att_val + "0, ";
+                                                    }
+                                                    if (att1 == 1) {
+                                                        att_val = att_val + "1, ";
+                                                    }
+                                                    if (att2 == 1) {
+                                                        att_val = att_val + "2, ";
+                                                    }
+                                                    if (att3 == 1) {
+                                                        att_val = att_val + "3, ";
+                                                    }
+                                                    if (att4 == 1) {
+                                                        att_val = att_val + "4, ";
+                                                    }
+                                                    if (att5 == 1) {
+                                                        att_val = att_val + "5, ";
+                                                    }
+                                                    if (att6 == 1) {
+                                                        att_val = att_val + "6, ";
+                                                    }
 
-                                                                //Initialize new Object for every iteration
-                                                                props = trainer.changeValues(settingsPath, att_val,
-                                                                        clas_val, perMin_val, tdSize_val);
-                                                                settings = new Settings(settingsPath, props);
-                                                                trainer = new ModelTrainer(settings);
+                                                    //Initialize new Object for every iteration
+                                                    props = trainer.changeValues(settingsPath, att_val,
+                                                            clas_val, perMin_val, tdSize_val);
+                                                    settings = new Settings(settingsPath, props);
+                                                    trainer = new ModelTrainer(settings);
 
-                                                                ResultSet rs = trainer.queryDB();
-                                                                Table tableData = trainer.preprocessing(rs);
-                                                                trainer.saveQueryAsInstances(tableData);
-                                                                rs.getStatement().close(); // closes the resource
+                                                    ResultSet rs = trainer.queryDB();
+                                                    Table tableData = trainer.preprocessing(rs);
+                                                    trainer.saveQueryAsInstances(tableData);
+                                                    rs.getStatement().close(); // closes the resource
 
-                                                                // classifiers building
-                                                                if (settings.classifiersData.isEmpty()) {
-                                                                    for (int i = 0; i < trainer.classifierMap.size(); i++) {
-                                                                        trainer.classifierMap.get(i).buildClassifier
-                                                                                (trainer.m_Train_Data);
-                                                                    }
-                                                                } else {
-                                                                    for (int i : settings.classifiersData) {
-                                                                        trainer.classifierMap.get(i).buildClassifier
-                                                                                (trainer.m_Train_Data);
-                                                                    }
-                                                                }
-                                                                trainer.testClassifier();
-                                                                trainer.saveModelToDB();
-                                                            }
+                                                    // classifiers building
+                                                    if (settings.classifiersData.isEmpty()) {
+                                                        System.err.println("Classifier cannot be empty!");
+                                                        break;
+                                                    } else {
+                                                        for (int i : settings.classifiersData) {
+                                                            trainer.classifierMap.get(i).buildClassifier
+                                                                    (trainer.m_Train_Data);
                                                         }
                                                     }
+                                                    trainer.testClassifier();
+                                                    trainer.saveModelToDB();
                                                 }
                                             }
                                         }
@@ -1046,7 +1024,6 @@ public class ModelTrainer implements Serializable {
                     }
                 }
             }
-
         } catch (Exception ex) {
             ex.printStackTrace();
         }
