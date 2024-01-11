@@ -145,7 +145,7 @@ public class ModelTrainer implements Serializable {
     /**
      * Map for periodMinute values
      **/
-    private Map<Integer, Integer> periodMinuteMap = new HashMap<Integer, Integer>();
+    private Map<Integer, List<Integer>> periodMinuteMap = new HashMap<>();
 
     /**
      * Create a model trainer
@@ -204,12 +204,31 @@ public class ModelTrainer implements Serializable {
         this.attributesNamesMap.put(5, "predictions horizon");
         this.attributesNamesMap.put(6, "previous occupancy");
 
-        //fill a periodMinuteMap with values for the training pipeline
-        this.periodMinuteMap.put(0, 5);
-        this.periodMinuteMap.put(1, 15);
-        this.periodMinuteMap.put(2, 30);
-        this.periodMinuteMap.put(3, 60);
-        this.periodMinuteMap.put(4, 180);
+        //fill a periodMinuteMap with values for the training pipeline and their corresponding trainingDataSize
+        //first value: periodMinutes
+        // second value: trainingDataSize to get 1 week of training data total
+        // third value: trainingDataSize to get 4 weeks of training data total
+        List<Integer> values0 = new ArrayList<>();
+        values0.add(10); //window size 10 minutes
+        values0.add(1008); // 10080 minutes in a week -> 1008 10min slots in a week
+        values0.add(4032); // 40320 minutes in 4 weeks -> 4032 10min slots in 4 weeks
+        this.periodMinuteMap.put(0, values0);
+        List<Integer> values1 = new ArrayList<>();
+        values1.add(30);
+        values1.add(336);
+        values1.add(1344);
+        this.periodMinuteMap.put(1, values1);
+        List<Integer> values2 = new ArrayList<>();
+        values2.add(60);
+        values2.add(163);
+        values2.add(672);
+        this.periodMinuteMap.put(2, values2);
+        List<Integer> values3 = new ArrayList<>();
+        values3.add(60);
+        values3.add(163);
+        values3.add(672);
+        this.periodMinuteMap.put(3, values3);
+//        values.clear();
 
 
         // hyperparameter, for RF and KNN
@@ -242,7 +261,7 @@ public class ModelTrainer implements Serializable {
         System.out.println("Querying preprocessed data...");
         System.out.println("Data from table " + settings.preprocessTable + settings.parkingId);
         String query = "SELECT * FROM public.\"" + settings.preprocessTable + settings.parkingId +
-                "\" ORDER BY arrival_unix_seconds ASC LIMIT " + settings.tableLength + ";";
+                "\" ORDER BY arrival_unix_seconds ASC LIMIT " + settings.trainingDataSize + ";";
         Statement st = conn.createStatement();
         return st.executeQuery(query);
     }
@@ -434,7 +453,7 @@ public class ModelTrainer implements Serializable {
         ps.setString(4, formattedInstant);
         // ModelSize: parameterIndex 5. See down below
         ps.setInt(6, settings.parkingId);
-        ps.setInt(7, settings.tableLength);
+        ps.setInt(7, settings.trainingDataSize);
         ps.setInt(8, settings.periodMinutes);     // periods duration in minutes
         ps.setString(9, slotIDsString);     // ids of parking slots to parse
         ps.setString(10, classifierNamesString);     // classifier names
@@ -885,7 +904,7 @@ public class ModelTrainer implements Serializable {
         return parkingOccupancyWithWetter;
     }
 
-    private Properties changeValues(String settingsPath, String att, String clas, int perMin, int tts) {
+    private Properties changeValues(String settingsPath, String att, String clas, int perMin, int td_size) {
         try {
             FileInputStream in = new FileInputStream("src/" + settingsPath);
             Properties props = new Properties();
@@ -896,7 +915,7 @@ public class ModelTrainer implements Serializable {
             props.setProperty("attributes", "{" + att + "}");
             props.setProperty("classifiers", "{" + clas + "}");
             props.setProperty("periodMinutes", String.valueOf(perMin));
-            props.setProperty("trainTestStrategy", String.valueOf(tts));
+            props.setProperty("trainingDataSize", String.valueOf(td_size));
 
             props.store(out, null);
             out.close();
@@ -909,6 +928,8 @@ public class ModelTrainer implements Serializable {
     }
 
     public static void main(String[] args) {
+        //TODO: Implement periodMinutes Case 3: 60min in 24h
+
         try {
             String settingsPath = "main/java/pipeline.properties";
             InputStream input = ModelTrainer.class.getClassLoader().getResourceAsStream(settingsPath);
@@ -921,13 +942,14 @@ public class ModelTrainer implements Serializable {
             String clas_val;
             String att_val;
             int perMin_val;
+            int tdSize_val;
 
-            // Train Test Strategy
-            for (int tts = 0; tts <= 1; tts++) {
+            //Period Minutes
+            for (int perMin = 0; perMin <= 5; perMin++) {
+                perMin_val = trainer.periodMinuteMap.get(perMin).get(0);
 
-                //Period Minutes
-                for (int perMin = 0; perMin <= 5; perMin++) {
-                    perMin_val = trainer.periodMinuteMap.get(perMin);
+                for (int tdSize = 1; tdSize <= 2; tdSize++) {
+                    tdSize_val = trainer.periodMinuteMap.get(perMin).get(tdSize);
 
                     //Classifier
                     for (int clas0 = 0; clas0 <= 1; clas0++) {
@@ -988,7 +1010,7 @@ public class ModelTrainer implements Serializable {
 
                                                                 //Initialize new Object for every iteration
                                                                 props = trainer.changeValues(settingsPath, att_val,
-                                                                        clas_val, perMin_val, tts);
+                                                                        clas_val, perMin_val, tdSize_val);
                                                                 settings = new Settings(settingsPath, props);
                                                                 trainer = new ModelTrainer(settings);
 
@@ -1024,6 +1046,7 @@ public class ModelTrainer implements Serializable {
                     }
                 }
             }
+
         } catch (Exception ex) {
             ex.printStackTrace();
         }
