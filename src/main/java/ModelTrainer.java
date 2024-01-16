@@ -42,7 +42,7 @@ public class ModelTrainer implements Serializable {
         add("weekDay");
         add("month");
         add("year");
-        add("predictionHorizon");
+        add("timeSlot");
         add("previousOccupancy");
         add("occupancy");
     }};
@@ -148,6 +148,12 @@ public class ModelTrainer implements Serializable {
     private Map<Integer, List<Integer>> periodMinuteMap = new HashMap<>();
 
     /**
+     * Map for parkingLot values
+     **/
+    private Map<Integer, Integer> parkingLotMap = new HashMap<>();
+
+
+    /**
      * Create a model trainer
      *
      * @param settings Contains all settings to run training pipeline
@@ -202,11 +208,11 @@ public class ModelTrainer implements Serializable {
         this.attributesNamesMap.put(3, "month");
         this.attributesNamesMap.put(4, "year");
         this.attributesNamesMap.put(5, "previous occupancy");
-        this.attributesNamesMap.put(6, "predictions horizon");
+        this.attributesNamesMap.put(6, "time slot");
 
 
-        //fill a periodMinuteMap with values for the training pipeline and their corresponding trainingDataSize
-        //first value: periodMinutes
+        // fill a periodMinuteMap with values for the training pipeline and their corresponding trainingDataSize
+        // first value: periodMinutes
         // second value: trainingDataSize to get 1 week of training data total
         // third value: trainingDataSize to get 4 weeks of training data total
         List<Integer> values0 = new ArrayList<>();
@@ -230,6 +236,10 @@ public class ModelTrainer implements Serializable {
         values3.add(672);
         this.periodMinuteMap.put(3, values3);
 //        values.clear();
+
+        // fill a parkingLot Map with the corresponding Parking Lot IDs
+        this.parkingLotMap.put(0, 38);
+        this.parkingLotMap.put(1, 634);
 
 
         // hyperparameter, for RF and KNN
@@ -713,7 +723,7 @@ public class ModelTrainer implements Serializable {
         dataWithOccupancyAndWeather.addColumns(IntColumn.create("weekDay", dataWithOccupancyAndWeather.rowCount()),
                 IntColumn.create("month", dataWithOccupancyAndWeather.rowCount()),
                 IntColumn.create("year", dataWithOccupancyAndWeather.rowCount()),
-                IntColumn.create("predictionHorizon", dataWithOccupancyAndWeather.rowCount()), // timeslot in day
+                IntColumn.create("timeSlot", dataWithOccupancyAndWeather.rowCount()), // timeslot in day
                 DoubleColumn.create("previousOccupancy", dataWithOccupancyAndWeather.rowCount()), // occupancy N minutes ago
                 DoubleColumn.create("occupancy", dataWithOccupancyAndWeather.rowCount())); // occupancy now
 
@@ -729,8 +739,12 @@ public class ModelTrainer implements Serializable {
             dataWithOccupancyAndWeather.row(i).setInt("weekDay", tmpDate.getDayOfWeek().getValue());
             dataWithOccupancyAndWeather.row(i).setInt("month", tmpDate.getMonthValue());
             dataWithOccupancyAndWeather.row(i).setInt("year", tmpDate.getYear());
-            dataWithOccupancyAndWeather.row(i).setInt("predictionHorizon",
-                    (tmpDate.getMinute() + tmpDate.getHour() * 60) / (60 / periodsInHour));
+            dataWithOccupancyAndWeather.row(i).setInt("timeSlot",
+                    (tmpDate.getMinute() + tmpDate.getHour() * 60) / (60 / periodsInHour)); //timeslot in a day
+//            System.out.println("Getmin " + tmpDate.getMinute());
+//            System.out.println("Gethour " + tmpDate.getHour());
+//            System.out.println("Per in Hour " + periodsInHour);
+//            System.out.println("pred Hor:" + (tmpDate.getMinute() + tmpDate.getHour() * 60) / (60 / periodsInHour));
             double previousOccupancy = 0;
             if (i > 0) {
                 previousOccupancy = dataWithOccupancyAndWeather.row(i - 1).getDouble("occupancyPercent");
@@ -908,10 +922,10 @@ public class ModelTrainer implements Serializable {
         return parkingOccupancyWithWetter;
     }
 
-    private String generateModelName (String att, String clas, int perMin, int td_size){
+    private String generateModelName(String att, String clas, int perMin, int td_size) {
         String cleanedAtt = att.replace(" ", "");
         String shortClas = null;
-        switch(clas) {
+        switch (clas) {
             case "0":
                 shortClas = "dt";
                 break;
@@ -929,7 +943,7 @@ public class ModelTrainer implements Serializable {
         return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + td_size;
     }
 
-    private Properties changeValues(String settingsPath, String att, String clas, int perMin, int td_size) {
+    private Properties changeValues(String settingsPath, int pID, String att, String clas, int perMin, int td_size) {
         try {
             att = att.substring(0, att.length() - 2); //remove last ", "
 
@@ -939,6 +953,7 @@ public class ModelTrainer implements Serializable {
             in.close();
 
             FileOutputStream out = new FileOutputStream("src/" + settingsPath);
+            props.setProperty("parkingId", String.valueOf(pID));
             props.setProperty("attributes", "{" + att + "}");
             props.setProperty("classifiers", "{" + clas + "}");
             props.setProperty("periodMinutes", String.valueOf(perMin));
@@ -956,9 +971,7 @@ public class ModelTrainer implements Serializable {
     }
 
     public static void main(String[] args) {
-        //TODO: Add timeSlot attribute
         //TODO: Implement periodMinutes Case 3: 60min in 24h
-
 
         try {
             String settingsPath = "main/java/pipeline.properties";
@@ -971,76 +984,86 @@ public class ModelTrainer implements Serializable {
 
             String clas_val;
             String att_val;
+            int pID_val;
             int perMin_val;
             int tdSize_val;
 
-            //Period Minutes
-            for (int perMin = 0; perMin <= 5; perMin++) {
-                perMin_val = trainer.periodMinuteMap.get(perMin).get(0);
+            //Parking Lot
+            for (int pID = 0; pID <= 1; pID++) {
+                pID_val = trainer.parkingLotMap.get(pID);
 
-                //Training Data Size
-                for (int tdSize = 1; tdSize <= 2; tdSize++) {
-                    tdSize_val = trainer.periodMinuteMap.get(perMin).get(tdSize);
+                //Period Minutes
+                for (int perMin = 0; perMin <= 3; perMin++) {
+                    perMin_val = trainer.periodMinuteMap.get(perMin).get(0);
 
-                    //Classifier
-                    for (int clas = 0; clas <= 3; clas++) {
-                        clas_val = String.valueOf(clas);
+                    //Training Data Size
+                    for (int tdSize = 1; tdSize <= 2; tdSize++) {
+                        tdSize_val = trainer.periodMinuteMap.get(perMin).get(tdSize);
 
-                        //Attributes
-                        for (int att0 = 0; att0 <= 1; att0++) {
-                            for (int att1 = 0; att1 <= 1; att1++) {
-                                for (int att2 = 0; att2 <= 1; att2++) {
-                                    for (int att3 = 0; att3 <= 1; att3++) {
-                                        for (int att4 = 0; att4 <= 1; att4++) {
-                                            for (int att5 = 0; att5 <= 1; att5++) {
-                                                //ignore prediction horizon
-                                                att_val = "";
-                                                if (att0 + att1 + att2 + att3 + att4 + att5 == 0) {
-                                                    // all attributes 0 = same as all 1
-                                                    continue;
-                                                }
-                                                if (att0 == 1) {
-                                                    att_val = att_val + "0, ";
-                                                }
-                                                if (att1 == 1) {
-                                                    att_val = att_val + "1, ";
-                                                }
-                                                if (att2 == 1) {
-                                                    att_val = att_val + "2, ";
-                                                }
-                                                if (att3 == 1) {
-                                                    att_val = att_val + "3, ";
-                                                }
-                                                if (att4 == 1) {
-                                                    att_val = att_val + "4, ";
-                                                }
-                                                if (att5 == 1) {
-                                                    att_val = att_val + "5, ";
-                                                }
+                        //Classifier
+                        for (int clas = 0; clas <= 3; clas++) {
+                            clas_val = String.valueOf(clas);
 
-                                                //Initialize new Object for every iteration
-                                                props = trainer.changeValues(settingsPath, att_val,
-                                                        clas_val, perMin_val, tdSize_val);
-                                                settings = new Settings(settingsPath, props);
-                                                trainer = new ModelTrainer(settings);
+                            //Attributes
+                            for (int att0 = 0; att0 <= 1; att0++) {
+                                for (int att1 = 0; att1 <= 1; att1++) {
+                                    for (int att2 = 0; att2 <= 1; att2++) {
+                                        for (int att3 = 0; att3 <= 1; att3++) {
+                                            for (int att4 = 0; att4 <= 1; att4++) {
+                                                for (int att5 = 0; att5 <= 1; att5++) {
+                                                    for (int att6 = 0; att6 <= 1; att6++) {
+                                                        att_val = "";
+                                                        if (att0 + att1 + att2 + att3 + att4 + att5 + att6 == 0) {
+                                                            // all attributes 0 = same as all 1
+                                                            continue;
+                                                        }
+                                                        if (att0 == 1) {
+                                                            att_val = att_val + "0, ";
+                                                        }
+                                                        if (att1 == 1) {
+                                                            att_val = att_val + "1, ";
+                                                        }
+                                                        if (att2 == 1) {
+                                                            att_val = att_val + "2, ";
+                                                        }
+                                                        if (att3 == 1) {
+                                                            att_val = att_val + "3, ";
+                                                        }
+                                                        if (att4 == 1) {
+                                                            att_val = att_val + "4, ";
+                                                        }
+                                                        if (att5 == 1) {
+                                                            att_val = att_val + "5, ";
+                                                        }
+                                                        if (att6 == 1) {
+                                                            att_val = att_val + "6, ";
+                                                        }
 
-                                                ResultSet rs = trainer.queryDB();
-                                                Table tableData = trainer.preprocessing(rs);
-                                                trainer.saveQueryAsInstances(tableData);
-                                                rs.getStatement().close(); // closes the resource
+                                                        //Initialize new Object for every iteration
+                                                        props = trainer.changeValues(settingsPath, pID_val, att_val,
+                                                                clas_val, perMin_val, tdSize_val);
+                                                        settings = new Settings(settingsPath, props);
+                                                        trainer = new ModelTrainer(settings);
 
-                                                // classifiers building
-                                                if (settings.classifiersData.isEmpty()) {
-                                                    System.err.println("Classifier cannot be empty!");
-                                                    break;
-                                                } else {
-                                                    for (int i : settings.classifiersData) {
-                                                        trainer.classifierMap.get(i).buildClassifier
-                                                                (trainer.m_Train_Data);
+                                                        ResultSet rs = trainer.queryDB();
+                                                        Table tableData = trainer.preprocessing(rs);
+                                                        trainer.saveQueryAsInstances(tableData);
+                                                        rs.getStatement().close(); // closes the resource
+
+                                                        // classifiers building
+                                                        if (settings.classifiersData.isEmpty()) {
+                                                            System.err.println("Classifier cannot be empty!");
+                                                            break;
+                                                        } else {
+                                                            for (int i : settings.classifiersData) {
+                                                                trainer.classifierMap.get(i).buildClassifier
+                                                                        (trainer.m_Train_Data);
+                                                            }
+                                                        }
+                                                        trainer.testClassifier();
+                                                        trainer.saveModelToDB();
                                                     }
                                                 }
-                                                trainer.testClassifier();
-                                                trainer.saveModelToDB();
                                             }
                                         }
                                     }
