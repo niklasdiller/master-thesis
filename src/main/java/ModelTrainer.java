@@ -102,6 +102,7 @@ public class ModelTrainer implements Serializable {
      * The Random Forest classifier.
      */
     private RandomForest m_RandomForestClassifier = new RandomForest();
+
     /**
      * Random Forest accuracy variables
      */
@@ -113,6 +114,7 @@ public class ModelTrainer implements Serializable {
      * The Linear Regression classifiert
      **/
     private LinearRegression m_LinearRegressionClassifier = new LinearRegression();
+
     /**
      * Linear Regression accuracy variables
      */
@@ -151,7 +153,6 @@ public class ModelTrainer implements Serializable {
      * Map for parkingLot values
      **/
     private Map<Integer, Integer> parkingLotMap = new HashMap<>();
-
 
     /**
      * Create a model trainer
@@ -210,7 +211,6 @@ public class ModelTrainer implements Serializable {
         this.attributesNamesMap.put(5, "previous occupancy");
         this.attributesNamesMap.put(6, "time slot");
 
-
         // fill a periodMinuteMap with values for the training pipeline and their corresponding trainingDataSize
         // first value: periodMinutes
         // second value: trainingDataSize to get 1 week of training data total
@@ -241,13 +241,10 @@ public class ModelTrainer implements Serializable {
         this.parkingLotMap.put(0, 38);
         this.parkingLotMap.put(1, 634);
 
-
         // hyperparameter, for RF and KNN
         this.m_RandomForestClassifier.setMaxDepth(settings.randomForestMaxDepth);
         this.m_KNNClassifier.setKNN(settings.kNeighbours);
-
     }
-
 
     /**
      * Create a connection to the database
@@ -373,7 +370,6 @@ public class ModelTrainer implements Serializable {
                 .withZone(ZoneId.systemDefault());
         String formattedInstant = formatter.format(instant);
 
-
         // preparation for saving
         String slotIDsString = "", classifierNamesString = "", attributesString = "";
 
@@ -394,9 +390,6 @@ public class ModelTrainer implements Serializable {
                 classifierNamesString = (classifierNamesMap.get(classifierNumber));
             }
         }
-
-        //Binary Model
-        boolean binaryModel = settings.classifiersData.size() == 1;
 
         //Modelsize
         int modelSize = 0;
@@ -454,11 +447,11 @@ public class ModelTrainer implements Serializable {
                 "INSERT INTO " + settings.tableName + " (" +
                 "model_name, developer, train_test_strategy, created_time, model_size_in_bytes," +
                 "parking_id, training_data_size, period_minutes, slotsIDs," +
-                "classifiers, binary_model, attributes, trainingDataProportion," +
+                "classifiers, attributes, trainingDataProportion," +
                 "accuracyPercent, randomForestMaxDepth, kNeighbours, " +
                 "accuracyDT, accuracyRF, accuracyLR, accuracyKNN, decision_tree," +
                 "random_forest, linear_regression, k_nearest_neighbors, window_stride) " +
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"); // number of ? has to be the same as the number of columns
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"); // number of ? has to be the same as the number of columns
 
         ps.setString(1, settings.modelName);
         ps.setString(2, settings.developer);
@@ -470,21 +463,20 @@ public class ModelTrainer implements Serializable {
         ps.setInt(8, settings.periodMinutes);     // periods duration in minutes
         ps.setString(9, slotIDsString);     // ids of parking slots to parse
         ps.setString(10, classifierNamesString);     // classifier names
-        ps.setBoolean(11, binaryModel);
-        ps.setString(12, attributesString); // attributes
-        ps.setDouble(13, settings.trainProp); // train part
-        ps.setInt(14, settings.accuracyPercent);     // deviation percentage for accuracy calculation
-        ps.setInt(15, settings.randomForestMaxDepth);     // max depth for Random Forest Classifier
-        ps.setInt(16, settings.kNeighbours);     // number of neighbours for k-Nearest Neighbours Classifier
+        ps.setString(11, attributesString); // attributes
+        ps.setDouble(12, settings.trainProp); // train part
+        ps.setInt(13, settings.accuracyPercent);     // deviation percentage for accuracy calculation
+        ps.setInt(14, settings.randomForestMaxDepth);     // max depth for Random Forest Classifier
+        ps.setInt(15, settings.kNeighbours);     // number of neighbours for k-Nearest Neighbours Classifier
 
         // accuracy results
-        ps.setString(17, accuracyInfoDTString);
-        ps.setString(18, accuracyInfoRFString);
-        ps.setString(19, accuracyInfoLRString);
-        ps.setString(20, accuracyInfoKNNString);
+        ps.setString(16, accuracyInfoDTString);
+        ps.setString(17, accuracyInfoRFString);
+        ps.setString(18, accuracyInfoLRString);
+        ps.setString(19, accuracyInfoKNNString);
 
         // writing trained classifiers (if exist) binary data
-        int columnIndexToWrite = 21;
+        int columnIndexToWrite = 20;
         for (int i = 0; i < 4; i++) {
             if (listForClassifierIndexes.isEmpty() || listForClassifierIndexes.contains(i)) {
 
@@ -511,7 +503,7 @@ public class ModelTrainer implements Serializable {
             }
         }
         ps.setInt(5, modelSize);
-        ps.setInt(25, settings.periodMinutes); //Window Stride always same as Window Size (period minutes)
+        ps.setInt(24, settings.periodMinutes); //Window Stride always same as Window Size (period minutes)
 
         ps.executeUpdate(); // execution
         ps.close();
@@ -745,6 +737,9 @@ public class ModelTrainer implements Serializable {
 //            System.out.println("Gethour " + tmpDate.getHour());
 //            System.out.println("Per in Hour " + periodsInHour);
 //            System.out.println("pred Hor:" + (tmpDate.getMinute() + tmpDate.getHour() * 60) / (60 / periodsInHour));
+//            System.out.println("weekday: " + tmpDate.getDayOfWeek().getValue());
+//            System.out.println("month: " + tmpDate.getMonthValue());
+
             double previousOccupancy = 0;
             if (i > 0) {
                 previousOccupancy = dataWithOccupancyAndWeather.row(i - 1).getDouble("occupancyPercent");
