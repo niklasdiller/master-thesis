@@ -232,8 +232,8 @@ public class ModelTrainer implements Serializable {
         this.periodMinuteMap.put(2, values2);
         List<Integer> values3 = new ArrayList<>();
         values3.add(60);
-        values3.add(163);
-        values3.add(672);
+        values3.add(192); //to get values for 24h after the last instance
+        values3.add(696);
         this.periodMinuteMap.put(3, values3);
 //        values.clear();
 
@@ -614,7 +614,7 @@ public class ModelTrainer implements Serializable {
      * @return Table object
      * @throws Exception
      */
-    private Table preprocessing(ResultSet rs) throws Exception {
+    private Table preprocessing(ResultSet rs, boolean shift24h) throws Exception {
         Table dataAllID = new DataFrameReader(new ReaderRegistry()).db(rs);
         Table data = dataAllID.emptyCopy();
 
@@ -733,12 +733,7 @@ public class ModelTrainer implements Serializable {
             dataWithOccupancyAndWeather.row(i).setInt("year", tmpDate.getYear());
             dataWithOccupancyAndWeather.row(i).setInt("timeSlot",
                     (tmpDate.getMinute() + tmpDate.getHour() * 60) / (60 / periodsInHour)); //timeslot in a day
-//            System.out.println("Getmin " + tmpDate.getMinute());
-//            System.out.println("Gethour " + tmpDate.getHour());
-//            System.out.println("Per in Hour " + periodsInHour);
-//            System.out.println("pred Hor:" + (tmpDate.getMinute() + tmpDate.getHour() * 60) / (60 / periodsInHour));
-//            System.out.println("weekday: " + tmpDate.getDayOfWeek().getValue());
-//            System.out.println("month: " + tmpDate.getMonthValue());
+
 
             double previousOccupancy = 0;
             if (i > 0) {
@@ -750,10 +745,26 @@ public class ModelTrainer implements Serializable {
             dataWithOccupancyAndWeather.row(i).setDouble("occupancy",
                     dataWithOccupancyAndWeather.row(i).getDouble("occupancyPercent"));
         }
+
+//        System.out.println(dataWithOccupancyAndWeather.first(10));
+//        System.out.println(dataWithOccupancyAndWeather.rowCount());
+
+        if (shift24h) {
+            for (int i = 0; i < dataWithOccupancyAndWeather.rowCount() - (1440 / periodMinutes); i++) { //exclude the last 24h
+
+                //Get occ value shifted for 24h
+                double occ24 = dataWithOccupancyAndWeather.row(i + (1440 / periodMinutes)).getDouble("occupancy");
+                dataWithOccupancyAndWeather.row(i).setDouble("occupancy", occ24); //Overwrite the occ column
+            }
+
+            int tablelength = dataWithOccupancyAndWeather.rowCount();
+            dataWithOccupancyAndWeather = dataWithOccupancyAndWeather.dropRange(tablelength - (1440 / periodMinutes) + 1, tablelength); //drop the last 24h of data
+            //NOTE: Previous Occupancy not updated, as value is not yet "seen" in use case of shifting
+        }
+
         dataWithOccupancyAndWeather.removeColumns("periodStartSeconds", "occupancyPercent");
 
-        System.out.println(dataWithOccupancyAndWeather.first(5));
-
+        System.out.println(dataWithOccupancyAndWeather.first(10));
 
         return dataWithOccupancyAndWeather;
     }
@@ -917,9 +928,10 @@ public class ModelTrainer implements Serializable {
         return parkingOccupancyWithWetter;
     }
 
-    private String generateModelName(String att, String clas, int perMin, int td_size) {
+    private String generateModelName(String att, String clas, int perMin, int td_size, boolean shift24h) {
+        String shift = null;
         String cleanedAtt = att.replace(" ", "");
-        String shortClas = null;
+        String shortClas = "";
         switch (clas) {
             case "0":
                 shortClas = "dt";
@@ -935,10 +947,14 @@ public class ModelTrainer implements Serializable {
                 break;
         }
 
+        if (shift24h) {
+            shift = "-24h";
+            return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + td_size + shift;
+        }
         return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + td_size;
     }
 
-    private Properties changeValues(String settingsPath, int pID, String att, String clas, int perMin, int td_size) {
+    private Properties changeValues(String settingsPath, int pID, String att, String clas, int perMin, int td_size, boolean shift24h) {
         try {
             att = att.substring(0, att.length() - 2); //remove last ", "
 
@@ -953,7 +969,7 @@ public class ModelTrainer implements Serializable {
             props.setProperty("classifiers", "{" + clas + "}");
             props.setProperty("periodMinutes", String.valueOf(perMin));
             props.setProperty("trainingDataSize", String.valueOf(td_size));
-            props.setProperty("modelName", generateModelName(att, clas, perMin, td_size));
+            props.setProperty("modelName", generateModelName(att, clas, perMin, td_size, shift24h));
 
             props.store(out, null);
             out.close();
@@ -966,8 +982,6 @@ public class ModelTrainer implements Serializable {
     }
 
     public static void main(String[] args) {
-        //TODO: Implement periodMinutes Case 3: 60min in 24h
-
         try {
             String settingsPath = "main/java/pipeline.properties";
             InputStream input = ModelTrainer.class.getClassLoader().getResourceAsStream(settingsPath);
@@ -982,6 +996,7 @@ public class ModelTrainer implements Serializable {
             int pID_val;
             int perMin_val;
             int tdSize_val;
+            boolean shift24h = false;
 
             //Parking Lot
             for (int pID = 0; pID <= 1; pID++) {
@@ -990,6 +1005,11 @@ public class ModelTrainer implements Serializable {
                 //Period Minutes
                 for (int perMin = 0; perMin <= 3; perMin++) {
                     perMin_val = trainer.periodMinuteMap.get(perMin).get(0);
+
+                    //set flag for 24h occupancy prediction used in preprocessing
+                    if (perMin == 3) {
+                        shift24h = true;
+                    }
 
                     //Training Data Size
                     for (int tdSize = 1; tdSize <= 2; tdSize++) {
@@ -1036,12 +1056,12 @@ public class ModelTrainer implements Serializable {
 
                                                         //Initialize new Object for every iteration
                                                         props = trainer.changeValues(settingsPath, pID_val, att_val,
-                                                                clas_val, perMin_val, tdSize_val);
+                                                                clas_val, perMin_val, tdSize_val, shift24h);
                                                         settings = new Settings(settingsPath, props);
                                                         trainer = new ModelTrainer(settings);
 
                                                         ResultSet rs = trainer.queryDB();
-                                                        Table tableData = trainer.preprocessing(rs);
+                                                        Table tableData = trainer.preprocessing(rs, shift24h);
                                                         trainer.saveQueryAsInstances(tableData);
                                                         rs.getStatement().close(); // closes the resource
 
