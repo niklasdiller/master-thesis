@@ -20,7 +20,7 @@ class Settings {
     String developer;
     int parkingId;
     int periodMinutes;
-    int trainingDataSize;
+    int trainingWeeks;
     int randomForestMaxDepth;
     int kNeighbours;
     int accuracyPercent;
@@ -57,7 +57,7 @@ class Settings {
         attributesData = parseStringToIntList(attributesJSON);
         parkingId = getSettingAsInt("parkingId", false);
         periodMinutes = getSettingAsInt("periodMinutes", false);
-        trainingDataSize = getSettingAsInt("trainingDataSize", false);
+        trainingWeeks = getSettingAsInt("trainingWeeks", false);
         saveIn = getSettingAsString("saveIn", false);
         modelName = getSettingAsString("modelName", false);
         trainTestStrategy = getSettingAsInt("trainTestStrategy", false);
