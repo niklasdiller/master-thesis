@@ -719,6 +719,7 @@ public class ModelTrainer implements Serializable {
                 DoubleColumn.create("previousOccupancy", dataWithOccupancyAndWeather.rowCount()), // occupancy N minutes ago
                 DoubleColumn.create("occupancy", dataWithOccupancyAndWeather.rowCount())); // occupancy now
 
+
         // if horizon is less than an hour, hour
         int periodsInHour = 1;
         if (periodMinutes < 60)
@@ -733,6 +734,10 @@ public class ModelTrainer implements Serializable {
             dataWithOccupancyAndWeather.row(i).setInt("year", tmpDate.getYear());
             dataWithOccupancyAndWeather.row(i).setInt("timeSlot",
                     (tmpDate.getMinute() + tmpDate.getHour() * 60) / (60 / periodsInHour)); //timeslot in a day
+
+//            System.out.println(tmpDate.getMinute());
+//            System.out.println(tmpDate.getHour());
+//            System.out.println((tmpDate.getMinute() + tmpDate.getHour() * 60) / (60 / periodsInHour));
 
 
             double previousOccupancy = 0;
@@ -750,17 +755,23 @@ public class ModelTrainer implements Serializable {
 //        System.out.println(dataWithOccupancyAndWeather.rowCount());
 
         if (shift24h) {
-            for (int i = 0; i < dataWithOccupancyAndWeather.rowCount() - (1440 / periodMinutes); i++) { //exclude the last 24h
+            //Exclude the last 24h
+            for (int i = 0; i < dataWithOccupancyAndWeather.rowCount() - (1440 / periodMinutes); i++) {
 
                 //Get occ value shifted for 24h
-                double occ24 = dataWithOccupancyAndWeather.row(i + (1440 / periodMinutes)).getDouble("occupancy");
+                double occ24 = dataWithOccupancyAndWeather.row(i + (1440 / periodMinutes))
+                        .getDouble("occupancy");
                 dataWithOccupancyAndWeather.row(i).setDouble("occupancy", occ24); //Overwrite the occ column
             }
 
             int tablelength = dataWithOccupancyAndWeather.rowCount();
-            dataWithOccupancyAndWeather = dataWithOccupancyAndWeather.dropRange(tablelength - (1440 / periodMinutes) + 1, tablelength); //drop the last 24h of data
+            dataWithOccupancyAndWeather = dataWithOccupancyAndWeather.dropRange
+                    (tablelength - (1440 / periodMinutes) + 1, tablelength); //drop the last 24h of data
             //NOTE: Previous Occupancy not updated, as value is not yet "seen" in use case of shifting
         }
+
+        //TODO: Wetterdaten mit 24hshift übergeben (-> In der Anwendung dann Wettervorhersage nutzen)
+        //TODO: Alle Daten mit shift übergeben, auch previous occ. (Problematik mit prev. occ. in 24h offen)
 
         dataWithOccupancyAndWeather.removeColumns("periodStartSeconds", "occupancyPercent");
 
@@ -956,7 +967,7 @@ public class ModelTrainer implements Serializable {
 
     private Properties changeValues(String settingsPath, int pID, String att, String clas, int perMin, int td_size, boolean shift24h) {
         try {
-            att = att.substring(0, att.length() - 2); //remove last ", "
+//            att = att.substring(0, att.length() - 2); //remove last ", "
 
             FileInputStream in = new FileInputStream("src/" + settingsPath);
             Properties props = new Properties();
@@ -998,12 +1009,13 @@ public class ModelTrainer implements Serializable {
             int tdSize_val;
             boolean shift24h = false;
 
+
             //Parking Lot
-            for (int pID = 0; pID <= 1; pID++) {
+            for (int pID = 0; pID <= trainer.parkingLotMap.size() - 1; pID++) {
                 pID_val = trainer.parkingLotMap.get(pID);
 
                 //Period Minutes
-                for (int perMin = 0; perMin <= 3; perMin++) {
+                for (int perMin = 0; perMin <= trainer.periodMinuteMap.size() - 1; perMin++) {
                     perMin_val = trainer.periodMinuteMap.get(perMin).get(0);
 
                     //set flag for 24h occupancy prediction used in preprocessing
@@ -1012,11 +1024,11 @@ public class ModelTrainer implements Serializable {
                     }
 
                     //Training Data Size
-                    for (int tdSize = 1; tdSize <= 2; tdSize++) {
+                    for (int tdSize = 1; tdSize <= trainer.periodMinuteMap.get(perMin).size()-1; tdSize++) {
                         tdSize_val = trainer.periodMinuteMap.get(perMin).get(tdSize);
 
                         //Classifier
-                        for (int clas = 0; clas <= 3; clas++) {
+                        for (int clas = 0; clas <= trainer.classifierMap.size() - 1; clas++) {
                             clas_val = String.valueOf(clas);
 
                             //Attributes
@@ -1026,59 +1038,57 @@ public class ModelTrainer implements Serializable {
                                         for (int att3 = 0; att3 <= 1; att3++) {
                                             for (int att4 = 0; att4 <= 1; att4++) {
                                                 for (int att5 = 0; att5 <= 1; att5++) {
-                                                    for (int att6 = 0; att6 <= 1; att6++) {
-                                                        att_val = "";
-                                                        if (att0 + att1 + att2 + att3 + att4 + att5 + att6 == 0) {
-                                                            // all attributes 0 = same as all 1
-                                                            continue;
-                                                        }
-                                                        if (att0 == 1) {
-                                                            att_val = att_val + "0, ";
-                                                        }
-                                                        if (att1 == 1) {
-                                                            att_val = att_val + "1, ";
-                                                        }
-                                                        if (att2 == 1) {
-                                                            att_val = att_val + "2, ";
-                                                        }
-                                                        if (att3 == 1) {
-                                                            att_val = att_val + "3, ";
-                                                        }
-                                                        if (att4 == 1) {
-                                                            att_val = att_val + "4, ";
-                                                        }
-                                                        if (att5 == 1) {
-                                                            att_val = att_val + "5, ";
-                                                        }
-                                                        if (att6 == 1) {
-                                                            att_val = att_val + "6, ";
-                                                        }
 
-                                                        //Initialize new Object for every iteration
-                                                        props = trainer.changeValues(settingsPath, pID_val, att_val,
-                                                                clas_val, perMin_val, tdSize_val, shift24h);
-                                                        settings = new Settings(settingsPath, props);
-                                                        trainer = new ModelTrainer(settings);
-
-                                                        ResultSet rs = trainer.queryDB();
-                                                        Table tableData = trainer.preprocessing(rs, shift24h);
-                                                        trainer.saveQueryAsInstances(tableData);
-                                                        rs.getStatement().close(); // closes the resource
-
-                                                        // classifiers building
-                                                        if (settings.classifiersData.isEmpty()) {
-                                                            System.err.println("Classifier cannot be empty!");
-                                                            break;
-                                                        } else {
-                                                            for (int i : settings.classifiersData) {
-                                                                trainer.classifierMap.get(i).buildClassifier
-                                                                        (trainer.m_Train_Data);
-                                                            }
-                                                        }
-                                                        trainer.testClassifier();
-                                                        trainer.saveModelToDB();
+                                                    att_val = "";
+//                                                    if (att0 + att1 + att2 + att3 + att4 + att5 +  == 0) {
+//                                                        // all attributes 0 = same as all 1
+//                                                        continue;
+//                                                    }
+                                                    if (att0 == 1) {
+                                                        att_val = att_val + "0, ";
                                                     }
+                                                    if (att1 == 1) {
+                                                        att_val = att_val + "1, ";
+                                                    }
+                                                    if (att2 == 1) {
+                                                        att_val = att_val + "2, ";
+                                                    }
+                                                    if (att3 == 1) {
+                                                        att_val = att_val + "3, ";
+                                                    }
+                                                    if (att4 == 1) {
+                                                        att_val = att_val + "4, ";
+                                                    }
+                                                    if (att5 == 1) {
+                                                        att_val = att_val + "5, ";
+                                                    }
+                                                    att_val += "6"; //TimeSlot always a feautre
+
+                                                    //Initialize new Object for every iteration
+                                                    props = trainer.changeValues(settingsPath, pID_val, att_val,
+                                                            clas_val, perMin_val, tdSize_val, shift24h);
+                                                    settings = new Settings(settingsPath, props);
+                                                    trainer = new ModelTrainer(settings);
+
+                                                    ResultSet rs = trainer.queryDB();
+                                                    Table tableData = trainer.preprocessing(rs, shift24h);
+                                                    trainer.saveQueryAsInstances(tableData);
+                                                    rs.getStatement().close(); // closes the resource
+
+                                                    // classifiers building
+                                                    if (settings.classifiersData.isEmpty()) {
+                                                        System.err.println("Classifier cannot be empty!");
+                                                        break;
+                                                    } else {
+                                                        for (int i : settings.classifiersData) {
+                                                            trainer.classifierMap.get(i).buildClassifier
+                                                                    (trainer.m_Train_Data);
+                                                        }
+                                                    }
+                                                    trainer.testClassifier();
+                                                    trainer.saveModelToDB();
                                                 }
+
                                             }
                                         }
                                     }
