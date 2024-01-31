@@ -70,7 +70,7 @@ public class ModelTrainer implements Serializable {
     /**
      * Database connection
      */
-    private static Connection conn;
+    public static Connection conn;
 
     /**
      * Period in minutes
@@ -147,7 +147,7 @@ public class ModelTrainer implements Serializable {
     /**
      * Map for periodMinute values
      **/
-    private Map<Integer, List<Integer>> periodMinuteMap = new HashMap<>();
+    public Map<Integer, List<Integer>> periodMinuteMap = new HashMap<>();
 
 
     /**
@@ -158,7 +158,7 @@ public class ModelTrainer implements Serializable {
     /**
      * Map for parkingLot values
      **/
-    private Map<Integer, Integer> parkingLotMap = new HashMap<>();
+    public Map<Integer, Integer> parkingLotMap = new HashMap<>();
 
     /**
      * Create a model trainer
@@ -257,7 +257,7 @@ public class ModelTrainer implements Serializable {
      *
      * @throws SQLException
      */
-    private void createDBConnection() throws SQLException {
+    public void createDBConnection() throws SQLException {
         Properties props = new Properties();
         props.setProperty("user", settings.dbUsername);
         props.setProperty("password", settings.dbPassword);
@@ -269,9 +269,9 @@ public class ModelTrainer implements Serializable {
     /**
      * Get preprocessed data from previously existing table in db
      *
-     * @return A ResultSet containing the matching rows
+     * @return A ResultSet containing the matching rowsprep
      */
-    private ResultSet queryDB() throws SQLException {
+    public ResultSet queryDB() throws SQLException {
         System.out.println("Querying preprocessed data...");
         trainingDataSize = settings.trainingWeeks * (10080 / settings.periodMinutes);
         System.out.println("Data from table " + settings.preprocessTable + settings.parkingId);
@@ -318,6 +318,8 @@ public class ModelTrainer implements Serializable {
 
         int i = 0;
         int validSize = (int) (settings.trainProp * 10);
+
+        //TODO: Take the table containing all preprocessed data, make copy and drop all rows containing other than relevant information
 
         if (table.isEmpty())
             throw new NullPointerException("The table is empty");
@@ -622,7 +624,7 @@ public class ModelTrainer implements Serializable {
      * @return Table object
      * @throws Exception
      */
-    private Table preprocessing(ResultSet rs, boolean shift24h) throws Exception {
+    public Table preprocessing(ResultSet rs, boolean shift24h) throws Exception {
         Table dataAllID = new DataFrameReader(new ReaderRegistry()).db(rs);
         Table data = dataAllID.emptyCopy();
 
@@ -759,12 +761,11 @@ public class ModelTrainer implements Serializable {
                     dataWithOccupancyAndWeather.row(i).getDouble("occupancyPercent"));
         }
 
-//        System.out.println(dataWithOccupancyAndWeather.first(10));
-//        System.out.println(dataWithOccupancyAndWeather.rowCount());
+        System.out.println("Actual length: " + dataWithOccupancyAndWeather.rowCount());
 
-        if (shift24h) {
+        if (shift24h) { //TODO: Check why rows are missing: Zu viele Rows am ende beshcnitten?
             //Exclude the last 24h
-            for (int i = 0; i < dataWithOccupancyAndWeather.rowCount() - (1440 / periodMinutes); i++) {
+            for (int i = 0; i < dataWithOccupancyAndWeather.rowCount() - (1440 / periodMinutes); i++) { //1440 min in a day
 
                 //Get occ value shifted for 24h
                 double occ24 = dataWithOccupancyAndWeather.row(i + (1440 / periodMinutes))
@@ -773,16 +774,17 @@ public class ModelTrainer implements Serializable {
             }
 
             int tablelength = dataWithOccupancyAndWeather.rowCount();
+
             dataWithOccupancyAndWeather = dataWithOccupancyAndWeather.dropRange
                     (tablelength - (1440 / periodMinutes) + 1, tablelength); //drop the last 24h of data
             //NOTE: Previous Occupancy not updated, as value is not yet "seen" in use case of shifting
         }
 
-        //TODO: Wetterdaten mit 24hshift übergeben (-> In der Anwendung dann Wettervorhersage nutzen)
-        //TODO: Alle Daten mit shift übergeben, auch previous occ. (Problematik mit prev. occ. in 24h offen)
+        //TODO: Alle Daten mit shift übergeben, außer previous occ.
 
         dataWithOccupancyAndWeather.removeColumns("periodStartSeconds", "occupancyPercent");
 
+        System.out.println("Length after 24h: " + dataWithOccupancyAndWeather.rowCount());
         System.out.println(dataWithOccupancyAndWeather.first(10));
 
         return dataWithOccupancyAndWeather;
@@ -1022,13 +1024,9 @@ public class ModelTrainer implements Serializable {
                 pID_val = trainer.parkingLotMap.get(pID);
 
                 //Period Minutes
-                for (int perMin = 0; perMin <= trainer.periodMinuteMap.size() - 1; perMin++) {
+                for (int perMin = 2; perMin <= trainer.periodMinuteMap.size() - 1; perMin++) {
                     perMin_val = trainer.periodMinuteMap.get(perMin).get(0);
 
-                    //set flag for 24h occupancy prediction used in preprocessing
-                    if (perMin == 3) {
-                        shift24h = true;
-                    }
 
                     //Training Data Size in Weeks
                     for (int weeks = 1; weeks <= trainer.periodMinuteMap.get(perMin).size() - 1; weeks++) {
@@ -1047,10 +1045,10 @@ public class ModelTrainer implements Serializable {
                                                 for (int att5 = 0; att5 <= 1; att5++) {
 
                                                     att_val = "";
-//                                                    if (att0 + att1 + att2 + att3 + att4 + att5  == 0) {
-//                                                        // all attributes 0 = same as all 1
-//                                                        continue;
-//                                                    }
+                                                    if (att0 + att1 + att2 + att3 + att4 + att5 == 0) {
+                                                        // all attributes 0 = same as all 1
+                                                        continue;
+                                                    }
                                                     if (att0 == 1) {
                                                         att_val = att_val + "0, ";
                                                     }
@@ -1071,6 +1069,9 @@ public class ModelTrainer implements Serializable {
                                                     }
                                                     att_val += "6"; //TimeSlot always a feature
 
+                                                    //set flag for 24h occupancy prediction used in preprocessing
+                                                    if (perMin == 3) shift24h = true;
+
                                                     //Initialize new Object for every iteration
                                                     props = trainer.changeValues(settingsPath, pID_val, att_val,
                                                             clas_val, perMin_val, weeks_val, shift24h);
@@ -1081,6 +1082,7 @@ public class ModelTrainer implements Serializable {
                                                     Table tableData = trainer.preprocessing(rs, shift24h);
                                                     trainer.saveQueryAsInstances(tableData);
                                                     rs.getStatement().close(); // closes the resource
+                                                    shift24h = false; //reset shift flag
 
                                                     // classifiers building
                                                     if (settings.classifiersData.isEmpty()) {
@@ -1095,7 +1097,6 @@ public class ModelTrainer implements Serializable {
                                                     trainer.testClassifier();
                                                     trainer.saveModelToDB();
                                                 }
-
                                             }
                                         }
                                     }
