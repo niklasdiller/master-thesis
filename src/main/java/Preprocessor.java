@@ -24,7 +24,6 @@ public class Preprocessor {
 
     public Connection conn;
 
-
     /**
      * Create a model trainer
      *
@@ -124,7 +123,7 @@ public class Preprocessor {
                     ResultSet rs = trainer.queryDB();
                     Table tableData = trainer.preprocessing(rs, shift24h);
                     prep.saveTable(tableData, pID_val, perMin_val, shift24h);
-                    shift24h = false;
+                    shift24h = false; //reset flag
                 }
             }
 

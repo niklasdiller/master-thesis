@@ -745,11 +745,6 @@ public class ModelTrainer implements Serializable {
             dataWithOccupancyAndWeather.row(i).setInt("timeSlot",
                     (tmpDate.getMinute() + tmpDate.getHour() * 60) / (60 / periodsInHour)); //timeslot in a day
 
-//            System.out.println(tmpDate.getMinute());
-//            System.out.println(tmpDate.getHour());
-//            System.out.println((tmpDate.getMinute() + tmpDate.getHour() * 60) / (60 / periodsInHour));
-
-
             double previousOccupancy = 0;
             if (i > 0) {
                 previousOccupancy = dataWithOccupancyAndWeather.row(i - 1).getDouble("occupancyPercent");
@@ -761,30 +756,23 @@ public class ModelTrainer implements Serializable {
                     dataWithOccupancyAndWeather.row(i).getDouble("occupancyPercent"));
         }
 
-        System.out.println("Actual length: " + dataWithOccupancyAndWeather.rowCount());
+        if (shift24h) {
+            for (int i = 0; i<dataWithOccupancyAndWeather.rowCount(); i++) {
+                LocalDateTime tmpDate = LocalDateTime.ofInstant(Instant.ofEpochSecond(dataWithOccupancyAndWeather
+                                .row(i).getLong("periodStartSeconds")),
+                                TimeZone.getDefault().toZoneId());
+                LocalDateTime newDate = tmpDate.minusHours(24);
 
-        if (shift24h) { //TODO: Check why rows are missing: Zu viele Rows am ende beshcnitten?
-            //Exclude the last 24h
-            for (int i = 0; i < dataWithOccupancyAndWeather.rowCount() - (1440 / periodMinutes); i++) { //1440 min in a day
-
-                //Get occ value shifted for 24h
-                double occ24 = dataWithOccupancyAndWeather.row(i + (1440 / periodMinutes))
-                        .getDouble("occupancy");
-                dataWithOccupancyAndWeather.row(i).setDouble("occupancy", occ24); //Overwrite the occ column
+                dataWithOccupancyAndWeather.row(i).setInt("weekDay", newDate.getDayOfWeek().getValue());
+                dataWithOccupancyAndWeather.row(i).setInt("month", newDate.getMonthValue());
+                dataWithOccupancyAndWeather.row(i).setInt("year", newDate.getYear());
+                //because prev. occ. makes no sense in this case:
+                dataWithOccupancyAndWeather.row(i).setDouble("previousOccupancy", -1);
             }
-
-            int tablelength = dataWithOccupancyAndWeather.rowCount();
-
-            dataWithOccupancyAndWeather = dataWithOccupancyAndWeather.dropRange
-                    (tablelength - (1440 / periodMinutes) + 1, tablelength); //drop the last 24h of data
-            //NOTE: Previous Occupancy not updated, as value is not yet "seen" in use case of shifting
         }
-
-        //TODO: Alle Daten mit shift übergeben, außer previous occ.
 
         dataWithOccupancyAndWeather.removeColumns("periodStartSeconds", "occupancyPercent");
 
-        System.out.println("Length after 24h: " + dataWithOccupancyAndWeather.rowCount());
         System.out.println(dataWithOccupancyAndWeather.first(10));
 
         return dataWithOccupancyAndWeather;
@@ -1024,11 +1012,10 @@ public class ModelTrainer implements Serializable {
                 pID_val = trainer.parkingLotMap.get(pID);
 
                 //Period Minutes
-                for (int perMin = 2; perMin <= trainer.periodMinuteMap.size() - 1; perMin++) {
+                for (int perMin = 0; perMin <= trainer.periodMinuteMap.size() - 1; perMin++) {
                     perMin_val = trainer.periodMinuteMap.get(perMin).get(0);
 
-
-                    //Training Data Size in Weeks
+                    //Training Data Size in Weeks. Initial value 1, see hashmap
                     for (int weeks = 1; weeks <= trainer.periodMinuteMap.get(perMin).size() - 1; weeks++) {
                         weeks_val = trainer.periodMinuteMap.get(perMin).get(weeks);
 
@@ -1044,11 +1031,11 @@ public class ModelTrainer implements Serializable {
                                             for (int att4 = 0; att4 <= 1; att4++) {
                                                 for (int att5 = 0; att5 <= 1; att5++) {
 
+                                                    //set flag for 24h occupancy prediction used in preprocessing
+                                                    if (perMin == 3) shift24h = true;
+
                                                     att_val = "";
-                                                    if (att0 + att1 + att2 + att3 + att4 + att5 == 0) {
-                                                        // all attributes 0 = same as all 1
-                                                        continue;
-                                                    }
+
                                                     if (att0 == 1) {
                                                         att_val = att_val + "0, ";
                                                     }
@@ -1064,13 +1051,10 @@ public class ModelTrainer implements Serializable {
                                                     if (att4 == 1) {
                                                         att_val = att_val + "4, ";
                                                     }
-                                                    if (att5 == 1) {
+                                                    if (att5 == 1 && !shift24h) { //as no prev. occ. in 24h shift
                                                         att_val = att_val + "5, ";
                                                     }
                                                     att_val += "6"; //TimeSlot always a feature
-
-                                                    //set flag for 24h occupancy prediction used in preprocessing
-                                                    if (perMin == 3) shift24h = true;
 
                                                     //Initialize new Object for every iteration
                                                     props = trainer.changeValues(settingsPath, pID_val, att_val,
