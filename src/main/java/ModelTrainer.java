@@ -156,6 +156,11 @@ public class ModelTrainer implements Serializable {
     private int trainingDataSize;
 
     /**
+     * Month and year of first entry of data used to train a model
+     **/
+    private String startOfTrainingData;
+
+    /**
      * Map for parkingLot values
      **/
     public Map<Integer, Integer> parkingLotMap = new HashMap<>();
@@ -271,12 +276,11 @@ public class ModelTrainer implements Serializable {
      *
      * @return A ResultSet containing the matching rowsprep
      */
-    public ResultSet queryDB() throws SQLException {
+    public ResultSet queryDB() throws SQLException { //query all Data to put into preproc table
         System.out.println("Querying preprocessed data...");
-        trainingDataSize = settings.trainingWeeks * (10080 / settings.periodMinutes);
-        System.out.println("Data from table " + settings.preprocessTable + settings.parkingId);
-        String query = "SELECT * FROM public.\"" + settings.preprocessTable + settings.parkingId +
-                "\" ORDER BY arrival_unix_seconds ASC LIMIT " + trainingDataSize + ";";
+        System.out.println("Data from table " + settings.rawTable + settings.parkingId);
+        String query = "SELECT * FROM public.\"" + settings.rawTable + settings.parkingId +
+                "\" ORDER BY arrival_unix_seconds ASC;";
         Statement st = conn.createStatement();
         return st.executeQuery(query);
     }
@@ -291,6 +295,7 @@ public class ModelTrainer implements Serializable {
     private Instance createInstance(Row rowData) throws Exception {
         Instance instance = new DenseInstance(this.m_Train_Data.numAttributes());
         instance.setDataset(this.m_Train_Data);
+
 
         for (int attribute : this.attributeIndexes) {
             if (attribute == 0 || attribute == 1 || attribute == 6) {
@@ -308,6 +313,49 @@ public class ModelTrainer implements Serializable {
         return instance;
     }
 
+
+    /**
+     * Get the preprocessed data for model training from DB
+     *
+     * @param settings for the model to be trained
+     */
+    private Table getPreprocData(Settings settings, boolean shift24h) throws SQLException {
+        System.out.println("Data from table " + settings.preprocessedTable + ".");
+        System.out.println("Filter for pID" + settings.parkingId + ", perMin" + settings.periodMinutes + ".");
+        System.out.println("Training Data Size is " + settings.trainingWeeks + " weeks long.");
+
+        //Context to select only relevant preprocessed data
+        String context = "pID" + settings.parkingId + "_perMin" + settings.periodMinutes;
+        if (shift24h) context += "_24h";
+
+        trainingDataSize = settings.trainingWeeks * 7 * (1440/ settings.periodMinutes); //rows that make up trainingWeeks weeks
+
+        //TODO: make sure data is ordered correctly -> Not only mondays etc.
+
+        String query = "SELECT temp, humidity, weekday, month, year, time_slot, previous_occupancy, occupancy " +
+                "FROM public.\"" + settings.preprocessedTable + "\"  WHERE context = '" + context +
+                "' LIMIT " + trainingDataSize +";";
+
+//        System.out.println(query);
+        System.out.println("Getting training data for model " + settings.modelName + ".");
+
+        Statement st = conn.createStatement();
+        ResultSet rs = st.executeQuery(query);
+
+        Table res = new DataFrameReader(new ReaderRegistry()).db(rs);
+        res.column("time_slot").setName("timeSlot"); //rename
+        res.column("previous_occupancy").setName("previousOccupancy"); //rename
+
+        //Set startOFTrainingData
+        startOfTrainingData = res.row(0).getInt("month")+ "/";
+        startOfTrainingData += res.row(0).getInt("year");
+
+        rs.getStatement().close();
+        System.out.println(res.first(10));
+
+        return res;
+    }
+
     /**
      * Convert the DB result to instances
      *
@@ -318,8 +366,6 @@ public class ModelTrainer implements Serializable {
 
         int i = 0;
         int validSize = (int) (settings.trainProp * 10);
-
-        //TODO: Take the table containing all preprocessed data, make copy and drop all rows containing other than relevant information
 
         if (table.isEmpty())
             throw new NullPointerException("The table is empty");
@@ -459,8 +505,8 @@ public class ModelTrainer implements Serializable {
                 "classifiers, attributes, trainingDataProportion," +
                 "accuracyPercent, randomForestMaxDepth, kNeighbours, " +
                 "accuracyDT, accuracyRF, accuracyLR, accuracyKNN, decision_tree," +
-                "random_forest, linear_regression, k_nearest_neighbors, window_stride, training_weeks) " +
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"); // number of ? has to be the same as the number of columns
+                "random_forest, linear_regression, k_nearest_neighbors, window_stride, training_weeks, start_of_training_data) " +
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"); // number of ? has to be the same as the number of columns
 
         ps.setString(1, settings.modelName);
         ps.setString(2, settings.developer);
@@ -468,7 +514,7 @@ public class ModelTrainer implements Serializable {
         ps.setString(4, formattedInstant);
         // ModelSize: parameterIndex 5. See down below
         ps.setInt(6, settings.parkingId);
-        ps.setInt(7, trainingDataSize);
+        ps.setInt(7, trainingDataSize);     //number of rows of preprocessed data to be used for training
         ps.setInt(8, settings.periodMinutes);     // periods duration in minutes
         ps.setString(9, slotIDsString);     // ids of parking slots to parse
         ps.setString(10, classifierNamesString);     // classifier names
@@ -514,6 +560,7 @@ public class ModelTrainer implements Serializable {
         ps.setInt(5, modelSize);
         ps.setInt(24, settings.periodMinutes); //Window Stride always same as Window Size (period minutes)
         ps.setInt(25, settings.trainingWeeks); //Weeks worth of training data
+        ps.setString(26, startOfTrainingData); //Month and Year of first entry of training data for model
 
         ps.executeUpdate(); // execution
         ps.close();
@@ -757,10 +804,10 @@ public class ModelTrainer implements Serializable {
         }
 
         if (shift24h) {
-            for (int i = 0; i<dataWithOccupancyAndWeather.rowCount(); i++) {
+            for (int i = 0; i < dataWithOccupancyAndWeather.rowCount(); i++) {
                 LocalDateTime tmpDate = LocalDateTime.ofInstant(Instant.ofEpochSecond(dataWithOccupancyAndWeather
                                 .row(i).getLong("periodStartSeconds")),
-                                TimeZone.getDefault().toZoneId());
+                        TimeZone.getDefault().toZoneId());
                 LocalDateTime newDate = tmpDate.minusHours(24);
 
                 dataWithOccupancyAndWeather.row(i).setInt("weekDay", newDate.getDayOfWeek().getValue());
@@ -1062,10 +1109,13 @@ public class ModelTrainer implements Serializable {
                                                     settings = new Settings(settingsPath, props);
                                                     trainer = new ModelTrainer(settings);
 
-                                                    ResultSet rs = trainer.queryDB();
-                                                    Table tableData = trainer.preprocessing(rs, shift24h);
+//                                                    ResultSet rs = trainer.queryDB();
+//                                                    Table tableData = trainer.preprocessing(rs, shift24h);
+
+                                                    Table tableData =  trainer.getPreprocData(settings, shift24h);
+
                                                     trainer.saveQueryAsInstances(tableData);
-                                                    rs.getStatement().close(); // closes the resource
+//                                                    rs.getStatement().close(); // closes the resource
                                                     shift24h = false; //reset shift flag
 
                                                     // classifiers building

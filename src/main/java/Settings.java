@@ -34,7 +34,8 @@ class Settings {
     List<Integer> slotsIDData;
     List<Integer> classifiersData;
     List<Integer> attributesData;
-    String preprocessTable;
+    String rawTable; //table with raw parking data
+    String preprocessedTable; //table with all the preprocessed data
     String tableName;
     double trainProp;
     String saveIn;
@@ -66,11 +67,11 @@ class Settings {
         } else {
             trainTestText = "Test Data after Train Data";
         }
-
+        preprocessedTable = getSettingAsString("preprocessedTable", false);
         tableName = getSettingAsString("tableName", false);
 
         // optional parameters
-        preprocessTable = getSettingAsString("preprocessTable", true);
+        rawTable = getSettingAsString("rawTable", true);
         trainProp = getTrainProp();
         randomForestMaxDepth = getSettingAsInt("randomForestMaxDepth", true);
         accuracyPercent = getSettingAsInt("accuracyPercent", true);

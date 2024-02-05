@@ -18,12 +18,6 @@ public class Preprocessor {
 
     private ModelTrainer trainer;
 
-    private int periodMinutes;
-
-    private int parkingID;
-
-    public Connection conn;
-
     /**
      * Create a model trainer
      *
@@ -31,8 +25,6 @@ public class Preprocessor {
      */
     public Preprocessor(Settings settings, ModelTrainer trainer) throws IOException, ParseException {
         this.settings = settings;
-        this.periodMinutes = settings.periodMinutes;
-        this.parkingID = settings.parkingId;
         this.trainer = trainer;
     }
 
@@ -40,6 +32,8 @@ public class Preprocessor {
         //add pID+perMin+24hShift identifier to table
         String context = "pID" + pID + "_perMin" + perMin;
         if (shift24h) context += "_24h";
+
+        System.out.println("Saving table with context " + context + " to DB.");
 
         PreparedStatement ps = trainer.conn.prepareStatement("" +
                 "INSERT INTO " + settings.tableName + " (" +
@@ -120,13 +114,14 @@ public class Preprocessor {
                     settings = new Settings(settingsPath, props);
                     trainer = new ModelTrainer(settings);
                     prep = new Preprocessor(settings, trainer);
+
                     ResultSet rs = trainer.queryDB();
                     Table tableData = trainer.preprocessing(rs, shift24h);
                     prep.saveTable(tableData, pID_val, perMin_val, shift24h);
-                    shift24h = false; //reset flag
+                    rs.getStatement().close(); // closes the resource
+                    shift24h = false; //resets flag
                 }
             }
-
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
