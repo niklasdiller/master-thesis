@@ -8,6 +8,9 @@ import weka.classifiers.functions.LinearRegression;
 import weka.classifiers.lazy.IBk;
 import weka.classifiers.trees.M5P;
 import weka.classifiers.trees.RandomForest;
+import weka.filters.Filter;
+import weka.filters.unsupervised.attribute.Normalize;
+import weka.filters.unsupervised.attribute.Standardize;
 import weka.core.*;
 
 import java.io.*;
@@ -55,7 +58,7 @@ public class ModelTrainer implements Serializable {
     /**
      * Map for attribute names
      **/
-    private Map<Integer, String> attributesNamesMap = new HashMap<Integer, String>();
+    private ArrayList<String> attributesNamesList = new ArrayList<>();
 
     /**
      * All settings specified in properties file
@@ -76,6 +79,11 @@ public class ModelTrainer implements Serializable {
      * Period in minutes
      */
     private int periodMinutes;
+
+    /**
+     * Flag to use when feature scaling is activated
+     */
+    private boolean featureScaling;
 
     /**
      * The training data gathered so far.
@@ -170,9 +178,10 @@ public class ModelTrainer implements Serializable {
      *
      * @param settings Contains all settings to run training pipeline
      */
-    public ModelTrainer(Settings settings) throws IOException, ParseException {
+    public ModelTrainer(Settings settings) throws Exception {
         this.settings = settings;
         this.periodMinutes = settings.periodMinutes;
+        this.featureScaling = featureScaling;
 
         String nameOfDataset = "ParkingOccupancyProblem";
 
@@ -214,13 +223,13 @@ public class ModelTrainer implements Serializable {
         this.classifierNamesMap.put(3, "K-Nearest Neighbours");
 
         // fill an attributes map with attribute names
-        this.attributesNamesMap.put(0, "temperature");
-        this.attributesNamesMap.put(1, "humidity");
-        this.attributesNamesMap.put(2, "day of the week");
-        this.attributesNamesMap.put(3, "month");
-        this.attributesNamesMap.put(4, "year");
-        this.attributesNamesMap.put(5, "previous occupancy");
-        this.attributesNamesMap.put(6, "time slot");
+        this.attributesNamesList.add("temperature");
+        this.attributesNamesList.add("humidity");
+        this.attributesNamesList.add("day of the week");
+        this.attributesNamesList.add("month");
+        this.attributesNamesList.add("year");
+        this.attributesNamesList.add("previous occupancy");
+        this.attributesNamesList.add("time slot");
 
         // fill a periodMinuteMap with values for the training pipeline and their corresponding trainingDataSize
         // first value: periodMinutes
@@ -241,11 +250,15 @@ public class ModelTrainer implements Serializable {
         values2.add(1);
         values2.add(4);
         this.periodMinuteMap.put(2, values2);
-        List<Integer> values3 = new ArrayList<>();
+        List<Integer> values3 = new ArrayList<>(); //24h Shift
         values3.add(60);
-        values3.add(1); //to get values for 24h after the last instance
+        values3.add(1);
         values3.add(4);
         this.periodMinuteMap.put(3, values3);
+        List<Integer> values4 = new ArrayList<>(); // Feature Scaling: Standardized
+        values4.add(60);
+        values4.add(4);
+        this.periodMinuteMap.put(4, values4);
 //        values.clear();
 
         // fill a parkingLot Map with the corresponding Parking Lot IDs
@@ -318,6 +331,7 @@ public class ModelTrainer implements Serializable {
      * Get the preprocessed data for model training from DB
      *
      * @param settings for the model to be trained
+     * @param shift24h Flag for 24h Shift
      */
     private Table getPreprocData(Settings settings, boolean shift24h) throws SQLException {
         System.out.println("Data from table " + settings.preprocessedTable + ".");
@@ -328,13 +342,13 @@ public class ModelTrainer implements Serializable {
         String context = "pID" + settings.parkingId + "_perMin" + settings.periodMinutes;
         if (shift24h) context += "_24h";
 
-        trainingDataSize = settings.trainingWeeks * 7 * (1440/ settings.periodMinutes); //rows that make up trainingWeeks weeks
+        trainingDataSize = settings.trainingWeeks * 7 * (1440 / settings.periodMinutes); //rows that make up trainingWeeks weeks
 
         //TODO: make sure data is ordered correctly -> Not only mondays etc.
 
         String query = "SELECT temp, humidity, weekday, month, year, time_slot, previous_occupancy, occupancy " +
                 "FROM public.\"" + settings.preprocessedTable + "\"  WHERE context = '" + context +
-                "' LIMIT " + trainingDataSize +";";
+                "' LIMIT " + trainingDataSize + ";";
 
 //        System.out.println(query);
         System.out.println("Getting training data for model " + settings.modelName + ".");
@@ -347,7 +361,7 @@ public class ModelTrainer implements Serializable {
         res.column("previous_occupancy").setName("previousOccupancy"); //rename
 
         //Set startOFTrainingData
-        startOfTrainingData = res.row(0).getInt("month")+ "/";
+        startOfTrainingData = res.row(0).getInt("month") + "/";
         startOfTrainingData += res.row(0).getInt("year");
 
         rs.getStatement().close();
@@ -360,8 +374,9 @@ public class ModelTrainer implements Serializable {
      * Convert the DB result to instances
      *
      * @param table from preprocessing
+     * @param fs    Flag for feature scaling
      */
-    private void saveQueryAsInstances(Table table) throws Exception {
+    private void saveQueryAsInstances(Table table, boolean fs) throws Exception {
         Instance instance;
 
         int i = 0;
@@ -406,6 +421,9 @@ public class ModelTrainer implements Serializable {
                 currentRow = table.row(currentRowIndex);
             }
         }
+
+        // Apply feature scaling if flag is set
+        if (fs) featureScale();
 
         System.out.println("Converted data to instances.");
     }
@@ -453,7 +471,7 @@ public class ModelTrainer implements Serializable {
             System.err.println("Attributes cannot be empty!"); //empty case handled through all selected
         } else {
             for (int attributNumber : settings.attributesData) {
-                attributesString += (attributesNamesMap.get(attributNumber) + ", ");
+                attributesString += (attributesNamesList.get(attributNumber) + ", ");
             }
             attributesString = attributesString.substring(0, attributesString.length() - 2); //remove last ", "
         }
@@ -667,7 +685,8 @@ public class ModelTrainer implements Serializable {
     /**
      * Return processed table of occupancy data
      *
-     * @param rs Set of data to process
+     * @param rs       Set of data to process
+     * @param shift24h Flag for 24hShift
      * @return Table object
      * @throws Exception
      */
@@ -984,8 +1003,19 @@ public class ModelTrainer implements Serializable {
         return parkingOccupancyWithWetter;
     }
 
-    private String generateModelName(String att, String clas, int perMin, int weeks, boolean shift24h) {
-        String shift = null;
+
+    /**
+     * Applies feature scaling to train and test dataset
+     */
+    private void featureScale() throws Exception {
+
+        Standardize filter = new Standardize();
+        filter.setInputFormat(m_Train_Data);
+        m_Train_Data = Filter.useFilter(m_Train_Data, filter);
+        m_Test_Data = Filter.useFilter(m_Test_Data, filter);
+    }
+
+    private String generateModelName(String att, String clas, int perMin, int weeks, boolean shift24h, boolean fs) {
         String cleanedAtt = att.replace(" ", "");
         String shortClas = "";
         switch (clas) {
@@ -1004,13 +1034,18 @@ public class ModelTrainer implements Serializable {
         }
 
         if (shift24h) {
-            shift = "-24h";
+            String shift = "-24h";
             return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + weeks + shift;
+        } else if (fs) {
+            String fscale = "-fs";
+            return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + weeks + fscale;
+
         }
         return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + weeks;
     }
 
-    private Properties changeValues(String settingsPath, int pID, String att, String clas, int perMin, int weeks, boolean shift24h) {
+    private Properties changeValues(String settingsPath, int pID, String att, String clas, int perMin,
+                                    int weeks, boolean shift24h, boolean fs) {
         try {
 //            att = att.substring(0, att.length() - 2); //remove last ", " for when TimeSLot is not set
 
@@ -1025,7 +1060,7 @@ public class ModelTrainer implements Serializable {
             props.setProperty("classifiers", "{" + clas + "}");
             props.setProperty("periodMinutes", String.valueOf(perMin));
             props.setProperty("trainingWeeks", String.valueOf(weeks));
-            props.setProperty("modelName", generateModelName(att, clas, perMin, weeks, shift24h));
+            props.setProperty("modelName", generateModelName(att, clas, perMin, weeks, shift24h, fs));
 
             props.store(out, null);
             out.close();
@@ -1039,6 +1074,7 @@ public class ModelTrainer implements Serializable {
 
     public static void main(String[] args) {
         try {
+            //TODO: Investigae weird acc values for 24h shift
             String settingsPath = "main/java/pipeline.properties";
             InputStream input = ModelTrainer.class.getClassLoader().getResourceAsStream(settingsPath);
             Properties props = new Properties();
@@ -1053,6 +1089,7 @@ public class ModelTrainer implements Serializable {
             int perMin_val;
             int weeks_val;
             boolean shift24h = false;
+            boolean fs = false;
 
             //Parking Lot
             for (int pID = 0; pID <= trainer.parkingLotMap.size() - 1; pID++) {
@@ -1081,7 +1118,10 @@ public class ModelTrainer implements Serializable {
                                                     //set flag for 24h occupancy prediction used in preprocessing
                                                     if (perMin == 3) shift24h = true;
 
-                                                    att_val = "";
+                                                    //set flag for usage of feature scaling in preprocessing
+                                                    if (perMin == 4) fs = true;
+
+                                                    att_val = "1, 2, 3, 4, 5, ";
 
                                                     if (att0 == 1) {
                                                         att_val = att_val + "0, ";
@@ -1105,18 +1145,20 @@ public class ModelTrainer implements Serializable {
 
                                                     //Initialize new Object for every iteration
                                                     props = trainer.changeValues(settingsPath, pID_val, att_val,
-                                                            clas_val, perMin_val, weeks_val, shift24h);
+                                                            clas_val, perMin_val, weeks_val, shift24h, fs);
                                                     settings = new Settings(settingsPath, props);
                                                     trainer = new ModelTrainer(settings);
 
 //                                                    ResultSet rs = trainer.queryDB();
 //                                                    Table tableData = trainer.preprocessing(rs, shift24h);
 
-                                                    Table tableData =  trainer.getPreprocData(settings, shift24h);
+                                                    Table tableData = trainer.getPreprocData(settings, shift24h);
 
-                                                    trainer.saveQueryAsInstances(tableData);
+                                                    trainer.saveQueryAsInstances(tableData, fs);
 //                                                    rs.getStatement().close(); // closes the resource
+
                                                     shift24h = false; //reset shift flag
+                                                    fs = false; //reset feature scale flag
 
                                                     // classifiers building
                                                     if (settings.classifiersData.isEmpty()) {
