@@ -157,7 +157,6 @@ public class ModelTrainer implements Serializable {
      **/
     public Map<Integer, List<Integer>> periodMinuteMap = new HashMap<>();
 
-
     /**
      * Number of Rows to use for training. Determined using trainingWeeks in settings.
      **/
@@ -228,8 +227,8 @@ public class ModelTrainer implements Serializable {
         this.attributesNamesList.add("day of the week");
         this.attributesNamesList.add("month");
         this.attributesNamesList.add("year");
-        this.attributesNamesList.add("previous occupancy");
         this.attributesNamesList.add("time slot");
+        this.attributesNamesList.add("previous occupancy");
 
         // fill a periodMinuteMap with values for the training pipeline and their corresponding trainingDataSize
         // first value: periodMinutes
@@ -309,7 +308,6 @@ public class ModelTrainer implements Serializable {
         Instance instance = new DenseInstance(this.m_Train_Data.numAttributes());
         instance.setDataset(this.m_Train_Data);
 
-
         for (int attribute : this.attributeIndexes) {
             if (attribute == 0 || attribute == 1 || attribute == 6) {
                 instance.setValue(this.m_Train_Data.attribute(occupancyPredictAttributes.get(attribute)),
@@ -325,7 +323,6 @@ public class ModelTrainer implements Serializable {
 
         return instance;
     }
-
 
     /**
      * Get the preprocessed data for model training from DB
@@ -795,7 +792,6 @@ public class ModelTrainer implements Serializable {
                 DoubleColumn.create("previousOccupancy", dataWithOccupancyAndWeather.rowCount()), // occupancy N minutes ago
                 DoubleColumn.create("occupancy", dataWithOccupancyAndWeather.rowCount())); // occupancy now
 
-
         // if horizon is less than an hour, hour
         int periodsInHour = 1;
         if (periodMinutes < 60)
@@ -833,7 +829,7 @@ public class ModelTrainer implements Serializable {
                 dataWithOccupancyAndWeather.row(i).setInt("month", newDate.getMonthValue());
                 dataWithOccupancyAndWeather.row(i).setInt("year", newDate.getYear());
                 //because prev. occ. makes no sense in this case:
-                dataWithOccupancyAndWeather.row(i).setDouble("previousOccupancy", -1);
+//                dataWithOccupancyAndWeather.row(i).setDouble("previousOccupancy", -1);
             }
         }
 
@@ -1009,13 +1005,13 @@ public class ModelTrainer implements Serializable {
      */
     private void featureScale() throws Exception {
 
-        Standardize filter = new Standardize();
+        Normalize filter = new Normalize();
         filter.setInputFormat(m_Train_Data);
         m_Train_Data = Filter.useFilter(m_Train_Data, filter);
         m_Test_Data = Filter.useFilter(m_Test_Data, filter);
     }
 
-    private String generateModelName(String att, String clas, int perMin, int weeks, boolean shift24h, boolean fs) {
+    private String generateModelName(int pID, String att, String clas, int perMin, int weeks, boolean shift24h, boolean fs) {
         String cleanedAtt = att.replace(" ", "");
         String shortClas = "";
         switch (clas) {
@@ -1035,19 +1031,19 @@ public class ModelTrainer implements Serializable {
 
         if (shift24h) {
             String shift = "-24h";
-            return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + weeks + shift;
+            return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + weeks + "-" + pID + shift;
         } else if (fs) {
             String fscale = "-fs";
-            return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + weeks + fscale;
+            return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + weeks + "-" + pID + fscale;
 
         }
-        return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + weeks;
+        return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + weeks + "-" + pID;
     }
 
     private Properties changeValues(String settingsPath, int pID, String att, String clas, int perMin,
                                     int weeks, boolean shift24h, boolean fs) {
         try {
-//            att = att.substring(0, att.length() - 2); //remove last ", " for when TimeSLot is not set
+            att = att.substring(0, att.length() - 2); //remove last ", "
 
             FileInputStream in = new FileInputStream("src/" + settingsPath);
             Properties props = new Properties();
@@ -1060,7 +1056,7 @@ public class ModelTrainer implements Serializable {
             props.setProperty("classifiers", "{" + clas + "}");
             props.setProperty("periodMinutes", String.valueOf(perMin));
             props.setProperty("trainingWeeks", String.valueOf(weeks));
-            props.setProperty("modelName", generateModelName(att, clas, perMin, weeks, shift24h, fs));
+            props.setProperty("modelName", generateModelName(pID, att, clas, perMin, weeks, shift24h, fs));
 
             props.store(out, null);
             out.close();
@@ -1074,7 +1070,7 @@ public class ModelTrainer implements Serializable {
 
     public static void main(String[] args) {
         try {
-            //TODO: Investigae weird acc values for 24h shift
+            //TODO: Investigate difference train text strategy
             String settingsPath = "main/java/pipeline.properties";
             InputStream input = ModelTrainer.class.getClassLoader().getResourceAsStream(settingsPath);
             Properties props = new Properties();
@@ -1096,7 +1092,7 @@ public class ModelTrainer implements Serializable {
                 pID_val = trainer.parkingLotMap.get(pID);
 
                 //Period Minutes
-                for (int perMin = 0; perMin <= trainer.periodMinuteMap.size() - 1; perMin++) {
+                for (int perMin = 4; perMin <= trainer.periodMinuteMap.size() - 1; perMin++) {
                     perMin_val = trainer.periodMinuteMap.get(perMin).get(0);
 
                     //Training Data Size in Weeks. Initial value 1, see hashmap
@@ -1108,12 +1104,12 @@ public class ModelTrainer implements Serializable {
                             clas_val = String.valueOf(clas);
 
                             //Attributes
-                            for (int att0 = 0; att0 <= 1; att0++) {
-                                for (int att1 = 0; att1 <= 1; att1++) {
-                                    for (int att2 = 0; att2 <= 1; att2++) {
-                                        for (int att3 = 0; att3 <= 1; att3++) {
-                                            for (int att4 = 0; att4 <= 1; att4++) {
-                                                for (int att5 = 0; att5 <= 1; att5++) {
+                            for (int att0 = 0; att0 <= 1; att0++) { //Temp
+                                for (int att1 = 0; att1 <= 1; att1++) { // Humidity
+                                    for (int att2 = 0; att2 <= 1; att2++) { //Weekday
+                                        for (int att3 = 0; att3 <= 1; att3++) { //Month
+                                            for (int att4 = 0; att4 <= 1; att4++) { //Year
+                                                for (int att6 = 0; att6 <= 1; att6++) { // Previous Occupancy
 
                                                     //set flag for 24h occupancy prediction used in preprocessing
                                                     if (perMin == 3) shift24h = true;
@@ -1121,27 +1117,16 @@ public class ModelTrainer implements Serializable {
                                                     //set flag for usage of feature scaling in preprocessing
                                                     if (perMin == 4) fs = true;
 
-                                                    att_val = "1, 2, 3, 4, 5, ";
+                                                    att_val = "";
 
-                                                    if (att0 == 1) {
-                                                        att_val = att_val + "0, ";
-                                                    }
-                                                    if (att1 == 1) {
-                                                        att_val = att_val + "1, ";
-                                                    }
-                                                    if (att2 == 1) {
-                                                        att_val = att_val + "2, ";
-                                                    }
-                                                    if (att3 == 1) {
-                                                        att_val = att_val + "3, ";
-                                                    }
-                                                    if (att4 == 1) {
-                                                        att_val = att_val + "4, ";
-                                                    }
-                                                    if (att5 == 1 && !shift24h) { //as no prev. occ. in 24h shift
-                                                        att_val = att_val + "5, ";
-                                                    }
-                                                    att_val += "6"; //TimeSlot always a feature
+                                                    if (att0 == 1) att_val = att_val + "0, ";
+                                                    if (att1 == 1) att_val = att_val + "1, ";
+                                                    if (att2 == 1) att_val = att_val + "2, ";
+                                                    if (att3 == 1) att_val = att_val + "3, ";
+                                                    if (att4 == 1) att_val = att_val + "4, ";
+                                                    att_val += "5, "; //TimeSlot always a feature
+                                                    //as no prev. occ. in 24h shift
+                                                    if (att6 == 1 && !shift24h) att_val = att_val + "6, ";
 
                                                     //Initialize new Object for every iteration
                                                     props = trainer.changeValues(settingsPath, pID_val, att_val,
@@ -1153,7 +1138,6 @@ public class ModelTrainer implements Serializable {
 //                                                    Table tableData = trainer.preprocessing(rs, shift24h);
 
                                                     Table tableData = trainer.getPreprocData(settings, shift24h);
-
                                                     trainer.saveQueryAsInstances(tableData, fs);
 //                                                    rs.getStatement().close(); // closes the resource
 

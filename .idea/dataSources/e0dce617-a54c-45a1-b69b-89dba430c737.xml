@@ -1583,23 +1583,5 @@ false posixrules
       <StateNumber>1</StateNumber>
       <OwnerName>postgres</OwnerName>
     </tablespace>
-    <schema id="32" parent="2" name="information_schema">
-      <ObjectId>13125</ObjectId>
-      <StateNumber>281</StateNumber>
-      <OwnerName>postgres</OwnerName>
-    </schema>
-    <schema id="33" parent="2" name="pg_catalog">
-      <Comment>system catalog schema</Comment>
-      <ObjectId>11</ObjectId>
-      <StateNumber>274</StateNumber>
-      <OwnerName>postgres</OwnerName>
-    </schema>
-    <schema id="34" parent="2" name="public">
-      <Comment>standard public schema</Comment>
-      <Current>1</Current>
-      <ObjectId>2200</ObjectId>
-      <StateNumber>275</StateNumber>
-      <OwnerName>postgres</OwnerName>
-    </schema>
   </database-model>
 </dataSource>
