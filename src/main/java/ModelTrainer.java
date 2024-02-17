@@ -105,6 +105,7 @@ public class ModelTrainer implements Serializable {
     private int correctPredictedDT;
     private double MAE_DT;
     private double MSE_DT;
+    private double RMSE_DT;
 
     /**
      * The Random Forest classifier.
@@ -117,6 +118,7 @@ public class ModelTrainer implements Serializable {
     private int correctPredictedRF;
     private double MAE_RF;
     private double MSE_RF;
+    private double RMSE_RF;
 
     /**
      * The Linear Regression classifiert
@@ -129,6 +131,7 @@ public class ModelTrainer implements Serializable {
     private int correctPredictedLR;
     private double MAE_LR;
     private double MSE_LR;
+    private double RMSE_LR;
 
     /**
      * The k-Nearest Neighbors classifier.
@@ -141,6 +144,7 @@ public class ModelTrainer implements Serializable {
     private int correctPredictedKNN;
     private double MAE_KNN;
     private double MSE_KNN;
+    private double RMSE_KNN;
 
     /**
      * Map for classifier choice
@@ -341,8 +345,6 @@ public class ModelTrainer implements Serializable {
 
         trainingDataSize = settings.trainingWeeks * 7 * (1440 / settings.periodMinutes); //rows that make up trainingWeeks weeks
 
-        //TODO: make sure data is ordered correctly -> Not only mondays etc.
-
         String query = "SELECT temp, humidity, weekday, month, year, time_slot, previous_occupancy, occupancy " +
                 "FROM public.\"" + settings.preprocessedTable + "\"  WHERE context = '" + context +
                 "' LIMIT " + trainingDataSize + ";";
@@ -491,23 +493,29 @@ public class ModelTrainer implements Serializable {
                 accuracyInfoDTString = "Correctly predicted: "
                         + (double) Math.round((correctPredictedDT / (double) m_Test_Data.size()) * 100 * 100) / 100 + "%"
                         + " MAE: " + (double) Math.round(MAE_DT / (double) m_Test_Data.size() * 100) / 100
-                        + " MSE: " + (double) Math.round(MSE_DT / (double) m_Test_Data.size() * 100) / 100;
+                        + " MSE: " + (double) Math.round(MSE_DT / (double) m_Test_Data.size() * 100) / 100
+                        + " RMSE: " + (double) Math.round(Math.sqrt(MSE_DT / (double) m_Test_Data.size()) * 100) / 100;
+
             } else if (listForClassifierIndexes.get(i) == 1) {
                 accuracyInfoRFString = "Correctly predicted: "
                         + (double) Math.round((correctPredictedRF / (double) m_Test_Data.size()) * 100 * 100) / 100 + "%"
                         + " MAE: " + (double) Math.round(MAE_RF / (double) m_Test_Data.size() * 100) / 100
-                        + " MSE: " + (double) Math.round(MSE_RF / (double) m_Test_Data.size() * 100) / 100;
+                        + " MSE: " + (double) Math.round(MSE_RF / (double) m_Test_Data.size() * 100) / 100
+                        + " RMSE: " + (double) Math.round(Math.sqrt(MSE_RF / (double) m_Test_Data.size()) * 100) / 100;
+
             } else if (listForClassifierIndexes.get(i) == 2) {
                 accuracyInfoLRString = "Correctly predicted: "
                         + (double) Math.round((correctPredictedLR / (double) m_Test_Data.size()) * 100 * 100) / 100 + "%"
                         + " MAE: " + (double) Math.round(MAE_LR / (double) m_Test_Data.size() * 100) / 100
-                        + " MSE: " + (double) Math.round(MSE_LR / (double) m_Test_Data.size() * 100) / 100;
+                        + " MSE: " + (double) Math.round(MSE_LR / (double) m_Test_Data.size() * 100) / 100
+                        + " RMSE: " + (double) Math.round(Math.sqrt(MSE_LR / (double) m_Test_Data.size()) * 100) / 100;
+
             } else if (listForClassifierIndexes.get(i) == 3) {
                 accuracyInfoKNNString = "Correctly predicted: "
                         + (double) Math.round((correctPredictedKNN / (double) m_Test_Data.size()) * 100 * 100) / 100 + "%"
                         + " MAE: " + (double) Math.round(MAE_KNN / (double) m_Test_Data.size() * 100) / 100
-                        + " MSE: " + (double) Math.round(MSE_KNN / (double) m_Test_Data.size() * 100) / 100;
-            }
+                        + " MSE: " + (double) Math.round(MSE_KNN / (double) m_Test_Data.size() * 100) / 100
+                        + " RMSE: " + (double) Math.round(Math.sqrt(MSE_KNN / (double) m_Test_Data.size()) * 100) / 100;            }
         }
 
         // saving in database
@@ -657,18 +665,22 @@ public class ModelTrainer implements Serializable {
                 correctPredictedDT = correctPredicted;
                 MAE_DT = meanAbsErr;
                 MSE_DT = meanSqErr;
+                RMSE_DT = Math.sqrt(meanSqErr);
             } else if (index == 1) {
                 correctPredictedRF = correctPredicted;
                 MAE_RF = meanAbsErr;
                 MSE_RF = meanSqErr;
+                RMSE_RF = Math.sqrt(meanSqErr);
             } else if (index == 2) {
                 correctPredictedLR = correctPredicted;
                 MAE_LR = meanAbsErr;
                 MSE_LR = meanSqErr;
+                RMSE_LR = Math.sqrt(meanSqErr);
             } else if (index == 3) {
                 correctPredictedKNN = correctPredicted;
                 MAE_KNN = meanAbsErr;
                 MSE_KNN = meanSqErr;
+                RMSE_KNN = Math.sqrt(meanSqErr);
             }
             System.out.println("\nCorrectly predicted " + classifierNamesMap.get(index) + " "
                     + (double) Math.round((correctPredicted / (double) m_Test_Data.size()) * 100 * 100) / 100 + "%");
@@ -676,6 +688,8 @@ public class ModelTrainer implements Serializable {
                     + (double) Math.round(meanAbsErr / (double) m_Test_Data.size() * 100) / 100);
             System.out.println(classifierNamesMap.get(index) + " Mean Squared Error: " +
                     (double) Math.round(meanSqErr / (double) m_Test_Data.size() * 100) / 100);
+            System.out.println(classifierNamesMap.get(index) + " Root Mean Squared Error: " +
+                    (double) Math.round(Math.sqrt(meanSqErr / (double) m_Test_Data.size()) * 100) / 100);
         }
     }
 
@@ -1070,7 +1084,6 @@ public class ModelTrainer implements Serializable {
 
     public static void main(String[] args) {
         try {
-            //TODO: Investigate difference train text strategy
             String settingsPath = "main/java/pipeline.properties";
             InputStream input = ModelTrainer.class.getClassLoader().getResourceAsStream(settingsPath);
             Properties props = new Properties();
