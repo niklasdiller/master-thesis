@@ -1,6 +1,5 @@
 package main.java;
 
-import org.json.simple.parser.ParseException;
 import tech.tablesaw.io.DataFrameReader;
 import tech.tablesaw.io.ReaderRegistry;
 import weka.classifiers.Classifier;
@@ -10,7 +9,6 @@ import weka.classifiers.trees.M5P;
 import weka.classifiers.trees.RandomForest;
 import weka.filters.Filter;
 import weka.filters.unsupervised.attribute.Normalize;
-import weka.filters.unsupervised.attribute.Standardize;
 import weka.core.*;
 
 import java.io.*;
@@ -177,6 +175,16 @@ public class ModelTrainer implements Serializable {
     public Map<Integer, Integer> parkingLotMap = new HashMap<>();
 
     /**
+     * Map for maxDepthMap values for random forest classifier
+     **/
+    public Map<Integer, Integer> maxDepthMap = new HashMap<>();
+
+    /**
+     * Map for k values for KNN classifier
+     **/
+    public Map<Integer, Integer> kMap = new HashMap<>();
+
+    /**
      * Create a model trainer
      *
      * @param settings Contains all settings to run training pipeline
@@ -271,6 +279,16 @@ public class ModelTrainer implements Serializable {
         // hyperparameter, for RF and KNN
         this.m_RandomForestClassifier.setMaxDepth(settings.randomForestMaxDepth);
         this.m_KNNClassifier.setKNN(settings.kNeighbours);
+
+        //// fill a hyperparameter Map with changing values for maxdepth of random forest classifier
+        this.maxDepthMap.put(0, 1);
+        this.maxDepthMap.put(1, 5);
+        this.maxDepthMap.put(2, 20);
+
+        //// fill a hyperparameter Map with changing values for k of KNN classifier
+        this.kMap.put(0, 3);
+        this.kMap.put(1, 19);
+        this.kMap.put(2, 33);
     }
 
     /**
@@ -515,7 +533,8 @@ public class ModelTrainer implements Serializable {
                         + (double) Math.round((correctPredictedKNN / (double) m_Test_Data.size()) * 100 * 100) / 100 + "%"
                         + " MAE: " + (double) Math.round(MAE_KNN / (double) m_Test_Data.size() * 100) / 100
                         + " MSE: " + (double) Math.round(MSE_KNN / (double) m_Test_Data.size() * 100) / 100
-                        + " RMSE: " + (double) Math.round(Math.sqrt(MSE_KNN / (double) m_Test_Data.size()) * 100) / 100;            }
+                        + " RMSE: " + (double) Math.round(Math.sqrt(MSE_KNN / (double) m_Test_Data.size()) * 100) / 100;
+            }
         }
 
         // saving in database
@@ -544,8 +563,18 @@ public class ModelTrainer implements Serializable {
         ps.setString(11, attributesString); // attributes
         ps.setDouble(12, settings.trainProp); // train part
         ps.setInt(13, settings.accuracyPercent);     // deviation percentage for accuracy calculation
-        ps.setInt(14, settings.randomForestMaxDepth);     // max depth for Random Forest Classifier
-        ps.setInt(15, settings.kNeighbours);     // number of neighbours for k-Nearest Neighbours Classifier
+
+        if (Objects.equals(classifierNamesString, "Random Forest")) {
+            ps.setInt(14, settings.randomForestMaxDepth); // max depth for Random Forest Classifier
+        } else {
+            ps.setInt(14, -1); //not applicable to other classifiers
+        }
+
+        if (Objects.equals(classifierNamesString, "K-Nearest Neighbours")) {
+            ps.setInt(15, settings.kNeighbours); // number of neighbours for k-Nearest Neighbours Classifier
+        } else {
+            ps.setInt(15, -1); //not applicable to other classifiers
+        }
 
         // accuracy results
         ps.setString(16, accuracyInfoDTString);
@@ -1054,6 +1083,29 @@ public class ModelTrainer implements Serializable {
         return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + weeks + "-" + pID;
     }
 
+    private void changeHyperparameters(String settingsPath, String clas_val, int val) {
+        try {
+            FileInputStream in = new FileInputStream("src/" + settingsPath);
+            Properties props = new Properties();
+            props.load(in);
+            in.close();
+
+            FileOutputStream out = new FileOutputStream("src/" + settingsPath);
+
+            //if random forest, set maxDepth
+            if (Objects.equals(clas_val, "1")) props.setProperty("randomForestMaxDepth", String.valueOf(val));
+
+            //if KNN, set k
+            if (Objects.equals(clas_val, "3")) props.setProperty("kNeighbours", String.valueOf(val));
+
+            props.store(out, null);
+            out.close();
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
     private Properties changeValues(String settingsPath, int pID, String att, String clas, int perMin,
                                     int weeks, boolean shift24h, boolean fs) {
         try {
@@ -1099,13 +1151,14 @@ public class ModelTrainer implements Serializable {
             int weeks_val;
             boolean shift24h = false;
             boolean fs = false;
+            int hyperMax = 0; //End condition for for-loop for hyperparameters RF and KNN
 
             //Parking Lot
             for (int pID = 0; pID <= trainer.parkingLotMap.size() - 1; pID++) {
                 pID_val = trainer.parkingLotMap.get(pID);
 
                 //Period Minutes
-                for (int perMin = 4; perMin <= trainer.periodMinuteMap.size() - 1; perMin++) {
+                for (int perMin = 0; perMin <= trainer.periodMinuteMap.size() - 1; perMin++) {
                     perMin_val = trainer.periodMinuteMap.get(perMin).get(0);
 
                     //Training Data Size in Weeks. Initial value 1, see hashmap
@@ -1141,34 +1194,54 @@ public class ModelTrainer implements Serializable {
                                                     //as no prev. occ. in 24h shift
                                                     if (att6 == 1 && !shift24h) att_val = att_val + "6, ";
 
-                                                    //Initialize new Object for every iteration
-                                                    props = trainer.changeValues(settingsPath, pID_val, att_val,
-                                                            clas_val, perMin_val, weeks_val, shift24h, fs);
-                                                    settings = new Settings(settingsPath, props);
-                                                    trainer = new ModelTrainer(settings);
+                                                    //Get size of map for RF / KNN for for-loop end condition
+                                                    if (clas_val.equals("1")) {
+                                                        hyperMax = trainer.maxDepthMap.size() - 1;
+                                                    } else if (clas_val.equals("3")) {
+                                                        hyperMax = trainer.kMap.size() - 1;
+                                                    }
 
-//                                                    ResultSet rs = trainer.queryDB();
-//                                                    Table tableData = trainer.preprocessing(rs, shift24h);
+                                                    //if no changes to the hyperparamteres should be made,
+                                                    // remove this for-loop
+                                                    for (int h = 0; h <= hyperMax; h++) {
+                                                        if (clas_val.equals("1")) {
+                                                            trainer.changeHyperparameters
+                                                                    (settingsPath, clas_val, trainer.maxDepthMap.get(h));
+                                                        } else if (clas_val.equals("3")) {
+                                                            trainer.changeHyperparameters
+                                                                    (settingsPath, clas_val, trainer.kMap.get(h));
+                                                        }
 
-                                                    Table tableData = trainer.getPreprocData(settings, shift24h);
-                                                    trainer.saveQueryAsInstances(tableData, fs);
-//                                                    rs.getStatement().close(); // closes the resource
+                                                        //Initialize new Object for every iteration
+                                                        props = trainer.changeValues(settingsPath, pID_val, att_val,
+                                                                clas_val, perMin_val, weeks_val, shift24h, fs);
 
-                                                    shift24h = false; //reset shift flag
-                                                    fs = false; //reset feature scale flag
+                                                        settings = new Settings(settingsPath, props);
+                                                        trainer = new ModelTrainer(settings);
 
-                                                    // classifiers building
-                                                    if (settings.classifiersData.isEmpty()) {
-                                                        System.err.println("Classifier cannot be empty!");
-                                                        break;
-                                                    } else {
-                                                        for (int i : settings.classifiersData) {
-                                                            trainer.classifierMap.get(i).buildClassifier
-                                                                    (trainer.m_Train_Data);
+                                                        Table tableData = trainer.getPreprocData(settings, shift24h);
+                                                        trainer.saveQueryAsInstances(tableData, fs);
+
+                                                        shift24h = false; //reset shift flag
+                                                        fs = false; //reset feature scale flag
+
+                                                        // classifiers building
+                                                        if (settings.classifiersData.isEmpty()) {
+                                                            System.err.println("Classifier cannot be empty!");
+                                                            break;
+                                                        } else {
+                                                            for (int i : settings.classifiersData) {
+                                                                trainer.classifierMap.get(i).buildClassifier
+                                                                        (trainer.m_Train_Data);
+                                                            }
+                                                        }
+                                                        trainer.testClassifier();
+                                                        trainer.saveModelToDB();
+
+                                                        if (!clas_val.equals("1") && !clas_val.equals("3")) {
+                                                            break;
                                                         }
                                                     }
-                                                    trainer.testClassifier();
-                                                    trainer.saveModelToDB();
                                                 }
                                             }
                                         }
