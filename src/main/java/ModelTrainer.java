@@ -286,7 +286,7 @@ public class ModelTrainer implements Serializable {
         this.maxDepthMap.put(2, 20);
 
         //// fill a hyperparameter Map with changing values for k of KNN classifier
-        this.kMap.put(0, 3);
+        this.kMap.put(0, 3); //TODO Reset to 3
         this.kMap.put(1, 19);
         this.kMap.put(2, 33);
     }
@@ -1153,12 +1153,15 @@ public class ModelTrainer implements Serializable {
             boolean fs = false;
             int hyperMax = 0; //End condition for for-loop for hyperparameters RF and KNN
 
+            //TODO: pID634 normale modelle für knn und rf durchlaufen lassen
             //Parking Lot
-            for (int pID = 0; pID <= trainer.parkingLotMap.size() - 1; pID++) {
+            for (int pID = 0; pID <= trainer.parkingLotMap.size() - 1; pID++) { //TODO: Reset to 0
                 pID_val = trainer.parkingLotMap.get(pID);
 
                 //Period Minutes
-                for (int perMin = 0; perMin <= trainer.periodMinuteMap.size() - 1; perMin++) {
+//                for (int perMin = 0; perMin <= trainer.periodMinuteMap.size() - 1; perMin++) {
+                for (int perMin = 0; perMin <= 2; perMin++) { //TODO reset to comment above
+
                     perMin_val = trainer.periodMinuteMap.get(perMin).get(0);
 
                     //Training Data Size in Weeks. Initial value 1, see hashmap
@@ -1166,7 +1169,7 @@ public class ModelTrainer implements Serializable {
                         weeks_val = trainer.periodMinuteMap.get(perMin).get(weeks);
 
                         //Classifier
-                        for (int clas = 0; clas <= trainer.classifierMap.size() - 1; clas++) {
+                        for (int clas = 0; clas <= 3; clas ++) {
                             clas_val = String.valueOf(clas);
 
                             //Attributes
@@ -1176,23 +1179,6 @@ public class ModelTrainer implements Serializable {
                                         for (int att3 = 0; att3 <= 1; att3++) { //Month
                                             for (int att4 = 0; att4 <= 1; att4++) { //Year
                                                 for (int att6 = 0; att6 <= 1; att6++) { // Previous Occupancy
-
-                                                    //set flag for 24h occupancy prediction used in preprocessing
-                                                    if (perMin == 3) shift24h = true;
-
-                                                    //set flag for usage of feature scaling in preprocessing
-                                                    if (perMin == 4) fs = true;
-
-                                                    att_val = "";
-
-                                                    if (att0 == 1) att_val = att_val + "0, ";
-                                                    if (att1 == 1) att_val = att_val + "1, ";
-                                                    if (att2 == 1) att_val = att_val + "2, ";
-                                                    if (att3 == 1) att_val = att_val + "3, ";
-                                                    if (att4 == 1) att_val = att_val + "4, ";
-                                                    att_val += "5, "; //TimeSlot always a feature
-                                                    //as no prev. occ. in 24h shift
-                                                    if (att6 == 1 && !shift24h) att_val = att_val + "6, ";
 
                                                     //Get size of map for RF / KNN for for-loop end condition
                                                     if (clas_val.equals("1")) {
@@ -1204,6 +1190,29 @@ public class ModelTrainer implements Serializable {
                                                     //if no changes to the hyperparamteres should be made,
                                                     // remove this for-loop
                                                     for (int h = 0; h <= hyperMax; h++) {
+
+                                                        //set flag for 24h occupancy prediction used in preprocessing
+                                                        if (perMin == 3) shift24h = true;
+
+                                                        //set flag for usage of feature scaling in preprocessing
+                                                        if (perMin == 4) fs = true;
+
+                                                        att_val = "";
+                                                        if (att0 == 1) att_val = att_val + "0, ";
+                                                        if (att1 == 1) att_val = att_val + "1, ";
+                                                        if (att2 == 1) att_val = att_val + "2, ";
+                                                        if (att3 == 1) att_val = att_val + "3, ";
+                                                        if (att4 == 1) att_val = att_val + "4, ";
+                                                        att_val += "5, "; //TimeSlot always a feature
+
+                                                        if (att6 == 1 && !shift24h) { //as no prev. occ. in 24h shift
+                                                            att_val = att_val + "6, ";
+                                                        } else if (att6 == 1 && shift24h) { //to avoid duplicates
+                                                            shift24h = false;
+                                                            fs = false;
+                                                            continue;
+                                                        }
+
                                                         if (clas_val.equals("1")) {
                                                             trainer.changeHyperparameters
                                                                     (settingsPath, clas_val, trainer.maxDepthMap.get(h));
