@@ -54,7 +54,7 @@ def select():
 
 # Selet a model with a given name directly using the URL
 @app.get("/api/model/<model_name>")
-def selectDirect(model_name):
+def select_direct(model_name):
     with connection:
         with connection.cursor() as cursor:
             cursor.execute(SELECT_MODEL_DIRECT, (model_name, ))
@@ -76,8 +76,8 @@ def topk():
             cursor.execute(FILTER_MODELS, (pID, perMin))
             df = pd.DataFrame(cursor.fetchall(), columns=['model_id', 'model_name', 'accuracydt', 'accuracyrf', 'accuracylr', 'accuracyknn', 'attributes'])
             
-    df = reshapePerfTable(df) #Call function that summarizes the accuracy for acc
-    df = countAttributes(df) #Call function that counts the number of attributes of each model
+    df = reshape_perf_table(df) #Call function that summarizes the accuracy for acc
+    df = count_attributes(df) #Call function that counts the number of attributes of each model
 
     #Normalize Performance data
     normColumnPerf = ['performance']
@@ -104,18 +104,20 @@ def topk():
     df_reaw = df_reaw.sort_values(by='attributes', ascending=False, na_position='first') #Sort with least numner of attributes first
 
     #TODO: Determine what Algorithm should be called
-    result = naiveTopk(df, weight, k)
+    result = naive_topk(df, weight, k)
 
     #TODO: Round performance, attributes and score
 
-    #TODO: Put JSON Converter into separate function or class
-    #Convert result list into JSON format
+    return result
+
+def convert_to_json (result: list): #Convert result list into JSON format
     json_list = []
+    count = 1
     for row in result:
-        # modelnumber = "model"+str(row+1)
+        modelnumber = "model"+str(count) #For model identifier in reply
         model_id = int(row["model_id"]) #Convert serial to int
         dict = {
-            "modelnumber": "modelnumber", #TODO: Generate unique identifiers for returned models
+            "modelnumber": modelnumber,
             "model_specs": [ 
                 {
                     "model_id": model_id,
@@ -127,17 +129,17 @@ def topk():
             ]   
         }
         json_list.append(dict)
-    json_data = json.dumps(json_list, indent=4)   
+        count += 1
+    json_result = json.dumps(json_list, indent=4)   
+    return json_result
 
-    return json_data
+def round_result(obj): #Round attribute, performance and overall score of each model
+    obj["score"] = round(obj["score"], 2)
+    obj["performance"] = round(obj["performance"], 2)
+    obj["attributes"] = round(obj["attributes"], 2)
+    return obj
 
-# def convertToJSON (result: list): 
-#     resultJSON = dict()
-#     for i in result:
-#         resultJSON[i] = result[i]
-#     return resultJSON
-
-def naiveTopk (df: pd.DataFrame, weight: float, k: int):
+def naive_topk (df: pd.DataFrame, weight: float, k: int):
     result = []
     weight = float(weight)
     for ind in df.index:
@@ -148,17 +150,21 @@ def naiveTopk (df: pd.DataFrame, weight: float, k: int):
     df = df.sort_values(by='score', ascending=False, na_position='first')  #Sort for score
 
     for ind in range(k):
-        result.append(df.iloc[k])
-    return result
+        result.append(df.iloc[ind])  
 
-def countAttributes(df: pd.DataFrame): #Count the number of attributes used in each model
+    for ind in range(len(result)):
+        round_result(result[ind])
+
+    return convert_to_json(result)
+
+def count_attributes(df: pd.DataFrame): #Count the number of attributes used in each model
     for ind in df.index:
         val = df.at[ind, 'attributes']
         numAttr = len(val.split(', '))
         df.at[ind, 'attributes'] = numAttr
     return df
 
-def reshapePerfTable(df: pd.DataFrame):
+def reshape_perf_table(df: pd.DataFrame):
     df = df.rename(columns = {'accuracydt':'performance'})
     for ind in df.index: #Collect the performance values into a single one
         if df.at[ind, 'performance'] == 'no classifier':
@@ -169,12 +175,12 @@ def reshapePerfTable(df: pd.DataFrame):
             else: 
                  df.at[ind, 'performance'] = df.at[ind, 'accuracyknn']
         str = df.at[ind, 'performance']
-        val = getAcc(str) #Specify which metric should be considered here
+        val = get_acc(str) #Specify which metric should be considered here
         df.at[ind, 'performance'] = val #Set float value
     df = df.drop(columns=['accuracyrf', 'accuracylr', 'accuracyknn']) #Remove redundant columns
     return df
 
-def getAcc(str): #Accuracy
+def get_acc(str): #Accuracy
     pattern = r'Correctly predicted: (\d+\.\d+)%'
     match = re.search(pattern, str)
     if match:
@@ -183,7 +189,7 @@ def getAcc(str): #Accuracy
     else:
         return None
 
-def getMAE(str): #Mean Absolute Error
+def get_mae(str): #Mean Absolute Error
     pattern = r'MAE: (\d+\.\d+)'
     match = re.search(pattern, str)
     if match:
@@ -192,7 +198,7 @@ def getMAE(str): #Mean Absolute Error
     else:
         return None
 
-def getMSE(str): #Mean Squared Error
+def get_mse(str): #Mean Squared Error
     pattern = r'MSE: (\d+\.\d+)'
     match = re.search(pattern, str)
     if match:
@@ -201,7 +207,7 @@ def getMSE(str): #Mean Squared Error
     else:
         return None
 
-def getRMSE(str): #Root Mean Squared Error
+def get_rmse(str): #Root Mean Squared Error
     pattern = r'RMSE: (\d+\.\d+)'
     match = re.search(pattern, str)
     if match:
