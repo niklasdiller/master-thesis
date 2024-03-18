@@ -104,11 +104,12 @@ public class Preprocessor {
                 pID_val = trainer.parkingLotMap.get(pID);
 
                 //Period Minutes
-                for (int perMin = 0; perMin <= trainer.periodMinuteMap.size() - 1; perMin++) {
-                    perMin_val = trainer.periodMinuteMap.get(perMin).get(0);
+//                for (int perMin = 0; perMin <= trainer.periodMinuteMap.size() - 1; perMin++) {
+//                    perMin_val = trainer.periodMinuteMap.get(perMin).get(0); //TODO: Uncomment lines
+                perMin_val = 1;
 
                     //set flag for 24h occupancy prediction used in preprocessing
-                    if (perMin == 3) shift24h = true;
+//                    if (perMin == 3) shift24h = true; //TODO Uncomment
 
                     props = prep.changeValues(settingsPath, pID_val, perMin_val);
                     settings = new Settings(settingsPath, props);
@@ -120,7 +121,7 @@ public class Preprocessor {
                     prep.saveTable(tableData, pID_val, perMin_val, shift24h);
                     rs.getStatement().close(); // closes the resource
                     shift24h = false; //resets flag
-                }
+//                }
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
