@@ -5,7 +5,6 @@ import pandas as pd
 import re
 import json
 
-
 def normalize (df: pd.DataFrame, col: str, rev: bool):
     normCol = [col]
     if not rev: #E.g. for performance data: High values -> high score 
