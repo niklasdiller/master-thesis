@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 import pandas as pd
 import numpy as np
 
-import json
+pd.options.mode.chained_assignment = None  # default='warn' # Ignores warnings regarding chaning values to df copy
 
 from utils.helper import *
 from utils.sql import *
@@ -104,13 +104,13 @@ def naive_topk (df: pd.DataFrame, weight: float, k: int):
 
     return convert_to_json(result)
 
-def fagin_topk (df_dict: dict, weight, k: int):
+def fagin_topk (df_dict: dict, weight, k: int): #TODO: Improve efficiency by getting rif of multiple for loops
     result = []
     i = 0
-    seen = {} # TODO: Now a dict of dicts, Or rather a DF?
+    seen = {} # TODO: Now a dict of dicts converted to a DF later, Or rather a DF directly ?
     all_seen = set()
 
-    #Serial Access
+    # Step 1: Serial Access
     while True:
         for df in df_dict: #Look at every dataframe at same time
             df = df_dict.get(df)
@@ -119,14 +119,14 @@ def fagin_topk (df_dict: dict, weight, k: int):
             id = str(current['model_id'])
             if id not in seen: #has not been seen before
                 values = {}
-                values.update({df.columns[2]:current.iloc[2]})
+                values.update({df.columns[1]:current.iloc[1], df.columns[2]:current.iloc[2]}) #1: model_name, 2: Metric
                 # print(values)
                 seen.update({id: values}) #Update the values
             else:  #has been seen before
                 values = seen.get(id)
                 values.update({df.columns[2]:current.iloc[2]}) #Put cell value for key of column name
                 seen.update({id: values}) #Update the values
-                if len(values) == 2:
+                if len(values) == 3: #Name, Performance and RA = 3
                     all_seen.add(id)
         if len(all_seen) >= k:
             print("Seen all! ", all_seen, "Seen len: ", len(seen))
@@ -137,55 +137,49 @@ def fagin_topk (df_dict: dict, weight, k: int):
         #print("Row: ", i, " allseen: ", all_seen, " Total rows: ",len(df.index))
         
 
-    #Random Access:
+    # Step 2: Random Access
     for id in seen: # Iterate over all seen objects and fill in missing ones
         values = dict(seen.get(id))
-        if len(values) != 2:
+        if len(values) != 3:
             keysList = list(values.keys())
-            if keysList[0] == "performance": # If RA is missing
-                df = df_dict.get('attributes') # Get correct df #TODO: Adjust for different RA metrics
-                pd.DataFrame(df)
-                val = df.loc[df['model_id'] == int(id), 'attributes'].values[0]
-                values.update({'attributes': val})
-                seen.update({id: values}) # Update the values
-            else: # If Performance is missing
-                df = df_dict.get('performance') #Get correct df
-                pd.DataFrame(df)
-                val = df.loc[df['model_id'] == int(id), 'performance'].values[0]
-                values.update({'performance': val})
-                seen.update({id: values}) # Update the values
+            try:
+                if keysList[1] == "performance": # If RA is missing
+                    df = df_dict.get('attributes') # Get correct df #TODO: Adjust for different RA metrics
+                    pd.DataFrame(df)
+                    val = df.loc[df['model_id'] == int(id), 'attributes'].values[0]
+                    values.update({'attributes': val})
+                    seen.update({id: values}) # Update the values
+                elif keysList[1] == "attributes": # If Performance is missing
+                    df = df_dict.get('performance') #Get correct df
+                    pd.DataFrame(df)
+                    val = df.loc[df['model_id'] == int(id), 'performance'].values[0]
+                    values.update({'performance': val})
+                    seen.update({id: values}) # Update the values
+            except Exception as e: print("Model seems to be missing one or more relevant metrics.")
 
-    #print("Seen: " , seen)
-    df_final = pd.DataFrame.from_dict(seen, orient='index') #Turning the dict into a df
+    # Turning the dict into a df            
+    df_final = pd.DataFrame.from_dict(seen, orient='index') 
     df_final.reset_index(inplace=True) #Reset index so model_id has own column
-    df_final.columns = ['model_id', 'performance', 'attributes']
-    #print(df_final.head)
-
+    df_final.columns = ['model_id', 'model_name', 'performance', 'attributes']
 
     # Convert columns to numeric values
     df_final['performance'] = pd.to_numeric(df_final['performance'])
     df_final['attributes'] = pd.to_numeric(df_final['attributes'])
-    
-    for ind, row in df_final.iterrows(): # Calculating final score using weight
+
+
+    # Step 3: Computing the grade
+    for ind, row in df_final.iterrows(): 
         score = (row['performance'] * weight) + (row['attributes'] * (1 - weight))
         df_final.at[ind, 'score'] = score
 
     df_final = df_final.sort_values(by='score', ascending=False, na_position='first') # sort by score
 
-    print(df_final.head)
-
     for ind in range(k):
         result.append(df_final.iloc[ind])  # add to result list
 
-    print(result)
+    print("Result:" , result)
     for ind in range(len(result)):
         round_result(result[ind]) # round values
 
-
-    #TODO: Have model_name included in result to it can be converted into JSON
-    #TODO: Have a look at warning messages in console by running topk()
-
-    print (result)  
-    #return convert_to_json(result)
-    return ("Test")
-
+    #print (result)  
+    return convert_to_json(result)
