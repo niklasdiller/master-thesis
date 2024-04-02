@@ -11,6 +11,7 @@ pd.options.mode.chained_assignment = None  # default='warn' # Ignores warnings r
 
 from utils.helper import *
 from utils.sql import *
+from threshold import *
 
 load_dotenv()
 
@@ -54,7 +55,7 @@ def topk():
     pID = data["pID"]
     perMin = data["perMin"]
     k = int(data["k"]) #Number of objects that should be returned to client
-    weight = float(data["accWeight"]) #Importance of Accuracy in comparison to Resource Awareness; Value [0-1]
+    weight = float(data["accWeight"]) #Importance of Performance in comparison to Resource Awareness; Value [0-1]
     with connection:
         with connection.cursor() as cursor:
             cursor.execute(FILTER_MODELS, (pID, perMin))
@@ -63,8 +64,8 @@ def topk():
     df = reshape_perf_table(df) #Call function that summarizes the accuracy for acc
     df = count_attributes(df) #Call function that counts the number of attributes of each model
 
-    df = normalize(df, 'performance', False)
-    df = normalize(df, 'attributes', True)
+    df = normalize(df, 'performance', rev = False)
+    df = normalize(df, 'attributes', rev = True)
 
     df = df.sort_values(by='performance', ascending=False, na_position='first') #Sort with highest performance first
     print(df.head)
@@ -81,6 +82,9 @@ def topk():
     df_dict.update([('performance', df_perf), ('attributes', df_reaw)])
 
     #TODO: Determine what Algorithm should be called
+
+    list = [df_perf, df_reaw]
+    print(threshold_topk(list, weight, k))
     result = fagin_topk(df_dict, weight, k)
     #result = naive_topk(df, weight, k)
 
@@ -114,7 +118,7 @@ def fagin_topk (df_dict: dict, weight, k: int): #TODO: Improve efficiency by get
     while True:
         for df in df_dict: #Look at every dataframe at same time
             df = df_dict.get(df)
-            print(df.head)
+            #print(df.head)
             current = df.iloc[i] # Look at first item of dataframe
             id = str(current['model_id'])
             if id not in seen: #has not been seen before
@@ -144,7 +148,7 @@ def fagin_topk (df_dict: dict, weight, k: int): #TODO: Improve efficiency by get
             keysList = list(values.keys())
             try:
                 if keysList[1] == "performance": # If RA is missing
-                    df = df_dict.get('attributes') # Get correct df #TODO: Adjust for different RA metrics
+                    df = df_dict.get('attributes') # Get correct df #TODO: Adjust for different/more RA metrics
                     pd.DataFrame(df)
                     val = df.loc[df['model_id'] == int(id), 'attributes'].values[0]
                     values.update({'attributes': val})
@@ -183,3 +187,79 @@ def fagin_topk (df_dict: dict, weight, k: int): #TODO: Improve efficiency by get
 
     #print (result)  
     return convert_to_json(result)
+
+
+def threshold_topk (df_list, weight, k):
+    i = 0 
+    result = pd.DataFrame(columns =['model_id', 'model_name', 'score'] )
+    while True:
+        threshold = 0
+
+        for cur_df_index, cur_df in enumerate(df_list): # Keep track of index to delete cur_df later
+            #print("Current DF: ", cur_df.head())
+            other_dfs = df_list.copy()
+            del other_dfs[cur_df_index] # Establish a list that has every list but the current one to look into
+
+            # print("Cur DF: ", cur_df)
+            # print("Other DFs: ", other_dfs)
+
+            cur_row = cur_df.iloc[i]
+            cur_id = cur_row['model_id']
+
+            # Calculate Threshold:
+            if cur_row.index[-1] == 'performance':
+                threshold += cur_row.iloc[-1]*weight
+            elif cur_row.index[-1] == 'attributes':
+                threshold += cur_row.iloc[-1]*(1-weight)
+
+            # Random Access:
+            for other_df in other_dfs:
+                metric = other_df.columns[-1]
+                other_val = other_df.loc[other_df['model_id'] == cur_id, metric].values[0]
+                if cur_id == '2050':
+                    print("Gefunden!!!!")
+                if metric == 'performance': #performance is missing
+                   # print("Val last col: ",  cur_row.iloc[-1] )
+                    cur_row.iloc[-1] = cur_row.iloc[-1]*(1-weight) + other_val*weight
+                    #print("Val last col after calc: ",  cur_row.iloc[-1] )
+                elif metric == 'attributes': #RA is missing
+                    cur_row.iloc[-1] = cur_row.iloc[-1]*weight + other_val*(1-weight)
+
+                else: #TODO: Handle multiple metrics
+                    raise Exception ("Unknown metric in data!")
+
+                # Adding seen model to result:
+                if cur_id not in result['model_id'].values: #Ignore if model already in result
+                    cur_row = cur_row.rename({cur_row.index[-1] : 'score'}) #rename attributes/performance to score
+                    #print("Result before adding: ", result)
+                    result.loc[len(result)] = cur_row #Add complete seen item to end of result df
+
+                    #print("Result after adding: ", result)
+                    result = result.sort_values(by='score',ascending=False) #Sort values so worst can be dropped
+                    result = result.reset_index(drop = True) #Reset Index 
+                    #print("Result after sorting: ", result)
+
+                    # Only keep k best models:
+                    if result.shape[0] > k:
+                        #print ("Result too long! Length: ", result.shape[0])
+                        result = result.drop(result.tail(1).index) #drop last row if result is longer than k
+                        #print("Now length: ", result.shape[0])
+                else: 
+                    print("Model already in result")
+        
+        #print ("threshold: ", threshold)
+        #print("Result: ", result)
+        #print(result.shape[0] == k)
+        #print(result.iloc[-1, -1] >= threshold)
+
+        # Stop condition:
+        if result.shape[0] == k and result.iloc[-1, -1] >= threshold:
+            print("Final Result: ", result)
+            return result
+        
+        # if i == 100:
+        #     print ("OOB")
+        #     return None
+        #print("Incrementing i")
+        
+        i += 1    
