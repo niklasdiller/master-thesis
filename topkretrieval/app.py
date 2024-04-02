@@ -11,7 +11,6 @@ pd.options.mode.chained_assignment = None  # default='warn' # Ignores warnings r
 
 from utils.helper import *
 from utils.sql import *
-from threshold import *
 
 load_dotenv()
 
@@ -68,13 +67,11 @@ def topk():
     df = normalize(df, 'attributes', rev = True)
 
     df = df.sort_values(by='performance', ascending=False, na_position='first') #Sort with highest performance first
-    print(df.head)
+    #print(df.head)
 
-    #Slicing Table here
-    #Performance Table:
-    df_perf = df.drop(columns=['attributes'])
-    #Resource Awareness Table:
-    df_reaw = df.drop(columns=['performance'])
+    #Slicing Table:
+    df_perf = df.drop(columns=['attributes']) #Performance Table
+    df_reaw = df.drop(columns=['performance']) #Resource Awareness Table
 
     df_perf = df_perf.sort_values(by='performance', ascending=False, na_position='first') #Sort with highest performance first
     df_reaw = df_reaw.sort_values(by='attributes', ascending=False, na_position='first') #Sort with least numner of attributes first
@@ -82,6 +79,8 @@ def topk():
     df_dict.update([('performance', df_perf), ('attributes', df_reaw)])
 
     #TODO: Determine what Algorithm should be called
+    #TODO: Have Threshold result displayed as JSON -> Result for all algos list or df?
+    #TODO: Comments for better readability
 
     list = [df_perf, df_reaw]
     print(threshold_topk(list, weight, k))
@@ -107,6 +106,7 @@ def naive_topk (df: pd.DataFrame, weight: float, k: int):
         round_result(result[ind]) # round values
 
     return convert_to_json(result)
+
 
 def fagin_topk (df_dict: dict, weight, k: int): #TODO: Improve efficiency by getting rif of multiple for loops
     result = []
@@ -194,7 +194,6 @@ def threshold_topk (df_list, weight, k):
     result = pd.DataFrame(columns =['model_id', 'model_name', 'score'] )
     while True:
         threshold = 0
-
         for cur_df_index, cur_df in enumerate(df_list): # Keep track of index to delete cur_df later
             #print("Current DF: ", cur_df.head())
             other_dfs = df_list.copy()
@@ -261,5 +260,5 @@ def threshold_topk (df_list, weight, k):
         #     print ("OOB")
         #     return None
         #print("Incrementing i")
-        
+
         i += 1    
