@@ -17,24 +17,41 @@ def normalize (df: pd.DataFrame, col: str, rev: bool):
                 df.at[ind, col] += 0
     return df
 
-def convert_to_json (result: list): #Convert result list into JSON format
+def convert_to_json (result): #Convert result list into JSON format
     json_list = []
     count = 1
     for row in result:
         modelnumber = "model"+str(count) #For model identifier in reply
-        model_id = int(row["model_id"]) #Convert serial to int
-        dict = {
-            "modelnumber": modelnumber,
-            "model_specs": [ 
-                {
-                    "model_id": model_id,
-                    "model_name": row["model_name"],
-                    "performance": row["performance"],
-                    "attributes": row["attributes"],
-                    "score": row["score"]
-                }
-            ]   
-        }
+        #print(result)
+        if type(result) == pd.DataFrame: #is result is a dataframe
+            model_id = int(result.at[count-1, 'model_id'])
+            dict = {
+                "modelnumber": modelnumber,
+                "model_specs": [ 
+                    {
+                        "model_id": model_id,
+                        "model_name": result.at[count-1, "model_name"],
+                        "performance": result.at[count-1, "performance"],
+                        "attributes": result.at[count-1, "attributes"],
+                        "score": result.at[count-1, "score"]
+                    }
+                ]
+            }
+
+        else: # if result is a list
+            model_id = int(row["model_id"]) #Convert serial to int
+            dict = {
+                "modelnumber": modelnumber,
+                "model_specs": [ 
+                    {
+                        "model_id": model_id,
+                        "model_name": row["model_name"],
+                        "performance": row["performance"],
+                        "attributes": row["attributes"],
+                        "score": row["score"]
+                    }
+                ]   
+            }
         json_list.append(dict)
         count += 1
     json_result = json.dumps(json_list, indent=4)   
@@ -45,6 +62,12 @@ def round_result(obj): #Round attribute, performance and overall score of each m
     obj["performance"] = round(obj["performance"], 2)
     obj["attributes"] = round(obj["attributes"], 2)
     return obj
+
+def round_result_df(df):
+    df['performance'] = df['performance'].astype(float).round(2)
+    df['attributes'] = df['attributes'].astype(float).round(2)
+    df['score'] = df['score'].astype(float).round(2)
+    return df
 
 def count_attributes(df: pd.DataFrame): #Count the number of attributes used in each model
     for ind in df.index:

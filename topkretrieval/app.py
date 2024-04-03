@@ -55,6 +55,7 @@ def topk():
     perMin = data["perMin"]
     k = int(data["k"]) #Number of objects that should be returned to client
     weight = float(data["accWeight"]) #Importance of Performance in comparison to Resource Awareness; Value [0-1]
+    algorithm = data["algorithm"] #The algorithm that should be called. Possible values: fagin, threshold, naive.
     with connection:
         with connection.cursor() as cursor:
             cursor.execute(FILTER_MODELS, (pID, perMin))
@@ -78,14 +79,31 @@ def topk():
     df_dict = {}
     df_dict.update([('performance', df_perf), ('attributes', df_reaw)])
 
-    #TODO: Determine what Algorithm should be called
-    #TODO: Have Threshold result displayed as JSON -> Result for all algos list or df?
+    #TODO: Decide which JSON Converter and which datatype for result should be used
     #TODO: Comments for better readability
 
-    list = [df_perf, df_reaw]
-    print(threshold_topk(list, weight, k))
-    result = fagin_topk(df_dict, weight, k)
-    #result = naive_topk(df, weight, k)
+    list = [df_perf, df_reaw] #DF list for threshold algorithm
+
+    # Call the desired algrotihm:
+
+    match algorithm:
+        case 'fagin':
+            result = result = fagin_topk(df_dict, weight, k)
+        case 'threshold':
+            result = (threshold_topk(list, weight, k))
+        case 'naive':
+            result = naive_topk(df, weight, k)
+        case _:
+            raise Exception ("Not a valid algorithm! Try 'naive', 'fagin', or 'threshold'.")
+
+
+    # if algorithm == 'fagin':
+    #     result = result = fagin_topk(df_dict, weight, k)
+    # elif algorithm == 'threshold':
+    #     result = (threshold_topk(list, weight, k))
+    # elif algorithm == 'naive':
+    #     result = naive_topk(df, weight, k)
+    # else: raise Exception ("Not a valid algorithm! Try 'naive', 'fagin', or 'threshold'.")
 
     return result
 
@@ -133,7 +151,7 @@ def fagin_topk (df_dict: dict, weight, k: int): #TODO: Improve efficiency by get
                 if len(values) == 3: #Name, Performance and RA = 3
                     all_seen.add(id)
         if len(all_seen) >= k:
-            print("Seen all! ", all_seen, "Seen len: ", len(seen))
+            #print("Seen all! ", all_seen, "Seen len: ", len(seen))
             break  
         i += 1
         if i == len(df.index)-1:
@@ -181,17 +199,16 @@ def fagin_topk (df_dict: dict, weight, k: int): #TODO: Improve efficiency by get
     for ind in range(k):
         result.append(df_final.iloc[ind])  # add to result list
 
-    print("Result:" , result)
+    #print("Result:" , result)
     for ind in range(len(result)):
         round_result(result[ind]) # round values
 
-    #print (result)  
     return convert_to_json(result)
 
 
 def threshold_topk (df_list, weight, k):
     i = 0 
-    result = pd.DataFrame(columns =['model_id', 'model_name', 'score'] )
+    result = pd.DataFrame(columns =['model_id', 'model_name', 'performance', 'attributes', 'score'] )
     while True:
         threshold = 0
         for cur_df_index, cur_df in enumerate(df_list): # Keep track of index to delete cur_df later
@@ -213,28 +230,29 @@ def threshold_topk (df_list, weight, k):
 
             # Random Access:
             for other_df in other_dfs:
-                metric = other_df.columns[-1]
-                other_val = other_df.loc[other_df['model_id'] == cur_id, metric].values[0]
-                if cur_id == '2050':
-                    print("Gefunden!!!!")
-                if metric == 'performance': #performance is missing
+                other_metric = other_df.columns[-1]
+                other_val = other_df.loc[other_df['model_id'] == cur_id, other_metric].values[0]
+                cur_val = cur_row.iloc[-1]
+
+                if other_metric == 'performance': #performance is missing
                    # print("Val last col: ",  cur_row.iloc[-1] )
-                    cur_row.iloc[-1] = cur_row.iloc[-1]*(1-weight) + other_val*weight
+                    cur_row['score'] = cur_val*(1-weight) + other_val*weight #calculating score
+                    cur_row['performance'] = other_val #filling in the missing metric
                     #print("Val last col after calc: ",  cur_row.iloc[-1] )
-                elif metric == 'attributes': #RA is missing
-                    cur_row.iloc[-1] = cur_row.iloc[-1]*weight + other_val*(1-weight)
+                elif other_metric == 'attributes': #RA is missing
+                    cur_row['score'] = cur_val*weight + other_val*(1-weight)
+                    cur_row['attributes'] = other_val
 
                 else: #TODO: Handle multiple metrics
                     raise Exception ("Unknown metric in data!")
 
                 # Adding seen model to result:
                 if cur_id not in result['model_id'].values: #Ignore if model already in result
-                    cur_row = cur_row.rename({cur_row.index[-1] : 'score'}) #rename attributes/performance to score
                     #print("Result before adding: ", result)
                     result.loc[len(result)] = cur_row #Add complete seen item to end of result df
 
                     #print("Result after adding: ", result)
-                    result = result.sort_values(by='score',ascending=False) #Sort values so worst can be dropped
+                    result = result.sort_values(by='score',ascending=False) #Sort values so worst model can be dropped
                     result = result.reset_index(drop = True) #Reset Index 
                     #print("Result after sorting: ", result)
 
@@ -253,7 +271,9 @@ def threshold_topk (df_list, weight, k):
 
         # Stop condition:
         if result.shape[0] == k and result.iloc[-1, -1] >= threshold:
-            print("Final Result: ", result)
+            result = round_result_df(result) #Round the values of the DF
+            result = result.to_json(orient='index') #Convert to JSON
+            #print("Final Result: ", result)
             return result
         
         # if i == 100:
