@@ -80,12 +80,11 @@ def topk():
     df_dict.update([('performance', df_perf), ('attributes', df_reaw)])
 
     #TODO: Decide which JSON Converter and which datatype for result should be used
-    #TODO: Comments for better readability
+    #TODO: Add and fix comments for better readability
 
     list = [df_perf, df_reaw] #DF list for threshold algorithm
 
     # Call the desired algrotihm:
-
     match algorithm:
         case 'fagin':
             result = result = fagin_topk(df_dict, weight, k)
@@ -96,15 +95,6 @@ def topk():
         case _:
             raise Exception ("Not a valid algorithm! Try 'naive', 'fagin', or 'threshold'.")
 
-
-    # if algorithm == 'fagin':
-    #     result = result = fagin_topk(df_dict, weight, k)
-    # elif algorithm == 'threshold':
-    #     result = (threshold_topk(list, weight, k))
-    # elif algorithm == 'naive':
-    #     result = naive_topk(df, weight, k)
-    # else: raise Exception ("Not a valid algorithm! Try 'naive', 'fagin', or 'threshold'.")
-
     return result
 
 def naive_topk (df: pd.DataFrame, weight: float, k: int):
@@ -112,13 +102,13 @@ def naive_topk (df: pd.DataFrame, weight: float, k: int):
     weight = float(weight)
     for ind in df.index:
        #Compute Score and put in new column
-       score = (df.at[ind, 'performance'] * weight) + (df.at[ind, 'attributes'] * (1-weight))
+       score = (df.at[ind, 'performance'] * weight) + (df.at[ind, 'attributes'] * (1-weight)) # Compute score
        df.at[ind, 'score'] = score
 
     df = df.sort_values(by='score', ascending=False, na_position='first')  #Sort for score
 
     for ind in range(k):
-        result.append(df.iloc[ind])  # add to result list
+        result.append(df.iloc[ind])  # add k models to result list
 
     for ind in range(len(result)):
         round_result(result[ind]) # round values
@@ -189,7 +179,7 @@ def fagin_topk (df_dict: dict, weight, k: int): #TODO: Improve efficiency by get
     df_final['attributes'] = pd.to_numeric(df_final['attributes'])
 
 
-    # Step 3: Computing the grade
+    # Step 3: Computing the grade  TODO: Iterrows has to be replaced
     for ind, row in df_final.iterrows(): 
         score = (row['performance'] * weight) + (row['attributes'] * (1 - weight))
         df_final.at[ind, 'score'] = score
@@ -230,9 +220,9 @@ def threshold_topk (df_list, weight, k):
 
             # Random Access:
             for other_df in other_dfs:
-                other_metric = other_df.columns[-1]
-                other_val = other_df.loc[other_df['model_id'] == cur_id, other_metric].values[0]
-                cur_val = cur_row.iloc[-1]
+                other_metric = other_df.columns[-1] # Last column
+                other_val = other_df.loc[other_df['model_id'] == cur_id, other_metric].values[0] # Look for model id in other df and get missing value
+                cur_val = cur_row.iloc[-1] #Last metric
 
                 if other_metric == 'performance': #performance is missing
                    # print("Val last col: ",  cur_row.iloc[-1] )
