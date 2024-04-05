@@ -786,29 +786,36 @@ public class ModelTrainer implements Serializable {
                 LongColumn.create("occupancySeconds", dataWithOccupancy.rowCount()),
                 LongColumn.create("periodStartSeconds"));
 
-    //TODO: Calculate middle of start to end date
-        long minutes = ChronoUnit.MINUTES.between(START_DATE, END_DATE);
-        long hours = ChronoUnit.HOURS.between(START_DATE, END_DATE);
-        long days = ChronoUnit.DAYS.between(START_DATE, END_DATE);
-        long months = ChronoUnit.MONTHS.between(START_DATE, END_DATE);
-        long years = ChronoUnit.YEARS.between(START_DATE, END_DATE);
-        LocalDateTime middle = START_DATE.plusYears(years/2);
-        middle = middle.plusMonths(months/2);
-        middle = middle.plusDays(days/2);
-        middle = middle.plusHours(hours/2);
-        middle = middle.plusMinutes(minutes/2);
 
-
-        while (START_DATE.isBefore(middle)) {
+        while (START_DATE.isBefore(END_DATE)) {
             dataWithOccupancy.append(filteredByExactPeriod(START_DATE, data, periodMinutes));
             START_DATE = START_DATE.plusMinutes(periodMinutes);
         }
-        System.out.println("Middle reached!");
-        while (middle.isBefore(END_DATE)) {
-            dataWithOccupancy.append(filteredByExactPeriod(middle, data, periodMinutes));
-            middle = middle.plusMinutes(periodMinutes);
-        }
-        System.out.println("while loop success!");
+
+//    //TODO: See where run stops
+
+//        long minutes = ChronoUnit.MINUTES.between(START_DATE, END_DATE);
+//        long hours = ChronoUnit.HOURS.between(START_DATE, END_DATE);
+//        long days = ChronoUnit.DAYS.between(START_DATE, END_DATE);
+//        long months = ChronoUnit.MONTHS.between(START_DATE, END_DATE);
+//        long years = ChronoUnit.YEARS.between(START_DATE, END_DATE);
+//        LocalDateTime middle = START_DATE.plusYears(years/2);
+//        middle = middle.plusMonths(months/2);
+//        middle = middle.plusDays(days/2);
+//        middle = middle.plusHours(hours/2);
+//        middle = middle.plusMinutes(minutes/2);
+//
+//
+//        while (START_DATE.isBefore(middle)) {
+//            dataWithOccupancy.append(filteredByExactPeriod(START_DATE, data, periodMinutes));
+//            START_DATE = START_DATE.plusMinutes(periodMinutes);
+//        }
+//        System.out.println("Middle reached!");
+//        while (middle.isBefore(END_DATE)) {
+//            dataWithOccupancy.append(filteredByExactPeriod(middle, data, periodMinutes));
+//            middle = middle.plusMinutes(periodMinutes);
+//        }
+//        System.out.println("while loop success!");
 
         // removing unnecessary information
         dataWithOccupancy.removeColumns("arrival_unix_seconds", "departure_unix_seconds",
