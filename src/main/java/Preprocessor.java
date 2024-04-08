@@ -29,6 +29,7 @@ public class Preprocessor {
     }
 
     private void saveTable(Table table, int pID, int perMin, boolean shift24h) throws SQLException {
+        //TODO: Context ändern in einzelne paramtere die direkt über SQL geholt werden können -> perMin and pID
         //add pID+perMin+24hShift identifier to table
         String context = "pID" + pID + "_perMin" + perMin;
         if (shift24h) context += "_24h";

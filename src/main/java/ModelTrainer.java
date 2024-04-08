@@ -185,6 +185,12 @@ public class ModelTrainer implements Serializable {
     public Map<Integer, Integer> kMap = new HashMap<>();
 
     /**
+     * Map for k values for prediction Horizon values
+     **/
+    public Map<Integer, Integer> predHorMap = new HashMap<>();
+
+
+    /**
      * Create a model trainer
      *
      * @param settings Contains all settings to run training pipeline
@@ -280,15 +286,21 @@ public class ModelTrainer implements Serializable {
         this.m_RandomForestClassifier.setMaxDepth(settings.randomForestMaxDepth);
         this.m_KNNClassifier.setKNN(settings.kNeighbours);
 
-        //// fill a hyperparameter Map with changing values for maxdepth of random forest classifier
+        // fill a hyperparameter Map with changing values for maxdepth of random forest classifier
         this.maxDepthMap.put(0, 1);
         this.maxDepthMap.put(1, 5);
         this.maxDepthMap.put(2, 20);
 
-        //// fill a hyperparameter Map with changing values for k of KNN classifier
+        // fill a hyperparameter Map with changing values for k of KNN classifier
         this.kMap.put(0, 3);
         this.kMap.put(1, 19);
         this.kMap.put(2, 33);
+
+        // fill a prediction Horizon Map with values of minutes that should be predicted in the future
+        this.predHorMap.put(0, 10);
+        this.predHorMap.put(1, 30);
+        this.predHorMap.put(2, 60);
+
     }
 
     /**
@@ -355,17 +367,22 @@ public class ModelTrainer implements Serializable {
     private Table getPreprocData(Settings settings, boolean shift24h) throws SQLException {
         System.out.println("Data from table " + settings.preprocessedTable + ".");
         System.out.println("Filter for pID" + settings.parkingId + ", perMin" + settings.periodMinutes + ".");
-        System.out.println("Training Data Size is " + settings.trainingWeeks + " weeks long.");
+        System.out.println("Training Data Size is " + settings.trainingWeeks + " week(s) long.");
 
         //Context to select only relevant preprocessed data
         String context = "pID" + settings.parkingId + "_perMin" + settings.periodMinutes;
         if (shift24h) context += "_24h";
 
-        trainingDataSize = settings.trainingWeeks * 7 * (1440 / settings.periodMinutes); //rows that make up trainingWeeks weeks
+        //rows that make up trainingWeeks weeks
+        trainingDataSize = settings.trainingWeeks * 7 * (1440 / settings.periodMinutes);
 
+        //To get enough data for covering the future predictions
+        int trainingDataTotal = trainingDataSize + settings.predictionHorizon;
+
+        //TODO: Results from query start at different points in time. Add order by statement.
         String query = "SELECT temp, humidity, weekday, month, year, time_slot, previous_occupancy, occupancy " +
                 "FROM public.\"" + settings.preprocessedTable + "\"  WHERE context = '" + context +
-                "' LIMIT " + trainingDataSize + ";";
+                "' LIMIT " + trainingDataTotal + ";";
 
 //        System.out.println(query);
         System.out.println("Getting training data for model " + settings.modelName + ".");
@@ -377,12 +394,27 @@ public class ModelTrainer implements Serializable {
         res.column("time_slot").setName("timeSlot"); //rename
         res.column("previous_occupancy").setName("previousOccupancy"); //rename
 
-        //Set startOFTrainingData
+        System.out.println(res.first(10));
+        System.out.println(res.last(10));
+
+        //Get values from +predHor row
+        // Prev. Occ set to current Occ; Occ set to the value in predHor.-Minutes; other values stay the same
+        for (int i = 0; i < trainingDataSize; i++) {
+            res.row(i).setDouble("previousOccupancy", res.row(i).getDouble("occupancy"));
+            res.row(i).setDouble("occupancy", res.row(i
+                    + settings.predictionHorizon).getDouble("occupancy"));
+        }
+
+        //Shortening the training dataset to its original size
+        res.dropRange(-settings.predictionHorizon);
+
+        //Set startOfTrainingData
         startOfTrainingData = res.row(0).getInt("month") + "/";
         startOfTrainingData += res.row(0).getInt("year");
 
         rs.getStatement().close();
-        System.out.println(res.first(10));
+        System.out.println(res.first(15));
+        System.out.println(res.last(15));
 
         return res;
     }
@@ -506,6 +538,7 @@ public class ModelTrainer implements Serializable {
                 listForClassifierIndexes.add(settings.classifiersData.get(i));
             }
         }
+        //TODO: Low Prio: Make performance metrics atomic and as own columns in DB
         for (int i = 0; i < listForClassifierIndexes.size(); i++) {
             if (listForClassifierIndexes.get(i) == 0) {
                 accuracyInfoDTString = "Correctly predicted: "
@@ -792,30 +825,6 @@ public class ModelTrainer implements Serializable {
             START_DATE = START_DATE.plusMinutes(periodMinutes);
         }
 
-//    //TODO: See where run stops
-
-//        long minutes = ChronoUnit.MINUTES.between(START_DATE, END_DATE);
-//        long hours = ChronoUnit.HOURS.between(START_DATE, END_DATE);
-//        long days = ChronoUnit.DAYS.between(START_DATE, END_DATE);
-//        long months = ChronoUnit.MONTHS.between(START_DATE, END_DATE);
-//        long years = ChronoUnit.YEARS.between(START_DATE, END_DATE);
-//        LocalDateTime middle = START_DATE.plusYears(years/2);
-//        middle = middle.plusMonths(months/2);
-//        middle = middle.plusDays(days/2);
-//        middle = middle.plusHours(hours/2);
-//        middle = middle.plusMinutes(minutes/2);
-//
-//
-//        while (START_DATE.isBefore(middle)) {
-//            dataWithOccupancy.append(filteredByExactPeriod(START_DATE, data, periodMinutes));
-//            START_DATE = START_DATE.plusMinutes(periodMinutes);
-//        }
-//        System.out.println("Middle reached!");
-//        while (middle.isBefore(END_DATE)) {
-//            dataWithOccupancy.append(filteredByExactPeriod(middle, data, periodMinutes));
-//            middle = middle.plusMinutes(periodMinutes);
-//        }
-//        System.out.println("while loop success!");
 
         // removing unnecessary information
         dataWithOccupancy.removeColumns("arrival_unix_seconds", "departure_unix_seconds",
@@ -886,7 +895,9 @@ public class ModelTrainer implements Serializable {
                     dataWithOccupancyAndWeather.row(i).getDouble("occupancyPercent"));
         }
 
-        if (shift24h) {
+        //24h Shift: Prediction Horizon for 24h, set in the preprocessing phase.
+        // Other Pred. Hor. are being set after preprocessing in getPreprocData().
+        if (shift24h) {//TODO: Probably remove this as it's obsolete
             for (int i = 0; i < dataWithOccupancyAndWeather.rowCount(); i++) {
                 LocalDateTime tmpDate = LocalDateTime.ofInstant(Instant.ofEpochSecond(dataWithOccupancyAndWeather
                                 .row(i).getLong("periodStartSeconds")),
@@ -1079,7 +1090,8 @@ public class ModelTrainer implements Serializable {
         m_Test_Data = Filter.useFilter(m_Test_Data, filter);
     }
 
-    private String generateModelName(int pID, String att, String clas, int perMin, int weeks, boolean shift24h, boolean fs) {
+    private String generateModelName(int pID, String att, String clas, int perMin, int weeks, int predHor,
+                                     boolean shift24h, boolean fs) {
         String cleanedAtt = att.replace(" ", "");
         String shortClas = "";
         switch (clas) {
@@ -1099,13 +1111,12 @@ public class ModelTrainer implements Serializable {
 
         if (shift24h) {
             String shift = "-24h";
-            return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + weeks + "-" + pID + shift;
+            return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + weeks + "-" + pID + "-" + predHor + shift;
         } else if (fs) {
             String fscale = "-fs";
-            return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + weeks + "-" + pID + fscale;
-
+            return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + weeks + "-" + pID + "-" + predHor + fscale;
         }
-        return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + weeks + "-" + pID;
+        return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + weeks + "-" + pID + "-" + predHor;
     }
 
     private void changeHyperparameters(String settingsPath, String clas_val, int val) {
@@ -1132,7 +1143,7 @@ public class ModelTrainer implements Serializable {
     }
 
     private Properties changeValues(String settingsPath, int pID, String att, String clas, int perMin,
-                                    int weeks, boolean shift24h, boolean fs) {
+                                    int weeks, boolean shift24h, boolean fs, int predHor) {
         try {
             att = att.substring(0, att.length() - 2); //remove last ", "
 
@@ -1147,7 +1158,8 @@ public class ModelTrainer implements Serializable {
             props.setProperty("classifiers", "{" + clas + "}");
             props.setProperty("periodMinutes", String.valueOf(perMin));
             props.setProperty("trainingWeeks", String.valueOf(weeks));
-            props.setProperty("modelName", generateModelName(pID, att, clas, perMin, weeks, shift24h, fs));
+            props.setProperty("modelName", generateModelName(pID, att, clas, perMin, weeks, predHor, shift24h, fs));
+            props.setProperty("predictionHorizon", String.valueOf(predHor));
 
             props.store(out, null);
             out.close();
@@ -1172,19 +1184,26 @@ public class ModelTrainer implements Serializable {
             String clas_val;
             String att_val;
             int pID_val;
-            int perMin_val;
+            int perMin_val = 1; //use perMin=1 globally, to get most details
             int weeks_val;
             boolean shift24h = false;
             boolean fs = false;
             int hyperMax = 0; //End condition for for-loop for hyperparameters RF and KNN
+            int predHor_val;
 
             //Parking Lot
             for (int pID = 0; pID <= trainer.parkingLotMap.size() - 1; pID++) {
                 pID_val = trainer.parkingLotMap.get(pID);
 
-                //Period Minutes
-                for (int perMin = 0; perMin <= trainer.periodMinuteMap.size() - 1; perMin++) {
-                    perMin_val = trainer.periodMinuteMap.get(perMin).get(0);
+                //Period Minutes //Uncomment if values from HashMap should be used again
+//                for (int perMin = 0; perMin <= trainer.periodMinuteMap.size() - 1; perMin++) {
+//                    perMin_val = trainer.periodMinuteMap.get(perMin).get(0);
+                int perMin = 1; //Remove this if period Minute loop is active
+
+                //Prediction Horizon
+                for (int predHor = 0; predHor <= trainer.predHorMap.size() - 1; predHor++) {
+                    predHor_val = trainer.predHorMap.get(predHor);
+
 
                     //Training Data Size in Weeks. Initial value 1, see hashmap
                     for (int weeks = 1; weeks <= trainer.periodMinuteMap.get(perMin).size() - 1; weeks++) {
@@ -1203,13 +1222,14 @@ public class ModelTrainer implements Serializable {
                                                 for (int att6 = 0; att6 <= 1; att6++) { // Previous Occupancy
 
                                                     //Get size of map for RF / KNN for for-loop end condition
-                                                    if (clas_val.equals("1")) {
+                                                    // Different hyperparameters can therefore be set arbitrarily
+                                                    if (clas_val.equals("1")) { //RF classifier
                                                         hyperMax = trainer.maxDepthMap.size() - 1;
-                                                    } else if (clas_val.equals("3")) {
+                                                    } else if (clas_val.equals("3")) { // KNN classifier
                                                         hyperMax = trainer.kMap.size() - 1;
                                                     }
 
-                                                    //if no changes to the hyperparamteres should be made,
+                                                    //if no changes to the hyperparameters should be made,
                                                     // remove this for-loop
                                                     for (int h = 0; h <= hyperMax; h++) {
 
@@ -1245,7 +1265,7 @@ public class ModelTrainer implements Serializable {
 
                                                         //Initialize new Object for every iteration
                                                         props = trainer.changeValues(settingsPath, pID_val, att_val,
-                                                                clas_val, perMin_val, weeks_val, shift24h, fs);
+                                                                clas_val, perMin_val, weeks_val, shift24h, fs, predHor_val);
 
                                                         settings = new Settings(settingsPath, props);
                                                         trainer = new ModelTrainer(settings);
