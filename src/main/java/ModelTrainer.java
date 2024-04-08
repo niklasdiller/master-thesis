@@ -821,12 +821,10 @@ public class ModelTrainer implements Serializable {
                 LongColumn.create("occupancySeconds", dataWithOccupancy.rowCount()),
                 LongColumn.create("periodStartSeconds"));
 
-
         while (START_DATE.isBefore(END_DATE)) {
             dataWithOccupancy.append(filteredByExactPeriod(START_DATE, data, periodMinutes));
             START_DATE = START_DATE.plusMinutes(periodMinutes);
         }
-
 
         // removing unnecessary information
         dataWithOccupancy.removeColumns("arrival_unix_seconds", "departure_unix_seconds",
@@ -869,7 +867,8 @@ public class ModelTrainer implements Serializable {
                 IntColumn.create("year", dataWithOccupancyAndWeather.rowCount()),
                 IntColumn.create("timeSlot", dataWithOccupancyAndWeather.rowCount()), // timeslot in day
                 DoubleColumn.create("previousOccupancy", dataWithOccupancyAndWeather.rowCount()), // occupancy N minutes ago
-                DoubleColumn.create("occupancy", dataWithOccupancyAndWeather.rowCount())); // occupancy now
+                DoubleColumn.create("occupancy", dataWithOccupancyAndWeather.rowCount()), // occupancy now
+                DateTimeColumn.create("time", dataWithOccupancyAndWeather.rowCount())); // time of period start
 
         // if horizon is less than an hour, hour
         int periodsInHour = 1;
@@ -880,11 +879,13 @@ public class ModelTrainer implements Serializable {
             LocalDateTime tmpDate = LocalDateTime.ofInstant(Instant.ofEpochSecond(dataWithOccupancyAndWeather
                             .row(i).getLong("periodStartSeconds")),
                     TimeZone.getDefault().toZoneId());
+
             dataWithOccupancyAndWeather.row(i).setInt("weekDay", tmpDate.getDayOfWeek().getValue());
             dataWithOccupancyAndWeather.row(i).setInt("month", tmpDate.getMonthValue());
             dataWithOccupancyAndWeather.row(i).setInt("year", tmpDate.getYear());
             dataWithOccupancyAndWeather.row(i).setInt("timeSlot",
                     (tmpDate.getMinute() + tmpDate.getHour() * 60) / (60 / periodsInHour)); //timeslot in a day
+            dataWithOccupancyAndWeather.row(i).setDateTime("time", tmpDate);
 
             double previousOccupancy = 0;
             if (i > 0) {
