@@ -868,7 +868,7 @@ public class ModelTrainer implements Serializable {
                 IntColumn.create("timeSlot", dataWithOccupancyAndWeather.rowCount()), // timeslot in day
                 DoubleColumn.create("previousOccupancy", dataWithOccupancyAndWeather.rowCount()), // occupancy N minutes ago
                 DoubleColumn.create("occupancy", dataWithOccupancyAndWeather.rowCount()), // occupancy now
-                DateTimeColumn.create("time", dataWithOccupancyAndWeather.rowCount())); // time of period start
+                DateTimeColumn.create("periodStartTime", dataWithOccupancyAndWeather.rowCount())); // time of period start
 
         // if horizon is less than an hour, hour
         int periodsInHour = 1;
@@ -885,7 +885,7 @@ public class ModelTrainer implements Serializable {
             dataWithOccupancyAndWeather.row(i).setInt("year", tmpDate.getYear());
             dataWithOccupancyAndWeather.row(i).setInt("timeSlot",
                     (tmpDate.getMinute() + tmpDate.getHour() * 60) / (60 / periodsInHour)); //timeslot in a day
-            dataWithOccupancyAndWeather.row(i).setDateTime("time", tmpDate);
+            dataWithOccupancyAndWeather.row(i).setDateTime("periodStartTime", tmpDate);
 
             double previousOccupancy = 0;
             if (i > 0) {

@@ -35,7 +35,7 @@ public class Preprocessor {
         PreparedStatement ps = trainer.conn.prepareStatement("" +
                 "INSERT INTO " + settings.tableName + " (" +
                 "temp, humidity, weekday, month, year, time_Slot, previous_Occupancy, occupancy, pID, period_minutes," +
-                " shift24h, time) " + "VALUES (?,?,?,?,?,?,?,?,?,?,?,?);");
+                " shift24h, period_start_time) " + "VALUES (?,?,?,?,?,?,?,?,?,?,?,?);");
 
         System.out.println(table.rowCount() + " Rows in Table");
 
@@ -51,7 +51,7 @@ public class Preprocessor {
             ps.setInt(9, pID);
             ps.setInt(10, perMin);
             ps.setBoolean(11, shift24h); // Indicates if a 24h Shift was used for this data entry
-            ps.setString(12, table.row(i).getString("time")); // Time of start of this period
+            ps.setString(12, table.row(i).getDateTime("periodStartTime").toString()); // Time of start of this period
 
             ps.addBatch();
 
