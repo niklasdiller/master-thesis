@@ -580,8 +580,9 @@ public class ModelTrainer implements Serializable {
                 "classifiers, attributes, trainingDataProportion," +
                 "accuracyPercent, randomForestMaxDepth, kNeighbours, " +
                 "accuracyDT, accuracyRF, accuracyLR, accuracyKNN, decision_tree," +
-                "random_forest, linear_regression, k_nearest_neighbors, window_stride, training_weeks, start_of_training_data) " +
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"); // number of ? has to be the same as the number of columns
+                "random_forest, linear_regression, k_nearest_neighbors, window_stride, training_weeks, " +
+                "start_of_training_data, prediction_horizon) " +
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"); // number of ? has to be the same as the number of columns
 
         ps.setString(1, settings.modelName);
         ps.setString(2, settings.developer);
@@ -646,6 +647,7 @@ public class ModelTrainer implements Serializable {
         ps.setInt(24, settings.periodMinutes); //Window Stride always same as Window Size (period minutes)
         ps.setInt(25, settings.trainingWeeks); //Weeks worth of training data
         ps.setString(26, startOfTrainingData); //Month and Year of first entry of training data for model
+        ps.setInt(27, settings.predictionHorizon); //Prediction Horizon
 
         ps.executeUpdate(); // execution
         ps.close();
