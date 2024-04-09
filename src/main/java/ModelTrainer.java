@@ -369,22 +369,20 @@ public class ModelTrainer implements Serializable {
         System.out.println("Filter for pID" + settings.parkingId + ", perMin" + settings.periodMinutes + ".");
         System.out.println("Training Data Size is " + settings.trainingWeeks + " week(s) long.");
 
-        //Context to select only relevant preprocessed data
-        String context = "pID" + settings.parkingId + "_perMin" + settings.periodMinutes;
-        if (shift24h) context += "_24h";
-
         //rows that make up trainingWeeks weeks
         trainingDataSize = settings.trainingWeeks * 7 * (1440 / settings.periodMinutes);
 
         //To get enough data for covering the future predictions
         int trainingDataTotal = trainingDataSize + settings.predictionHorizon;
 
-        //TODO: Results from query start at different points in time. Add order by statement.
+        //Statements includes ORDER BY on timestamp of period start, so results are always displayed in the right order
         String query = "SELECT temp, humidity, weekday, month, year, time_slot, previous_occupancy, occupancy " +
-                "FROM public.\"" + settings.preprocessedTable + "\"  WHERE context = '" + context +
-                "' LIMIT " + trainingDataTotal + ";";
+                "FROM public.\"" + settings.preprocessedTable + "\"  WHERE pid = '" + settings.parkingId +
+                "' AND period_minutes = '" + settings.periodMinutes + "' AND shift24h = '" + shift24h +
+                "' ORDER BY period_start_time asc " +
+                "LIMIT " + trainingDataTotal + ";";
 
-//        System.out.println(query);
+        //System.out.println(query);
         System.out.println("Getting training data for model " + settings.modelName + ".");
 
         Statement st = conn.createStatement();
@@ -394,8 +392,8 @@ public class ModelTrainer implements Serializable {
         res.column("time_slot").setName("timeSlot"); //rename
         res.column("previous_occupancy").setName("previousOccupancy"); //rename
 
-        System.out.println(res.first(10));
-        System.out.println(res.last(10));
+        //System.out.println(res.first(10));
+        //System.out.println(res.last(10));
 
         //Get values from +predHor row
         // Prev. Occ set to current Occ; Occ set to the value in predHor.-Minutes; other values stay the same
@@ -413,8 +411,8 @@ public class ModelTrainer implements Serializable {
         startOfTrainingData += res.row(0).getInt("year");
 
         rs.getStatement().close();
-        System.out.println(res.first(15));
-        System.out.println(res.last(15));
+        System.out.println(res.first(10));
+        //System.out.println(res.last(15));
 
         return res;
     }
