@@ -13,6 +13,10 @@ SELECT_MODEL_DIRECT =  """SELECT model_id, model_name, developer, created_time, 
 
 FILTER_MODELS =  """SELECT model_id, model_name, accuracydt, accuracyrf, accuracylr, accuracyknn, attributes
                 FROM niklas_trained_models
+                WHERE parking_id = %s and period_minutes = %s and prediction_horizon = %s"""
+
+FILTER_MODELS_NO_PREDHOR =  """SELECT model_id, model_name, accuracydt, accuracyrf, accuracylr, accuracyknn, attributes
+                FROM niklas_trained_models
                 WHERE parking_id = %s and period_minutes = %s"""
 
 # TABLE_ATT = """SELECT model_id, model_name, attributes

@@ -53,14 +53,20 @@ def topk():
     data = request.get_json()
     pID = data["pID"]
     perMin = data["perMin"]
+    predHor = int(data["predHor"])
     k = int(data["k"]) #Number of objects that should be returned to client
     weight = float(data["accWeight"]) #Importance of Performance in comparison to Resource Awareness; Value [0-1]
     algorithm = data["algorithm"] #The algorithm that should be called. Possible values: fagin, threshold, naive.
     with connection:
         with connection.cursor() as cursor:
-            cursor.execute(FILTER_MODELS, (pID, perMin))
+            if predHor == 0:
+                cursor.execute(FILTER_MODELS_NO_PREDHOR, (pID, perMin))
+            else: cursor.execute(FILTER_MODELS, (pID, perMin, predHor))
             df = pd.DataFrame(cursor.fetchall(), columns=['model_id', 'model_name', 'accuracydt', 'accuracyrf', 'accuracylr', 'accuracyknn', 'attributes'])
-            
+    
+    if df.size == 0: #If no model match the requirements
+        raise Exception ("No models found with specified metrics.")   
+
     df = reshape_perf_table(df) #Call function that summarizes the accuracy for acc
     df = count_attributes(df) #Call function that counts the number of attributes of each model
 
@@ -84,6 +90,8 @@ def topk():
 
     list = [df_perf, df_reaw] #DF list for threshold algorithm
 
+    print(df_perf)
+
     # Call the desired algrotihm:
     match algorithm:
         case 'fagin':
@@ -92,6 +100,8 @@ def topk():
             result = (threshold_topk(list, weight, k))
         case 'naive':
             result = naive_topk(df, weight, k)
+        case 'fagin2':
+            faginver2(list, weight, k)
         case _:
             raise Exception ("Not a valid algorithm! Try 'naive', 'fagin', or 'threshold'.")
 
@@ -116,11 +126,25 @@ def naive_topk (df: pd.DataFrame, weight: float, k: int):
     return convert_to_json(result)
 
 
+def faginver2 (df_list, weight, k):
+    result = pd.DataFrame(columns =['model_id', 'model_name', 'performance', 'attributes', 'score'] )
+    i = 0
+    seen = {}
+
+    while True:
+        for cur_df_index, cur_df in enumerate(df_list):
+            cur_row = cur_df.iloc[i]
+            cur_id = cur_row['model_id']
+            if cur_id not in seen:
+                seen[cur_id] = (cur_row['model_name'], cur_row['performance'], cur_row['attributes'], cur )
+                print(seen)
+
+
 def fagin_topk (df_dict: dict, weight, k: int): #TODO: Improve efficiency by getting rif of multiple for loops
     result = []
     i = 0
     seen = {} # TODO: Now a dict of dicts converted to a DF later, Or rather a DF directly ?
-    all_seen = set()
+    all_seen = 0
 
     # Step 1: Serial Access
     while True:
@@ -139,8 +163,8 @@ def fagin_topk (df_dict: dict, weight, k: int): #TODO: Improve efficiency by get
                 values.update({df.columns[2]:current.iloc[2]}) #Put cell value for key of column name
                 seen.update({id: values}) #Update the values
                 if len(values) == 3: #Name, Performance and RA = 3
-                    all_seen.add(id)
-        if len(all_seen) >= k:
+                    all_seen += 1
+        if all_seen >= k:
             #print("Seen all! ", all_seen, "Seen len: ", len(seen))
             break  
         i += 1
@@ -178,11 +202,8 @@ def fagin_topk (df_dict: dict, weight, k: int): #TODO: Improve efficiency by get
     df_final['performance'] = pd.to_numeric(df_final['performance'])
     df_final['attributes'] = pd.to_numeric(df_final['attributes'])
 
-
-    # Step 3: Computing the grade  TODO: Iterrows has to be replaced
-    for ind, row in df_final.iterrows(): 
-        score = (row['performance'] * weight) + (row['attributes'] * (1 - weight))
-        df_final.at[ind, 'score'] = score
+    # Step 3: Computing the grade 
+    df_final['score'] = (df_final['performance'] * weight) + (df_final['attributes'] * (1 - weight))
 
     df_final = df_final.sort_values(by='score', ascending=False, na_position='first') # sort by score
 
