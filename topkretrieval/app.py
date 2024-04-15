@@ -90,8 +90,6 @@ def topk():
 
     #TODO: Decide which JSON Converter and which datatype for result should be used
 
-    list = [df_perf, df_reaw] #DF list for threshold algorithm
-
     # Call the desired algrotihm:
     match algorithm:
         case 'fagin':
@@ -99,7 +97,7 @@ def topk():
         case 'threshold':
             result = convert_to_json(threshold_topk(df_dict, weight, k))
         case 'naive':
-            result = naive_topk(df, weight, k)
+            result = convert_to_json(naive_topk(df, weight, k))
         case _:
             raise Exception ("Not a valid algorithm! Try 'naive', 'fagin', or 'threshold'.")
 
@@ -143,9 +141,10 @@ def topkmodelsets():
     df = df.sort_values(by='performance', ascending=False, na_position='first') #Sort with highest performance first
     #print(df.head)
     df_dict = {}
+    df_dict_naive = {} #Dict of DF for the naive algorithm: No splitting done for performance/attributes
 
-    #Splitting Table into smaller tables for each predHor value * 2 (performance and REAW)
-    # df_dict with df_metric as value per predHor, which holds 2 more df (attributes and performance)
+    #Splitting Table into smaller tables for each predHor value * 2 (performance and attributes)
+    # df_dict with df_metric as value per predHor, which holds 2 more df 
     for key in predHorList: 
         df_predHor = df.drop(df[df.prediction_horizon != int(key)].index)
         key = "predHor"+str(key)
@@ -159,10 +158,8 @@ def topkmodelsets():
 
         df_metric.update([('performance', df_perf), ('attributes', df_reaw)])
         df_dict.update({key: df_metric}) # Adding into dict each df containing a unique predHor
+        df_dict_naive.update({key:df_predHor}) # Fill dict for naive algortithm
 
-    #print("df_dict ", df_dict)
-
-    #TODO: Take dictionary as input for all algos
 
     # Call the desired algrotihm:
     result = []
@@ -174,7 +171,7 @@ def topkmodelsets():
                 #result = threshold_topk(df_dict, weight, k)
                 result.append(threshold_topk(df_dict.get(key), weight, k))
             case 'naive':
-                result = naive_topk(df, weight, k)
+                result.append(naive_topk(df_dict_naive.get(key), weight, k))
             case _:
                 raise Exception ("Not a valid algorithm! Try 'naive', 'fagin', or 'threshold'.")
 

@@ -6,7 +6,7 @@ pd.options.mode.chained_assignment = None  # default='warn' # Ignores warnings r
 
 def naive_topk (df: pd.DataFrame, weight: float, k: int):
     result = []
-    weight = float(weight)
+    print(df)
     for ind in df.index:
        #Compute Score and put in new column
        score = (df.at[ind, 'performance'] * weight) + (df.at[ind, 'attributes'] * (1-weight)) # Compute score
@@ -20,7 +20,7 @@ def naive_topk (df: pd.DataFrame, weight: float, k: int):
     for ind in range(len(result)):
         round_result(result[ind]) # round values
 
-    return convert_to_json(result)
+    return result
 
 
 # def faginver2 (df_list, weight, k):
@@ -114,7 +114,7 @@ def fagin_topk (df_dict: dict, weight, k: int): #TODO: Improve efficiency by get
 
 
 
-def threshold_topk (df_dict, weight, k):
+def threshold_topk (df_dict: dict, weight: float, k: int):
     i = 0 
     result_df = pd.DataFrame(columns =['model_id', 'model_name', 'performance', 'attributes', 'score'] )
     result = []
