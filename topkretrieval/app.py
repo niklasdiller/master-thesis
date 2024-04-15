@@ -95,9 +95,9 @@ def topk():
     # Call the desired algrotihm:
     match algorithm:
         case 'fagin':
-            result = fagin_topk(df_dict, weight, k)
+            result = convert_to_json(fagin_topk(df_dict, weight, k))
         case 'threshold':
-            result = (threshold_topk(list, weight, k))
+            result = convert_to_json(threshold_topk(df_dict, weight, k))
         case 'naive':
             result = naive_topk(df, weight, k)
         case _:
@@ -146,9 +146,9 @@ def topkmodelsets():
 
     #Splitting Table into smaller tables for each predHor value * 2 (performance and REAW)
     # df_dict with df_metric as value per predHor, which holds 2 more df (attributes and performance)
-    for i in predHorList: 
-        df_predHor = df.drop(df[df.prediction_horizon != int(i)].index)
-        key = "predHor"+str(i)
+    for key in predHorList: 
+        df_predHor = df.drop(df[df.prediction_horizon != int(key)].index)
+        key = "predHor"+str(key)
 
         df_metric = {}
         df_perf = df_predHor.drop(columns=['attributes', 'prediction_horizon'])
@@ -162,23 +162,21 @@ def topkmodelsets():
 
     #print("df_dict ", df_dict)
 
-
-    #list = [df_perf, df_reaw] #DF list for threshold algorithm
+    #TODO: Take dictionary as input for all algos
 
     # Call the desired algrotihm:
     result = []
-    for i in df_dict:
+    for key in df_dict:
         match algorithm:
             case 'fagin':
-                result.append(fagin_topk(df_dict.get(i), weight, k))
+                result.append(fagin_topk(df_dict.get(key), weight, k))
             case 'threshold':
-                result = threshold_topk(list, weight, k)
+                #result = threshold_topk(df_dict, weight, k)
+                result.append(threshold_topk(df_dict.get(key), weight, k))
             case 'naive':
                 result = naive_topk(df, weight, k)
             case _:
                 raise Exception ("Not a valid algorithm! Try 'naive', 'fagin', or 'threshold'.")
-            
-   # print("Result!!!: ", result)
 
 
     #Create all possible combinations of models for modelsets
@@ -206,9 +204,8 @@ def topkmodelsets():
     
     combinations.sort(key=lambda x: modelset_score, reverse=True) # Sort for overall score
 
-    #TODO: JSON Converter that shows modelset id, modelset score, and groups specs into own value
+    #TODO: JSON Converter that shows modelset id, modelset score, and groups specs into own value. Have values displayed same way (e.g. "" for all values? etc)
 
-    print("Test ", combinations[0][0].at["model_name"])
     result_json= json.dumps(combinations_json)
    # print(combinations)
 

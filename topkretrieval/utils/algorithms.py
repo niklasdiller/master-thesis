@@ -1,7 +1,6 @@
 import pandas as pd
 from utils.helper import *
 from utils.sql import *
-from utils.algorithms import *
 pd.options.mode.chained_assignment = None  # default='warn' # Ignores warnings regarding chaning values to df copy
 
 
@@ -111,24 +110,24 @@ def fagin_topk (df_dict: dict, weight, k: int): #TODO: Improve efficiency by get
     for ind in range(len(result)):
         round_result(result[ind]) # round values
 
-    #convert_to_json(result) #TODO: Have converted to json in topk function that calls
     return result
 
 
-#TODO: Make threshold algo take dict instead of list
 
-def threshold_topk (df_list, weight, k):
+def threshold_topk (df_dict, weight, k):
     i = 0 
-    result = pd.DataFrame(columns =['model_id', 'model_name', 'performance', 'attributes', 'score'] )
+    result_df = pd.DataFrame(columns =['model_id', 'model_name', 'performance', 'attributes', 'score'] )
+    result = []
     while True:
         threshold = 0
-        for cur_df_index, cur_df in enumerate(df_list): # Keep track of index to delete cur_df later
-            #print("Current DF: ", cur_df.head())
-            other_dfs = df_list.copy()
-            del other_dfs[cur_df_index] # Establish a list that has every list but the current one to look into
 
-            # print("Cur DF: ", cur_df)
-            # print("Other DFs: ", other_dfs)
+        for key in df_dict: # Keep track of index to delete cur_df later
+            cur_df = df_dict.get(key)
+            other_dfs = df_dict.copy()
+            del other_dfs[key] # Establish a list that has every list but the current one to look into
+
+        #     # print("Cur DF: ", cur_df)
+        #     # print("Other DFs: ", other_dfs)
 
             cur_row = cur_df.iloc[i]
             cur_id = cur_row['model_id']
@@ -140,7 +139,8 @@ def threshold_topk (df_list, weight, k):
                 threshold += cur_row.iloc[-1]*(1-weight)
 
             # Random Access:
-            for other_df in other_dfs:
+            for key in other_dfs:
+                other_df = other_dfs[key]
                 other_metric = other_df.columns[-1] # Last column
                 other_val = other_df.loc[other_df['model_id'] == cur_id, other_metric].values[0] # Look for model id in other df and get missing value
                 cur_val = cur_row.iloc[-1] #Last metric
@@ -158,38 +158,30 @@ def threshold_topk (df_list, weight, k):
                     raise Exception ("Unknown metric in data!")
 
                 # Adding seen model to result:
-                if cur_id not in result['model_id'].values: #Ignore if model already in result
+                if cur_id not in result_df['model_id'].values: #Ignore if model already in result
                     #print("Result before adding: ", result)
-                    result.loc[len(result)] = cur_row #Add complete seen item to end of result df
+                    result_df.loc[len(result_df)] = cur_row #Add complete seen item to end of result df
 
                     #print("Result after adding: ", result)
-                    result = result.sort_values(by='score',ascending=False) #Sort values so worst model can be dropped
-                    result = result.reset_index(drop = True) #Reset Index 
+                    result_df = result_df.sort_values(by='score',ascending=False) #Sort values so worst model can be dropped
+                    result_df = result_df.reset_index(drop = True) #Reset Index 
                     #print("Result after sorting: ", result)
 
                     # Only keep k best models:
-                    if result.shape[0] > k:
+                    if result_df.shape[0] > k:
                         #print ("Result too long! Length: ", result.shape[0])
-                        result = result.drop(result.tail(1).index) #drop last row if result is longer than k
+                        result_df = result_df.drop(result_df.tail(1).index) #drop last row if result is longer than k
                         #print("Now length: ", result.shape[0])
                 else: 
                     print("Model already in result")
-        
-        #print ("threshold: ", threshold)
-        #print("Result: ", result)
-        #print(result.shape[0] == k)
-        #print(result.iloc[-1, -1] >= threshold)
 
         # Stop condition:
-        if result.shape[0] == k and result.iloc[-1, -1] >= threshold:
-            result = round_result_df(result) #Round the values of the DF
-            result = result.to_json(orient='index') #Convert to JSON
+        if result_df.shape[0] == k and result_df.iloc[-1, -1] >= threshold:
+            result_df = round_result_df(result_df) #Round the values of the DF
+            for ind in range(k):
+                result.append(result_df.iloc[ind])  # add to result list
+            #result_df = result_df.to_json(orient='index') #Convert to JSON
             #print("Final Result: ", result)
             return result
-        
-        # if i == 100:
-        #     print ("OOB")
-        #     return None
-        #print("Incrementing i")
 
         i += 1    
