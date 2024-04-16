@@ -1,9 +1,8 @@
 from tokenize import String
-from flask import Flask, request, jsonify
-from dotenv import load_dotenv
 import pandas as pd
 import re
 import json
+from collections import OrderedDict
 
 def normalize (df: pd.DataFrame, col: str, rev: bool):
     normCol = [col]
@@ -17,45 +16,68 @@ def normalize (df: pd.DataFrame, col: str, rev: bool):
                 df.at[ind, col] += 0
     return df
 
-def convert_to_json (result): #Convert result list into JSON format
+def convert_to_json (result, isModelset:bool): #Convert result list into JSON format
     json_list = []
-    count = 1
-    for row in result:
-        modelnumber = "model"+str(count) #For model identifier in reply
-        #print(result)
-        if type(result) == pd.DataFrame: #is result is a dataframe
-            model_id = int(result.at[count-1, 'model_id'])
-            dict = {
-                "modelnumber": modelnumber,
-                "model_specs": [ 
-                    {
-                        "model_id": model_id,
-                        "model_name": result.at[count-1, "model_name"],
-                        "performance": result.at[count-1, "performance"],
-                        "attributes": result.at[count-1, "attributes"],
-                        "score": result.at[count-1, "score"]
-                    }
-                ]
-            }
+    # If single models are retrieved
+    if isModelset == False:
+        count = 1
 
-        else: # if result is a list
-            model_id = int(row["model_id"]) #Convert serial to int
-            dict = {
-                "modelnumber": modelnumber,
-                "model_specs": [ 
-                    {
-                        "model_id": model_id,
-                        "model_name": row["model_name"],
-                        "performance": row["performance"],
-                        "attributes": row["attributes"],
-                        "score": row["score"]
-                    }
-                ]   
+        for row in result:
+            modelnumber = "model"+str(count) #For model identifier in reply
+
+            if modelset == False: #If only single models are being queried
+                model_id = int(row["model_id"]) #Convert serial to int
+                dict = {
+                    "Model Number": modelnumber,
+                    "Model Specs": [ 
+                        {
+                            "Model ID": model_id,
+                            "Model Name": row["model_name"],
+                            "Performance": row["performance"],
+                            "Attributes": row["attributes"],
+                            "Score": row["score"]
+                        }
+                    ]   
+                }
+
+            json_list.append(dict)
+            count += 1
+        json_result = json.dumps(json_list, indent=4)   
+        return json_result
+
+
+    # If modelsets are retrieved
+    elif isModelset == True: #If modelsets are queried
+        #print("Complete", result)
+        for i, modelset in enumerate(result):
+            modelsetnumber = "Modelset"+str(i+1)
+            modelset_dict = {
+                "Modelsetnumber" : modelsetnumber,
+                "Modelset Score" : modelset.get('Modelset Score')
             }
-        json_list.append(dict)
-        count += 1
-    json_result = json.dumps(json_list, indent=4)   
-    return json_result
+            #print("Modelset", modelset)
+           # print(modelset.get('Models'))
+            models = modelset.get('Models')
+            for j, model in enumerate(models): 
+               # print("Model", model)
+                modelnumber = "Model"+str(j+1)
+                model_dict = {
+                    "Model Specs": [
+                        {
+                            #"Model ID": model.get('model_id')
+                            # "Model Name": row["model_name"],
+                            # "Performance": row["performance"],
+                            # "Attributes": row["attributes"],
+                            # "Score": row["score"]
+                        }
+                    ]
+                }
+                modelset_dict.update({modelnumber:model_dict})
+
+            json_list.append(modelset_dict)
+        json_result = json.dumps(json_list, indent=4)   
+        return json_result
+
 
 def round_result(obj): #Round attribute, performance and overall score of each model
     obj["score"] = round(obj["score"], 2)

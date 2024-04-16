@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import pandas as pd
 import numpy as np
 import itertools
+from collections import OrderedDict
 
 pd.options.mode.chained_assignment = None  # default='warn' # Ignores warnings regarding chaning values to df copy
 
@@ -93,16 +94,15 @@ def topk():
     # Call the desired algrotihm:
     match algorithm:
         case 'fagin':
-            result = convert_to_json(fagin_topk(df_dict, weight, k))
+            result = convert_to_json(fagin_topk(df_dict, weight, k), False)
         case 'threshold':
-            result = convert_to_json(threshold_topk(df_dict, weight, k))
+            result = convert_to_json(threshold_topk(df_dict, weight, k), False)
         case 'naive':
-            result = convert_to_json(naive_topk(df, weight, k))
+            result = convert_to_json(naive_topk(df, weight, k), False)
         case _:
             raise Exception ("Not a valid algorithm! Try 'naive', 'fagin', or 'threshold'.")
 
     return result
-
 
 
 #Top K Model Sets
@@ -175,7 +175,6 @@ def topkmodelsets():
             case _:
                 raise Exception ("Not a valid algorithm! Try 'naive', 'fagin', or 'threshold'.")
 
-
     #Create all possible combinations of models for modelsets
     combinations = []
     for models_per_pH in itertools.product(*result): #For all models per Prediction Horizon
@@ -188,20 +187,33 @@ def topkmodelsets():
 
     # Get the best modelset by calculating overall score
     for cur_combi in combinations:
-            cur_combi_dict = [] #Define dict to turn into JSON
-            modelset_score = sum(model['score'] for model in cur_combi) #Calculate overall score for each combination
-
-            for model in cur_combi:
+            modelset = OrderedDict() #Define dict to turn into JSON
+            modelset['Modelset Number'] = None # So these metrics are shown first in the JSON later
+            modelset['Modelset Score'] = None
+            modelset_score = 0
+            modelset['Models'] = {} 
+            for index, model in enumerate(cur_combi):
                 model_dict = model.to_dict() # Converting the series into dict
-                cur_combi_dict.append(model_dict)
+                model_dict.update({"prediction_horizon": predHorList[index]}) # Add prediction horizon as model metric
+                modelname = 'Model'+str(index+1)
+                modelset['Models'].update({modelname: model_dict})
+                #print(modelset['Models'])
+                modelset_score += model['score'] #Calculate overall score for each combination
 
-            cur_combi.append(modelset_score) #Append the overall score to each combination
-            combinations_json.append(cur_combi_dict)
+            modelset.update({'Modelset Score': modelset_score}) #Append the overall score to each combination
+            combinations_json.append(modelset)
             #print("MSS ", modelset_score)
     
-    combinations.sort(key=lambda x: modelset_score, reverse=True) # Sort for overall score
+    combinations_json= sorted(combinations_json, key = lambda d: d['Modelset Score'], reverse=True) # Sort by value of Modelset Score
 
-    #TODO: JSON Converter that shows modelset id, modelset score, and groups specs into own value. Have values displayed same way (e.g. "" for all values? etc)
+    for index,modelset in enumerate(combinations_json): #Give each modelset a number
+        modelset.update({'Modelset Number' : index+1 })
+
+
+    #TODO: Have result be converted by conver_to_json to have better structure
+    
+    #result_json= convert_to_json(combinations_json, True)
+
 
     result_json= json.dumps(combinations_json)
    # print(combinations)

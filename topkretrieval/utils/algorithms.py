@@ -6,7 +6,6 @@ pd.options.mode.chained_assignment = None  # default='warn' # Ignores warnings r
 
 def naive_topk (df: pd.DataFrame, weight: float, k: int):
     result = []
-    print(df)
     for ind in df.index:
        #Compute Score and put in new column
        score = (df.at[ind, 'performance'] * weight) + (df.at[ind, 'attributes'] * (1-weight)) # Compute score
@@ -46,13 +45,11 @@ def fagin_topk (df_dict: dict, weight, k: int): #TODO: Improve efficiency by get
     while True:
         for df in df_dict: #Look at every dataframe at same time
             df = df_dict.get(df)
-            #print(df.head)
             current = df.iloc[i] # Look at first item of dataframe
             id = str(current['model_id'])
             if id not in seen: #has not been seen before
                 values = {}
                 values.update({df.columns[1]:current.iloc[1], df.columns[2]:current.iloc[2]}) #1: model_name, 2: Metric
-                # print(values)
                 seen.update({id: values}) #Update the values
             else:  #has been seen before
                 values = seen.get(id)
