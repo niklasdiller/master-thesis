@@ -6,7 +6,6 @@ import psycopg2
 from dotenv import load_dotenv
 import pandas as pd
 import numpy as np
-import itertools
 from collections import OrderedDict
 
 pd.options.mode.chained_assignment = None  # default='warn' # Ignores warnings regarding chaning values to df copy
@@ -89,8 +88,6 @@ def topk():
     df_dict = {}
     df_dict.update([('performance', df_perf), ('attributes', df_reaw)])
 
-    #TODO: Decide which JSON Converter and which datatype for result should be used
-
     # Call the desired algrotihm:
     match algorithm:
         case 'fagin':
@@ -120,6 +117,7 @@ def topkmodelsets():
     k = int(data["k"]) #Number of objects that should be returned to client
     weight = float(data["accWeight"]) #Importance of Performance in comparison to Resource Awareness; Value [0-1]
     algorithm = data["algorithm"] #The algorithm that should be called. Possible values: fagin, threshold, naive.
+    combineSameFeatures = bool(data["combineSameFeatures"]) #Indicates, whether modelsets should only be generated if the models have the same features
     with connection:
         with connection.cursor() as cursor:
             if predHorList == [] or predHorList == 0:
@@ -152,6 +150,7 @@ def topkmodelsets():
         df_metric = {}
         df_perf = df_predHor.drop(columns=['attributes', 'prediction_horizon'])
         df_reaw = df_predHor.drop(columns=['performance', 'prediction_horizon'])
+        #df_reaw = df_predHor.drop(columns=['performance'])
 
         df_perf = df_perf.sort_values(by='performance', ascending=False, na_position='first') #Sort with highest performance first
         df_reaw = df_reaw.sort_values(by='attributes', ascending=False, na_position='first') #Sort with least numner of attributes first
@@ -175,14 +174,8 @@ def topkmodelsets():
             case _:
                 raise Exception ("Not a valid algorithm! Try 'naive', 'fagin', or 'threshold'.")
 
-    #Create all possible combinations of models for modelsets
-    combinations = []
-    for models_per_pH in itertools.product(*result): #For all models per Prediction Horizon
-        cur_combi = []
-        for model in models_per_pH: #For all models 
-            cur_combi.append(model)
-        combinations.append(cur_combi)
-    
+
+    combinations = create_combinations(result, combineSameFeatures) # Create modelsets by combining models
     combinations_json = [] # List that contains JSON convertable datatypes only
 
     # Get the best modelset by calculating overall score

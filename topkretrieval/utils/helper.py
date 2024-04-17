@@ -3,6 +3,7 @@ import pandas as pd
 import re
 import json
 from collections import OrderedDict
+import itertools
 
 def normalize (df: pd.DataFrame, col: str, rev: bool):
     normCol = [col]
@@ -15,6 +16,32 @@ def normalize (df: pd.DataFrame, col: str, rev: bool):
             if df.at[ind, col] == (-0.0):
                 df.at[ind, col] += 0
     return df
+
+def create_combinations (resultList: list, combineSameFeatures: bool):
+    if combineSameFeatures == True: # Only combine models to modelsets that have the same features
+        combinations = []
+        for models_per_pH in itertools.product(*resultList): #For all models per Prediction Horizon
+            cur_combi = []
+            #print(models_per_pH)
+            features_set = set() # A set to keep track of the features in one combination
+            for model in models_per_pH: #For all models 
+                model_name = model.get("model_name")
+                features = model_name.split('-')[1] # get the featues 
+                features_set.add(features)
+                cur_combi.append(model)
+            if len(features_set) == 1: # As a set does not contain duplicate values length 1 means only the same features in the combination
+                combinations.append(cur_combi) # Only if same features, the combination is a valid modelset
+        return combinations
+
+    else: #Create all possible combinations of models for modelsets
+        combinations = []
+        for models_per_pH in itertools.product(*resultList): #For all models per Prediction Horizon
+            cur_combi = []
+            for model in models_per_pH: #For all models 
+                cur_combi.append(model)
+            combinations.append(cur_combi)
+        return combinations
+
 
 def convert_to_json (result, isModelset:bool): #Convert result list into JSON format
     json_list = []
@@ -90,7 +117,7 @@ def count_attributes(df: pd.DataFrame): #Count the number of attributes used in 
     for ind in df.index:
         val = df.at[ind, 'attributes']
         numAttr = len(val.split(', '))
-        df.at[ind, 'attributes'] = numAttr
+        df.at[ind, 'attributes'] = numAttr # replace the actual attirbute values with the number of attributes used
     return df
 
 def reshape_perf_table(df: pd.DataFrame):
