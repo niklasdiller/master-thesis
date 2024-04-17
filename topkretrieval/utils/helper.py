@@ -24,21 +24,19 @@ def convert_to_json (result, isModelset:bool): #Convert result list into JSON fo
 
         for row in result:
             modelnumber = "model"+str(count) #For model identifier in reply
-
-            if modelset == False: #If only single models are being queried
-                model_id = int(row["model_id"]) #Convert serial to int
-                dict = {
-                    "Model Number": modelnumber,
-                    "Model Specs": [ 
-                        {
-                            "Model ID": model_id,
-                            "Model Name": row["model_name"],
-                            "Performance": row["performance"],
-                            "Attributes": row["attributes"],
-                            "Score": row["score"]
-                        }
-                    ]   
-                }
+            model_id = int(row["model_id"]) #Convert serial to int
+            dict = {
+                "Model Number": modelnumber,
+                "Model Specs": [ 
+                    {
+                        "Model ID": model_id,
+                        "Model Name": row["model_name"],
+                        "Performance": row["performance"],
+                        "Attributes": row["attributes"],
+                        "Score": row["score"]
+                    }
+                ]   
+            }
 
             json_list.append(dict)
             count += 1
@@ -48,31 +46,28 @@ def convert_to_json (result, isModelset:bool): #Convert result list into JSON fo
 
     # If modelsets are retrieved
     elif isModelset == True: #If modelsets are queried
-        #print("Complete", result)
         for i, modelset in enumerate(result):
             modelsetnumber = "Modelset"+str(i+1)
             modelset_dict = {
                 "Modelsetnumber" : modelsetnumber,
                 "Modelset Score" : modelset.get('Modelset Score')
             }
-            #print("Modelset", modelset)
-           # print(modelset.get('Models'))
-            models = modelset.get('Models')
-            for j, model in enumerate(models): 
-               # print("Model", model)
-                modelnumber = "Model"+str(j+1)
+
+            for modelname, model in modelset['Models'].items(): 
                 model_dict = {
                     "Model Specs": [
                         {
-                            #"Model ID": model.get('model_id')
-                            # "Model Name": row["model_name"],
-                            # "Performance": row["performance"],
-                            # "Attributes": row["attributes"],
-                            # "Score": row["score"]
+                            "Model ID": model.get('model_id'),
+                            "Model Name": model.get("model_name"),
+                            "Prediction Horizon": model.get('prediction_horizon'),
+                            "Performance": model.get("performance"),
+                            "Attributes": model.get("attributes"),
+                            "Score": model.get("score")
                         }
                     ]
                 }
-                modelset_dict.update({modelnumber:model_dict})
+
+                modelset_dict.update({modelname:model_dict})
 
             json_list.append(modelset_dict)
         json_result = json.dumps(json_list, indent=4)   

@@ -187,19 +187,16 @@ def topkmodelsets():
 
     # Get the best modelset by calculating overall score
     for cur_combi in combinations:
-            modelset = OrderedDict() #Define dict to turn into JSON
-            modelset['Modelset Number'] = None # So these metrics are shown first in the JSON later
-            modelset['Modelset Score'] = None
+            modelset = OrderedDict([('Modelset Number', None), ( 'Modelset Score', None), ('Models', {}) ]) #Define dict to turn into JSON
             modelset_score = 0
-            modelset['Models'] = {} 
             for index, model in enumerate(cur_combi):
                 model_dict = model.to_dict() # Converting the series into dict
                 model_dict.update({"prediction_horizon": predHorList[index]}) # Add prediction horizon as model metric
                 modelname = 'Model'+str(index+1)
-                modelset['Models'].update({modelname: model_dict})
-                #print(modelset['Models'])
+                modelset['Models'][modelname] = model_dict
                 modelset_score += model['score'] #Calculate overall score for each combination
 
+            modelset_score = round(modelset_score, 2)
             modelset.update({'Modelset Score': modelset_score}) #Append the overall score to each combination
             combinations_json.append(modelset)
             #print("MSS ", modelset_score)
@@ -209,13 +206,5 @@ def topkmodelsets():
     for index,modelset in enumerate(combinations_json): #Give each modelset a number
         modelset.update({'Modelset Number' : index+1 })
 
-
-    #TODO: Have result be converted by conver_to_json to have better structure
-    
-    #result_json= convert_to_json(combinations_json, True)
-
-
-    result_json= json.dumps(combinations_json)
-   # print(combinations)
-
+    result_json= convert_to_json(combinations_json, True)
     return (result_json)
