@@ -395,7 +395,7 @@ public class ModelTrainer implements Serializable {
         //System.out.println(res.first(10));
         //System.out.println(res.last(10));
 
-        //Get values from +predHor row
+        //Get values from +22or row
         // Prev. Occ set to current Occ; Occ set to the value in predHor.-Minutes; other values stay the same
         for (int i = 0; i < trainingDataSize; i++) {
             res.row(i).setDouble("previousOccupancy", res.row(i).getDouble("occupancy"));
@@ -896,22 +896,22 @@ public class ModelTrainer implements Serializable {
                     dataWithOccupancyAndWeather.row(i).getDouble("occupancyPercent"));
         }
 
-        //24h Shift: Prediction Horizon for 24h, set in the preprocessing phase.
-        // Other Pred. Hor. are being set after preprocessing in getPreprocData().
-        if (shift24h) {//TODO: Probably remove this as it's obsolete
-            for (int i = 0; i < dataWithOccupancyAndWeather.rowCount(); i++) {
-                LocalDateTime tmpDate = LocalDateTime.ofInstant(Instant.ofEpochSecond(dataWithOccupancyAndWeather
-                                .row(i).getLong("periodStartSeconds")),
-                        TimeZone.getDefault().toZoneId());
-                LocalDateTime newDate = tmpDate.minusHours(24);
-
-                dataWithOccupancyAndWeather.row(i).setInt("weekDay", newDate.getDayOfWeek().getValue());
-                dataWithOccupancyAndWeather.row(i).setInt("month", newDate.getMonthValue());
-                dataWithOccupancyAndWeather.row(i).setInt("year", newDate.getYear());
-                //because prev. occ. makes no sense in this case:
-//                dataWithOccupancyAndWeather.row(i).setDouble("previousOccupancy", -1);
-            }
-        }
+//        //24h Shift: Prediction Horizon for 24h, set in the preprocessing phase.
+//        // New Pred. Hor. are being set after preprocessing in getPreprocData().
+//        if (shift24h) {
+//            for (int i = 0; i < dataWithOccupancyAndWeather.rowCount(); i++) {
+//                LocalDateTime tmpDate = LocalDateTime.ofInstant(Instant.ofEpochSecond(dataWithOccupancyAndWeather
+//                                .row(i).getLong("periodStartSeconds")),
+//                        TimeZone.getDefault().toZoneId());
+//                LocalDateTime newDate = tmpDate.minusHours(24);
+//
+//                dataWithOccupancyAndWeather.row(i).setInt("weekDay", newDate.getDayOfWeek().getValue());
+//                dataWithOccupancyAndWeather.row(i).setInt("month", newDate.getMonthValue());
+//                dataWithOccupancyAndWeather.row(i).setInt("year", newDate.getYear());
+//                //because prev. occ. makes no sense in this case:
+////                dataWithOccupancyAndWeather.row(i).setDouble("previousOccupancy", -1);
+//            }
+//        }
 
         dataWithOccupancyAndWeather.removeColumns("periodStartSeconds", "occupancyPercent");
 

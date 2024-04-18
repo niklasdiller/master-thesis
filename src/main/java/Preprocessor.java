@@ -106,7 +106,7 @@ public class Preprocessor {
                 //Period Minutes
 //                for (int perMin = 0; perMin <= trainer.periodMinuteMap.size() - 1; perMin++) {
 //                    perMin_val = trainer.periodMinuteMap.get(perMin).get(0); //TODO: Uncomment lines
-                perMin_val = 1;
+                perMin_val = 5;
 
                 //set flag for 24h occupancy prediction used in preprocessing
 //                    if (perMin == 3) shift24h = true; //TODO Uncomment
