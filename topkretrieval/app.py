@@ -110,7 +110,8 @@ def topkmodelsets():
     pID = int(data["pID"])
     if pID != 38 and pID != 634:
         raise Exception ("Not a valid parking lot ID. Try 38 or 634.")
-    perMin = data["perMin"]
+    perMinList = data["perMin"]
+    perMinVars = ', '.join(['%s'] * len(perMinList)) # Join single strings for each element in perMin list for the SQL statement
     predHorList = (data["predHor"])
     predHorVars = ', '.join(['%s'] * len(predHorList)) # Join single strings for each element in predHorList for the SQL statement
     k = int(data["k"]) #Number of models that should be used per prediction Horizon to create modelsets
@@ -125,8 +126,8 @@ def topkmodelsets():
             if predHorList == [] or predHorList == 0:
                 raise Exception ("One or multiple Prediction Horizons must be provided!")
             else:
-                #cursor.execute(FILTER_MODELS_MODELSETS, (pID, perMin, predHorSQL))
-                cursor.execute(FILTER_MODELS_MODELSETS.format(predHorVars), (pID, perMin) + tuple(predHorList))
+                #Putting the variables into the statement
+                cursor.execute(FILTER_MODELS_MODELSETS.format(perMinVars, predHorVars), (pID,) + tuple(perMinList + predHorList))
             df = pd.DataFrame(cursor.fetchall(), columns=['model_id', 'model_name', 'prediction_horizon', 'accuracydt', 'accuracyrf', 'accuracylr', 'accuracyknn', 'attributes'])
     
     if df.size == 0: #If no model match the requirements

@@ -22,7 +22,7 @@ FILTER_MODELS_NO_PREDHOR =  """SELECT model_id, model_name, accuracydt, accuracy
 FILTER_MODELS_MODELSETS = """
                 SELECT model_id, model_name, prediction_horizon, accuracydt, accuracyrf, accuracylr, accuracyknn, attributes
                 FROM niklas_trained_models
-                WHERE parking_id = %s AND period_minutes = %s AND prediction_horizon IN ({})"""
+                WHERE parking_id = %s AND period_minutes IN ({}) AND prediction_horizon IN ({})"""
 
 # TABLE_ATT = """SELECT model_id, model_name, attributes
 #                 FROM niklas_trained_models
