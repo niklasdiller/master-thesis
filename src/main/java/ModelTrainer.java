@@ -650,7 +650,7 @@ public class ModelTrainer implements Serializable {
         ps.executeUpdate(); // execution
         ps.close();
 
-        System.out.println("Model saved in database.");
+        System.out.println("Model saved to database" + settings.tableName + ".");
     }
 
     /**
@@ -1185,7 +1185,7 @@ public class ModelTrainer implements Serializable {
             String clas_val;
             String att_val;
             int pID_val;
-            int perMin_val = 1; //use perMin=1 globally, to get most details
+            int perMin_val = 5;
             int weeks_val;
             boolean shift24h = false;
             boolean fs = false;

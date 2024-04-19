@@ -34,4 +34,4 @@ dependencies {
 
 }
 
-mainClassName = "main.java.Preprocessor"
+mainClassName = "main.java.ModelTrainer"
