@@ -40,6 +40,7 @@ def create_combinations (resultList: list, combineSameFeatures: bool):
             for model in models_per_pH: #For all models 
                 cur_combi.append(model)
             combinations.append(cur_combi)
+        print("Length", len(combinations))
         return combinations
 
 

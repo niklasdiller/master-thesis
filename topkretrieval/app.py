@@ -113,11 +113,13 @@ def topkmodelsets():
     perMin = data["perMin"]
     predHorList = (data["predHor"])
     predHorVars = ', '.join(['%s'] * len(predHorList)) # Join single strings for each element in predHorList for the SQL statement
-
-    k = int(data["k"]) #Number of objects that should be returned to client
+    k = int(data["k"]) #Number of models that should be used per prediction Horizon to create modelsets
+    if data["n"] == "max": #Number of modelsets that should be returned to the client
+        n = "max"
+    else: n = int(data["n"])
     weight = float(data["accWeight"]) #Importance of Performance in comparison to Resource Awareness; Value [0-1]
     algorithm = data["algorithm"] #The algorithm that should be called. Possible values: fagin, threshold, naive.
-    combineSameFeatures = bool(data["combineSameFeatures"]) #Indicates, whether modelsets should only be generated if the models have the same features
+    combineSameFeatures = (data["combineSameFeatures"]) #Indicates, whether modelsets should only be generated if the models have the same features
     with connection:
         with connection.cursor() as cursor:
             if predHorList == [] or predHorList == 0:
@@ -195,6 +197,9 @@ def topkmodelsets():
             #print("MSS ", modelset_score)
     
     combinations_json= sorted(combinations_json, key = lambda d: d['Modelset Score'], reverse=True) # Sort by value of Modelset Score
+
+    if n != "max": #If user put "max", all the created modelsets will be displayed.
+        del combinations_json[n:] #Delete every object from n to end of list
 
     for index,modelset in enumerate(combinations_json): #Give each modelset a number
         modelset.update({'Modelset Number' : index+1 })
