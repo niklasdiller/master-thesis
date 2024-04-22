@@ -17,6 +17,8 @@ def normalize (df: pd.DataFrame, col: str, rev: bool):
                 df.at[ind, col] += 0
     return df
 
+    
+
 def create_combinations (resultList: list, combineSameFeatures: bool):
     if combineSameFeatures == True: # Only combine models to modelsets that have the same features
         combinations = []
@@ -40,7 +42,6 @@ def create_combinations (resultList: list, combineSameFeatures: bool):
             for model in models_per_pH: #For all models 
                 cur_combi.append(model)
             combinations.append(cur_combi)
-        print("Length", len(combinations))
         return combinations
 
 
@@ -60,7 +61,7 @@ def convert_to_json (result, isModelset:bool): #Convert result list into JSON fo
                         "Model ID": model_id,
                         "Model Name": row["model_name"],
                         "Performance": row["performance"],
-                        "Attributes": row["attributes"],
+                        "Resource Awareness": row["attributes"],
                         "Score": row["score"]
                     }
                 ]   
@@ -89,7 +90,7 @@ def convert_to_json (result, isModelset:bool): #Convert result list into JSON fo
                             "Model Name": model.get("model_name"),
                             "Prediction Horizon": model.get('prediction_horizon'),
                             "Performance": model.get("performance"),
-                            "Attributes": model.get("attributes"),
+                            "Resource Awareness": model.get("attributes"),
                             "Score": model.get("score")
                         }
                     ]
@@ -119,7 +120,14 @@ def count_attributes(df: pd.DataFrame): #Count the number of attributes used in 
         val = df.at[ind, 'attributes']
         numAttr = len(val.split(', '))
         df.at[ind, 'attributes'] = numAttr # replace the actual attirbute values with the number of attributes used
+        df = penalize_small_window_size(df, ind) 
     return df
+
+def penalize_small_window_size(df, ind):
+    if df.at[ind, 'period_minutes'] == 1:
+        df.at[ind, 'attributes'] += 3 #If model is using perMin = 1, penalize the RA score by adding 3. Customizable value
+    return df
+
 
 def reshape_perf_table(df: pd.DataFrame):
     df = df.rename(columns = {'accuracydt':'performance'})

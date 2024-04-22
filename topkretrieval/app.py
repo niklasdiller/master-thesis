@@ -55,17 +55,22 @@ def topk():
     pID = int(data["pID"])
     if pID != 38 and pID != 634:
         raise Exception ("Not a valid parking lot ID. Try 38 or 634.")
-    perMin = data["perMin"]
-    predHor = int(data["predHor"])
+    # perMin = data["perMin"]
+    # predHor = int(data["predHor"])
+    perMinList = data["perMin"]
+    perMinVars = ', '.join(['%s'] * len(perMinList)) # Join single strings for each element in perMin list for the SQL statement
+    predHorList = (data["predHor"])
+    predHorVars = ', '.join(['%s'] * len(predHorList)) # Join single strings for each element in predHorList for the SQL statement
     k = int(data["k"]) #Number of objects that should be returned to client
     weight = float(data["accWeight"]) #Importance of Performance in comparison to Resource Awareness; Value [0-1]
     algorithm = data["algorithm"] #The algorithm that should be called. Possible values: fagin, threshold, naive.
     with connection:
         with connection.cursor() as cursor:
-            if predHor == 0:
-                cursor.execute(FILTER_MODELS_NO_PREDHOR, (pID, perMin)) #SQL statement without filter for predHor
-            else: cursor.execute(FILTER_MODELS, (pID, perMin, predHor))
-            df = pd.DataFrame(cursor.fetchall(), columns=['model_id', 'model_name', 'accuracydt', 'accuracyrf', 'accuracylr', 'accuracyknn', 'attributes'])
+            if predHorList == [] or predHorList == 0: #SQL statement without filter for predHor
+                cursor.execute(FILTER_MODELS_NO_PREDHOR.format(perMinVars), (pID,) + tuple(perMinList))
+            else:cursor.execute(FILTER_MODELS.format(perMinVars, predHorVars), (pID,) + tuple(perMinList + predHorList))
+
+            df = pd.DataFrame(cursor.fetchall(), columns=['model_id', 'model_name', 'period_minutes', 'accuracydt', 'accuracyrf', 'accuracylr', 'accuracyknn', 'attributes'])
     
     if df.size == 0: #If no model match the requirements
         raise Exception ("No models found with specified metrics.")   
@@ -80,8 +85,8 @@ def topk():
     #print(df.head)
 
     #Slicing Table:
-    df_perf = df.drop(columns=['attributes']) #Performance Table
-    df_reaw = df.drop(columns=['performance']) #Resource Awareness Table
+    df_perf = df.drop(columns=['attributes', 'period_minutes']) #Performance Table
+    df_reaw = df.drop(columns=['performance', 'period_minutes']) #Resource Awareness Table
 
     df_perf = df_perf.sort_values(by='performance', ascending=False, na_position='first') #Sort with highest performance first
     df_reaw = df_reaw.sort_values(by='attributes', ascending=False, na_position='first') #Sort with least numner of attributes first
@@ -99,7 +104,7 @@ def topk():
         case _:
             raise Exception ("Not a valid algorithm! Try 'naive', 'fagin', or 'threshold'.")
 
-    return result
+    return result, 200
 
 
 #Top K Model Sets
@@ -128,7 +133,7 @@ def topkmodelsets():
             else:
                 #Putting the variables into the statement
                 cursor.execute(FILTER_MODELS_MODELSETS.format(perMinVars, predHorVars), (pID,) + tuple(perMinList + predHorList))
-            df = pd.DataFrame(cursor.fetchall(), columns=['model_id', 'model_name', 'prediction_horizon', 'accuracydt', 'accuracyrf', 'accuracylr', 'accuracyknn', 'attributes'])
+            df = pd.DataFrame(cursor.fetchall(), columns=['model_id', 'model_name', 'prediction_horizon', 'period_minutes', 'accuracydt', 'accuracyrf', 'accuracylr', 'accuracyknn', 'attributes'])
     
     if df.size == 0: #If no model match the requirements
         raise Exception ("No models found with specified metrics.")   
@@ -151,8 +156,8 @@ def topkmodelsets():
         key = "predHor"+str(key)
 
         df_metric = {}
-        df_perf = df_predHor.drop(columns=['attributes', 'prediction_horizon'])
-        df_reaw = df_predHor.drop(columns=['performance', 'prediction_horizon'])
+        df_perf = df_predHor.drop(columns=['attributes', 'prediction_horizon', 'period_minutes'])
+        df_reaw = df_predHor.drop(columns=['performance', 'prediction_horizon', 'period_minutes'])
         #df_reaw = df_predHor.drop(columns=['performance'])
 
         df_perf = df_perf.sort_values(by='performance', ascending=False, na_position='first') #Sort with highest performance first
@@ -206,4 +211,4 @@ def topkmodelsets():
         modelset.update({'Modelset Number' : index+1 })
 
     result_json= convert_to_json(combinations_json, True)
-    return (result_json)
+    return (result_json), 200
