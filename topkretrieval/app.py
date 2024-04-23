@@ -111,6 +111,9 @@ def topk():
 @app.post("/api/topk/modelsets")
 def topkmodelsets():
 
+    #TODO: unify vairblae names: camelcase or _? change json-names. etc
+
+
     data = request.get_json()
     pID = int(data["pID"])
     if pID != 38 and pID != 634:
@@ -126,6 +129,7 @@ def topkmodelsets():
     weight = float(data["accWeight"]) #Importance of Performance in comparison to Resource Awareness; Value [0-1]
     algorithm = data["algorithm"] #The algorithm that should be called. Possible values: fagin, threshold, naive.
     combineSameFeatures = (data["combineSameFeatures"]) #Indicates, whether modelsets should only be generated if the models have the same features
+    calculateQSL = data["calculateQSL"]
     with connection:
         with connection.cursor() as cursor:
             if predHorList == [] or predHorList == 0:
@@ -188,7 +192,7 @@ def topkmodelsets():
 
     # Get the best modelset by calculating overall score
     for cur_combi in combinations:
-            modelset = OrderedDict([('Modelset Number', None), ( 'Modelset Score', None), ('Models', {}) ]) #Define dict to turn into JSON
+            modelset = OrderedDict([('Modelset Number', None), ( 'Modelset Score', None), ('Query Sharing Level', None), ('Models', {}) ]) #Define dict to turn into JSON
             modelset_score = 0
             for index, model in enumerate(cur_combi):
                 model_dict = model.to_dict() # Converting the series into dict
@@ -207,8 +211,41 @@ def topkmodelsets():
     if n != "max": #If user put "max", all the created modelsets will be displayed.
         del combinations_json[n:] #Delete every object from n to end of list
 
-    for index,modelset in enumerate(combinations_json): #Give each modelset a number
-        modelset.update({'Modelset Number' : index+1 })
+    for index,modelset in enumerate(combinations_json): 
+        modelset.update({'Modelset Number' : index+1 }) #Give each modelset a number
+        qsl_list = []
+
+        # Calculate Query Sharing Level
+        cur_models = itertools.combinations(modelset['Models'].items(), 2) # Generate each combination of 2 models
+        for model1, model2 in cur_models: 
+            
+            #model[1] is the model specs; split('-')[2] is the third part split by '-', so the features
+            sameFeauters =  model1[1]["model_name"].split('-')[1] == model2[1]["model_name"].split('-')[1]
+            #model[2] is the model specs; split('-')[2] is the third part split by '-', so the perMin
+            samePerMin =  model1[1]["model_name"].split('-')[2] == model2[1]["model_name"].split('-')[2]
+            
+            
+            if sameFeauters and samePerMin: # Level 2: Same features
+                qsl_list.append(2) 
+
+            elif samePerMin: # Level 1: Same segmentation (=perMin)
+                qsl_list.append(1) 
+
+            else:  # Level 0: No sharing possible
+                qsl_list.append(0)
+
+        match calculateQSL:
+            case 'max': # Max level will be chosen as overall QSL
+                modelset.update({'Query Sharing Level' : max(qsl_list)})
+            case 'min': # Min level wil be chosen for overall QSL
+                modelset.update({'Query Sharing Level' : min(qsl_list)})
+            case 'avg': # Average of all levels will be calculated
+                level_sum = sum(qsl_list)
+                level_avg = level_sum / len(qsl_list)
+                level_avg = round(level_avg, 2)
+                modelset.update({'Query Sharing Level' : level_avg})
+            case _:
+                raise Exception ("Not a valid QSL calculation! Try 'max', 'min', or 'avg'.")
 
     result_json= convert_to_json(combinations_json, True)
     return (result_json), 200

@@ -79,7 +79,8 @@ def convert_to_json (result, isModelset:bool): #Convert result list into JSON fo
             modelsetnumber = "Modelset"+str(i+1)
             modelset_dict = {
                 "Modelsetnumber" : modelsetnumber,
-                "Modelset Score" : modelset.get('Modelset Score')
+                "Modelset Score" : modelset.get('Modelset Score'),
+                "Query Sharing" : modelset.get('Query Sharing Level')
             }
 
             for modelname, model in modelset['Models'].items(): 
