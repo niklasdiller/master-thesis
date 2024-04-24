@@ -4,6 +4,7 @@ import re
 import json
 from collections import OrderedDict
 import itertools
+import numpy as np
 
 def normalize (df: pd.DataFrame, col: str, rev: bool):
     normCol = [col]
@@ -60,8 +61,8 @@ def convert_to_json (result, isModelset:bool): #Convert result list into JSON fo
                     {
                         "Model ID": model_id,
                         "Model Name": row["model_name"],
-                        "Performance": row["performance"],
-                        "Resource Awareness": row["attributes"],
+                        "Performance": row["1"],
+                        "Resource Awareness": row["2"],
                         "Score": row["score"]
                     }
                 ]   
@@ -75,12 +76,14 @@ def convert_to_json (result, isModelset:bool): #Convert result list into JSON fo
 
     # If modelsets are retrieved
     elif isModelset == True: #If modelsets are queried
+        print("RRRRR", result)
         for i, modelset in enumerate(result):
             modelsetnumber = "Modelset"+str(i+1)
             modelset_dict = {
                 "Modelsetnumber" : modelsetnumber,
-                "Modelset Score" : modelset.get('Modelset Score'),
-                "Query Sharing" : modelset.get('Query Sharing Level')
+                "Modelset Score" : float(modelset.get('1')), #Making sure each value is of type float
+                "Query Sharing" : float(modelset.get('2')),
+                "Overall Score" : float(modelset.get('score'))
             }
 
             for modelname, model in modelset['Models'].items(): 
@@ -90,8 +93,8 @@ def convert_to_json (result, isModelset:bool): #Convert result list into JSON fo
                             "Model ID": model.get('model_id'),
                             "Model Name": model.get("model_name"),
                             "Prediction Horizon": model.get('prediction_horizon'),
-                            "Performance": model.get("performance"),
-                            "Resource Awareness": model.get("attributes"),
+                            "Performance": round(model.get("1"), 2),
+                            "Resource Awareness": model.get("2"),
                             "Score": model.get("score")
                         }
                     ]
@@ -106,43 +109,43 @@ def convert_to_json (result, isModelset:bool): #Convert result list into JSON fo
 
 def round_result(obj): #Round attribute, performance and overall score of each model
     obj["score"] = round(obj["score"], 2)
-    obj["performance"] = round(obj["performance"], 2)
-    obj["attributes"] = round(obj["attributes"], 2)
+    obj[-1] = round(obj[-1], 2)
+    obj[-2] = round(obj[-2], 2)
     return obj
 
 def round_result_df(df):
-    df['performance'] = df['performance'].astype(float).round(2)
-    df['attributes'] = df['attributes'].astype(float).round(2)
+    df['1'] = df['1'].astype(float).round(2)
+    df['2'] = df['2'].astype(float).round(2)
     df['score'] = df['score'].astype(float).round(2)
     return df
 
 def count_attributes(df: pd.DataFrame): #Count the number of attributes used in each model
     for ind in df.index:
-        val = df.at[ind, 'attributes']
+        val = df.at[ind, '2']
         numAttr = len(val.split(', '))
-        df.at[ind, 'attributes'] = numAttr # replace the actual attirbute values with the number of attributes used
+        df.at[ind, '2'] = numAttr # replace the actual attirbute values with the number of attributes used
         df = penalize_small_window_size(df, ind) 
     return df
 
 def penalize_small_window_size(df, ind):
     if df.at[ind, 'period_minutes'] == 1:
-        df.at[ind, 'attributes'] += 3 #If model is using perMin = 1, penalize the RA score by adding 3. Customizable value
+        df.at[ind, '2'] += 3 #If model is using perMin = 1, penalize the RA score by adding 3. Customizable value
     return df
 
 
 def reshape_perf_table(df: pd.DataFrame):
-    df = df.rename(columns = {'accuracydt':'performance'})
+    df = df.rename(columns = {'accuracydt':'1'})
     for ind in df.index: #Collect the performance values into a single one
-        if df.at[ind, 'performance'] == 'no classifier':
+        if df.at[ind, '1'] == 'no classifier':
             if df.at[ind, 'accuracyrf'] != 'no classifier':
-                df.at[ind, 'performance'] = df.at[ind, 'accuracyrf']
+                df.at[ind, '1'] = df.at[ind, 'accuracyrf']
             elif df.at[ind, 'accuracylr'] != 'no classifier':
-                 df.at[ind, 'performance'] = df.at[ind, 'accuracylr']
+                 df.at[ind, '1'] = df.at[ind, 'accuracylr']
             else: 
-                 df.at[ind, 'performance'] = df.at[ind, 'accuracyknn']
-        str = df.at[ind, 'performance']
+                 df.at[ind, '1'] = df.at[ind, 'accuracyknn']
+        str = df.at[ind, '1']
         val = get_acc(str) #Specify which metric should be considered here
-        df.at[ind, 'performance'] = val #Set float value
+        df.at[ind, '1'] = val #Set float value
     df = df.drop(columns=['accuracyrf', 'accuracylr', 'accuracyknn']) #Remove redundant columns
     return df
 

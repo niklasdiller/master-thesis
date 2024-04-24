@@ -6,10 +6,14 @@ pd.options.mode.chained_assignment = None  # default='warn' # Ignores warnings r
 
 def naive_topk (df: pd.DataFrame, weight: float, k: int):
     result = []
+    lastCol = str(df.columns[-1])
+    secondLastCol = str(df.columns[-2])
     for ind in df.index:
        #Compute Score and put in new column
-       score = (df.at[ind, 'performance'] * weight) + (df.at[ind, 'attributes'] * (1-weight)) # Compute score
-       df.at[ind, 'score'] = score
+        score = (df.at[ind, secondLastCol] * weight) + (df.at[ind, lastCol] * (1-weight)) # Using the last 2 columns (= Performance/Attributes or MSS/QSL)
+        #score = (df.at[ind, df.columns[-2]] * weight) + (df.at[ind, df.columns[-1]] * (1-weight)) # Using the last 2 columns (= Performance/Attributes or MSS/QSL)
+
+        df.at[ind, 'score'] = score
 
     df = df.sort_values(by='score', ascending=False, na_position='first')  #Sort for score
 
@@ -113,7 +117,7 @@ def fagin_topk (df_dict: dict, weight, k: int): #TODO: Improve efficiency by get
 
 def threshold_topk (df_dict: dict, weight: float, k: int):
     i = 0 
-    result_df = pd.DataFrame(columns =['model_id', 'model_name', 'performance', 'attributes', 'score'] )
+    result_df = pd.DataFrame(columns =['model_id', 'model_name', '1', '2', 'score'] )
     result = []
     while True:
         threshold = 0
@@ -127,35 +131,36 @@ def threshold_topk (df_dict: dict, weight: float, k: int):
         #     # print("Other DFs: ", other_dfs)
 
             cur_row = cur_df.iloc[i]
-            cur_id = cur_row['model_id']
+            cur_id = cur_row.iloc[0] # The ModelID/ModelsetID 
 
             # Calculate Threshold:
-            if cur_row.index[-1] == 'performance':
+            if cur_row.index[-1] == '1':
                 threshold += cur_row.iloc[-1]*weight
-            elif cur_row.index[-1] == 'attributes':
+            elif cur_row.index[-1] == '2':
                 threshold += cur_row.iloc[-1]*(1-weight)
 
             # Random Access:
             for key in other_dfs:
                 other_df = other_dfs[key]
                 other_metric = other_df.columns[-1] # Last column
-                other_val = other_df.loc[other_df['model_id'] == cur_id, other_metric].values[0] # Look for model id in other df and get missing value
+                other_val = other_df.loc[other_df.iloc[:, 0] == cur_id, other_metric].values[0] # Look for model id in other df and get missing value
                 cur_val = cur_row.iloc[-1] #Last metric
 
-                if other_metric == 'performance': #performance is missing
+                if other_metric == '1': #performance is missing
                    # print("Val last col: ",  cur_row.iloc[-1] )
                     cur_row['score'] = cur_val*(1-weight) + other_val*weight #calculating score
-                    cur_row['performance'] = other_val #filling in the missing metric
+                    cur_row['1'] = other_val #filling in the missing metric
                     #print("Val last col after calc: ",  cur_row.iloc[-1] )
-                elif other_metric == 'attributes': #RA is missing
+                elif other_metric == '2': #RA is missing
                     cur_row['score'] = cur_val*weight + other_val*(1-weight)
-                    cur_row['attributes'] = other_val
+                    cur_row['2'] = other_val
 
-                else: #TODO: Handle multiple metrics
+                else:
+                    #print(other_df.head)
                     raise Exception ("Unknown metric in data!")
 
                 # Adding seen model to result:
-                if cur_id not in result_df['model_id'].values: #Ignore if model already in result
+                if cur_id not in result_df.iloc[:, 0].values: #Ignore if model id already in result
                     #print("Result before adding: ", result)
                     result_df.loc[len(result_df)] = cur_row #Add complete seen item to end of result df
 
@@ -178,7 +183,7 @@ def threshold_topk (df_dict: dict, weight: float, k: int):
             for ind in range(k):
                 result.append(result_df.iloc[ind])  # add to result list
             #result_df = result_df.to_json(orient='index') #Convert to JSON
-            #print("Final Result: ", result)
+            print("Final Result: ", result)
             return result
 
         i += 1    

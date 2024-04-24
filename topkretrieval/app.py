@@ -70,7 +70,7 @@ def topk():
                 cursor.execute(FILTER_MODELS_NO_PREDHOR.format(perMinVars), (pID,) + tuple(perMinList))
             else:cursor.execute(FILTER_MODELS.format(perMinVars, predHorVars), (pID,) + tuple(perMinList + predHorList))
 
-            df = pd.DataFrame(cursor.fetchall(), columns=['model_id', 'model_name', 'period_minutes', 'accuracydt', 'accuracyrf', 'accuracylr', 'accuracyknn', 'attributes'])
+            df = pd.DataFrame(cursor.fetchall(), columns=['model_id', 'model_name', 'period_minutes', 'accuracydt', 'accuracyrf', 'accuracylr', 'accuracyknn', '2'])
     
     if df.size == 0: #If no model match the requirements
         raise Exception ("No models found with specified metrics.")   
@@ -78,20 +78,20 @@ def topk():
     df = reshape_perf_table(df) #Call function that summarizes the accuracy for acc
     df = count_attributes(df) #Call function that counts the number of attributes of each model
 
-    df = normalize(df, 'performance', rev = False)
-    df = normalize(df, 'attributes', rev = True)
+    df = normalize(df, '1', rev = False)
+    df = normalize(df, '2', rev = True)
 
-    df = df.sort_values(by='performance', ascending=False, na_position='first') #Sort with highest performance first
+    df = df.sort_values(by='1', ascending=False, na_position='first') #Sort with highest performance first
     #print(df.head)
 
     #Slicing Table:
-    df_perf = df.drop(columns=['attributes', 'period_minutes']) #Performance Table
-    df_reaw = df.drop(columns=['performance', 'period_minutes']) #Resource Awareness Table
+    df_perf = df.drop(columns=['2', 'period_minutes']) #Performance Table
+    df_reaw = df.drop(columns=['1', 'period_minutes']) #Resource Awareness Table
 
-    df_perf = df_perf.sort_values(by='performance', ascending=False, na_position='first') #Sort with highest performance first
-    df_reaw = df_reaw.sort_values(by='attributes', ascending=False, na_position='first') #Sort with least numner of attributes first
+    df_perf = df_perf.sort_values(by='1', ascending=False, na_position='first') #Sort with highest performance first
+    df_reaw = df_reaw.sort_values(by='2', ascending=False, na_position='first') #Sort with least numner of attributes first
     df_dict = {}
-    df_dict.update([('performance', df_perf), ('attributes', df_reaw)])
+    df_dict.update([('1', df_perf), ('2', df_reaw)])
 
     # Call the desired algrotihm:
     match algorithm:
@@ -113,7 +113,6 @@ def topkmodelsets():
 
     #TODO: unify vairblae names: camelcase or _? change json-names. etc
 
-
     data = request.get_json()
     pID = int(data["pID"])
     if pID != 38 and pID != 634:
@@ -126,7 +125,8 @@ def topkmodelsets():
     if data["n"] == "max": #Number of modelsets that should be returned to the client
         n = "max"
     else: n = int(data["n"])
-    weight = float(data["accWeight"]) #Importance of Performance in comparison to Resource Awareness; Value [0-1]
+    weight1 = float(data["accWeight"]) #Importance of Performance in comparison to Resource Awareness; Value [0-1]
+    weight2 = float(data["MSSWeight"]) #Importance of Modelset Score in comparison to Query Sharing Level; Value [0-1]
     algorithm = data["algorithm"] #The algorithm that should be called. Possible values: fagin, threshold, naive.
     combineSameFeatures = (data["combineSameFeatures"]) #Indicates, whether modelsets should only be generated if the models have the same features
     calculateQSL = data["calculateQSL"]
@@ -137,7 +137,7 @@ def topkmodelsets():
             else:
                 #Putting the variables into the statement
                 cursor.execute(FILTER_MODELS_MODELSETS.format(perMinVars, predHorVars), (pID,) + tuple(perMinList + predHorList))
-            df = pd.DataFrame(cursor.fetchall(), columns=['model_id', 'model_name', 'prediction_horizon', 'period_minutes', 'accuracydt', 'accuracyrf', 'accuracylr', 'accuracyknn', 'attributes'])
+            df = pd.DataFrame(cursor.fetchall(), columns=['model_id', 'model_name', 'prediction_horizon', 'period_minutes', 'accuracydt', 'accuracyrf', 'accuracylr', 'accuracyknn', '2'])
     
     if df.size == 0: #If no model match the requirements
         raise Exception ("No models found with specified metrics.")   
@@ -145,10 +145,10 @@ def topkmodelsets():
     df = reshape_perf_table(df) #Puts the performance metric into an atomic
     df = count_attributes(df) #Counts the number of attributes of each model
 
-    df = normalize(df, 'performance', rev = False)
-    df = normalize(df, 'attributes', rev = True)
+    df = normalize(df, '1', rev = False)
+    df = normalize(df, '2', rev = True)
 
-    df = df.sort_values(by='performance', ascending=False, na_position='first') #Sort with highest performance first
+    df = df.sort_values(by='1', ascending=False, na_position='first') #Sort with highest performance first
     #print(df.head)
     df_dict = {}
     df_dict_naive = {} #Dict of DF for the naive algorithm: No splitting done for performance/attributes
@@ -160,12 +160,12 @@ def topkmodelsets():
         key = "predHor"+str(key)
 
         df_metric = {}
-        df_perf = df_predHor.drop(columns=['attributes', 'prediction_horizon', 'period_minutes'])
-        df_reaw = df_predHor.drop(columns=['performance', 'prediction_horizon', 'period_minutes'])
+        df_perf = df_predHor.drop(columns=['2', 'prediction_horizon', 'period_minutes'])
+        df_reaw = df_predHor.drop(columns=['1', 'prediction_horizon', 'period_minutes'])
         #df_reaw = df_predHor.drop(columns=['performance'])
 
-        df_perf = df_perf.sort_values(by='performance', ascending=False, na_position='first') #Sort with highest performance first
-        df_reaw = df_reaw.sort_values(by='attributes', ascending=False, na_position='first') #Sort with least numner of attributes first
+        df_perf = df_perf.sort_values(by='1', ascending=False, na_position='first') #Sort with highest performance first
+        df_reaw = df_reaw.sort_values(by='2', ascending=False, na_position='first') #Sort with least numner of attributes first
 
         df_metric.update([('performance', df_perf), ('attributes', df_reaw)])
         df_dict.update({key: df_metric}) # Adding into dict each df containing a unique predHor
@@ -177,22 +177,22 @@ def topkmodelsets():
     for key in df_dict:
         match algorithm:
             case 'fagin':
-                result.append(fagin_topk(df_dict.get(key), weight, k))
+                result.append(fagin_topk(df_dict.get(key), weight1, k))
             case 'threshold':
                 #result = threshold_topk(df_dict, weight, k)
-                result.append(threshold_topk(df_dict.get(key), weight, k))
+                result.append(threshold_topk(df_dict.get(key), weight1, k))
             case 'naive':
-                result.append(naive_topk(df_dict_naive.get(key), weight, k))
+                result.append(naive_topk(df_dict_naive.get(key), weight1, k))
             case _:
                 raise Exception ("Not a valid algorithm! Try 'naive', 'fagin', or 'threshold'.")
 
 
-    combinations = create_combinations(result, combineSameFeatures) # Create modelsets by combining models
-    combinations_json = [] # List that contains JSON convertable datatypes only
+    combinations_raw = create_combinations(result, combineSameFeatures) # Create modelsets by combining models
+    combinations = [] # List that contains JSON convertable datatypes only
 
     # Get the best modelset by calculating overall score
-    for cur_combi in combinations:
-            modelset = OrderedDict([('Modelset Number', None), ( 'Modelset Score', None), ('Query Sharing Level', None), ('Models', {}) ]) #Define dict to turn into JSON
+    for cur_combi in combinations_raw:
+            modelset = OrderedDict([('Modelset Number', None), ('Models', {}), ( 'Modelset Score', None), ('Query Sharing Level', None)]) #Define dict to turn into JSON
             modelset_score = 0
             for index, model in enumerate(cur_combi):
                 model_dict = model.to_dict() # Converting the series into dict
@@ -203,15 +203,17 @@ def topkmodelsets():
 
             modelset_score = round(modelset_score, 2)
             modelset.update({'Modelset Score': modelset_score}) #Append the overall score to each combination
-            combinations_json.append(modelset)
+            combinations.append(modelset)
             #print("MSS ", modelset_score)
     
-    combinations_json= sorted(combinations_json, key = lambda d: d['Modelset Score'], reverse=True) # Sort by value of Modelset Score
+    combinations= sorted(combinations, key = lambda d: d['Modelset Score'], reverse=True) # Sort by value of Modelset Score
 
     if n != "max": #If user put "max", all the created modelsets will be displayed.
-        del combinations_json[n:] #Delete every object from n to end of list
+        del combinations[n:] #Delete every object from n to end of list
+    else:
+        n = len(combinations) # If max was set, return the total number of combinations to the client
 
-    for index,modelset in enumerate(combinations_json): 
+    for index,modelset in enumerate(combinations): 
         modelset.update({'Modelset Number' : index+1 }) #Give each modelset a number
         qsl_list = []
 
@@ -223,7 +225,6 @@ def topkmodelsets():
             sameFeauters =  model1[1]["model_name"].split('-')[1] == model2[1]["model_name"].split('-')[1]
             #model[2] is the model specs; split('-')[2] is the third part split by '-', so the perMin
             samePerMin =  model1[1]["model_name"].split('-')[2] == model2[1]["model_name"].split('-')[2]
-            
             
             if sameFeauters and samePerMin: # Level 2: Same features
                 qsl_list.append(2) 
@@ -247,5 +248,36 @@ def topkmodelsets():
             case _:
                 raise Exception ("Not a valid QSL calculation! Try 'max', 'min', or 'avg'.")
 
-    result_json= convert_to_json(combinations_json, True)
+    #result_json= convert_to_json(combinations, True)
+# TODO Insert a second Top K algorithm, that searches for Modelset Socre/ QSL 
+
+    #print(combinations)
+
+    df_fromOD = pd.DataFrame(combinations)
+
+    #Slicing Tables
+
+    df_fromOD = df_fromOD.rename(columns={"Modelset Score": "1", "Query Sharing Level": "2"})
+
+    df_QSL = df_fromOD.drop(columns=['1'])
+    df_MSS = df_fromOD.drop(columns=['2'])
+
+    #print("Head", df_QSL.head)
+    df_QSL = df_QSL.sort_values(by='2', ascending=False, na_position='first')
+    df_MSS = df_MSS.sort_values(by='1', ascending=False, na_position='first')
+    df_dict = {}
+    df_dict.update([('QSL', df_QSL), ('MSS', df_MSS)])
+
+     # Call the desired algrotihm:
+    match algorithm:
+        case 'fagin':
+            result = fagin_topk(df_dict, weight2, n)
+        case 'threshold':
+            result = threshold_topk(df_dict, weight2, n)
+        case 'naive':
+            result = naive_topk(df_fromOD, weight2, n)
+
+    #print("Result", result)
+
+    result_json= convert_to_json(result, True)
     return (result_json), 200
