@@ -85,8 +85,8 @@ def topk():
     #print(df.head)
 
     #Slicing Table:
-    df_perf = df.drop(columns=['2', 'period_minutes']) #Performance Table
-    df_reaw = df.drop(columns=['1', 'period_minutes']) #Resource Awareness Table
+    df_perf = df.drop(columns=['2']) #Performance Table
+    df_reaw = df.drop(columns=['1']) #Resource Awareness Table
 
     df_perf = df_perf.sort_values(by='1', ascending=False, na_position='first') #Sort with highest performance first
     df_reaw = df_reaw.sort_values(by='2', ascending=False, na_position='first') #Sort with least numner of attributes first
@@ -160,8 +160,8 @@ def topkmodelsets():
         key = "predHor"+str(key)
 
         df_metric = {}
-        df_perf = df_predHor.drop(columns=['2', 'prediction_horizon', 'period_minutes'])
-        df_reaw = df_predHor.drop(columns=['1', 'prediction_horizon', 'period_minutes'])
+        df_perf = df_predHor.drop(columns=['2'])
+        df_reaw = df_predHor.drop(columns=['1'])
         #df_reaw = df_predHor.drop(columns=['performance'])
 
         df_perf = df_perf.sort_values(by='1', ascending=False, na_position='first') #Sort with highest performance first
@@ -171,7 +171,7 @@ def topkmodelsets():
         df_dict.update({key: df_metric}) # Adding into dict each df containing a unique predHor
         df_dict_naive.update({key:df_predHor}) # Fill dict for naive algortithm
 
-
+    print("First TopK:")
     # Call the desired algrotihm:
     result = []
     for key in df_dict:
@@ -196,7 +196,6 @@ def topkmodelsets():
             modelset_score = 0
             for index, model in enumerate(cur_combi):
                 model_dict = model.to_dict() # Converting the series into dict
-                model_dict.update({"prediction_horizon": predHorList[index]}) # Add prediction horizon as model metric
                 modelname = 'Model'+str(index+1)
                 modelset['Models'][modelname] = model_dict
                 modelset_score += model['score'] #Calculate overall score for each combination
@@ -221,10 +220,9 @@ def topkmodelsets():
         cur_models = itertools.combinations(modelset['Models'].items(), 2) # Generate each combination of 2 models
         for model1, model2 in cur_models: 
             
-            #model[1] is the model specs; split('-')[2] is the third part split by '-', so the features
-            sameFeauters =  model1[1]["model_name"].split('-')[1] == model2[1]["model_name"].split('-')[1]
-            #model[2] is the model specs; split('-')[2] is the third part split by '-', so the perMin
-            samePerMin =  model1[1]["model_name"].split('-')[2] == model2[1]["model_name"].split('-')[2]
+            #model[1] is the model specs; split('-')[1] is the second part split by '-', so the features
+            sameFeauters =  model1[1]["model_name"].split('-')[1] == model2[1]["model_name"].split('-')[1] #Check if features are the same
+            samePerMin =  model1[1]["period_minutes"] == model2[1]["period_minutes"] #Check if periodMinutes are the same
             
             if sameFeauters and samePerMin: # Level 2: Same features
                 qsl_list.append(2) 
@@ -248,15 +246,12 @@ def topkmodelsets():
             case _:
                 raise Exception ("Not a valid QSL calculation! Try 'max', 'min', or 'avg'.")
 
-    #result_json= convert_to_json(combinations, True)
-# TODO Insert a second Top K algorithm, that searches for Modelset Socre/ QSL 
 
     #print(combinations)
 
-    df_fromOD = pd.DataFrame(combinations)
 
     #Slicing Tables
-
+    df_fromOD = pd.DataFrame(combinations) # Create DF from Ordered Dictionary
     df_fromOD = df_fromOD.rename(columns={"Modelset Score": "1", "Query Sharing Level": "2"})
 
     df_QSL = df_fromOD.drop(columns=['1'])
@@ -268,6 +263,7 @@ def topkmodelsets():
     df_dict = {}
     df_dict.update([('QSL', df_QSL), ('MSS', df_MSS)])
 
+    print("Second TopK:")
      # Call the desired algrotihm:
     match algorithm:
         case 'fagin':

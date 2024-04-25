@@ -117,7 +117,7 @@ def fagin_topk (df_dict: dict, weight, k: int): #TODO: Improve efficiency by get
 
 def threshold_topk (df_dict: dict, weight: float, k: int):
     i = 0 
-    result_df = pd.DataFrame(columns =['model_id', 'model_name', '1', '2', 'score'] )
+    result_df = pd.DataFrame(columns =['model_id', 'model_name', 'prediction_horizon', 'period_minutes', 'Models', '1', '2', 'score'] )
     result = []
     while True:
         threshold = 0
@@ -131,6 +131,7 @@ def threshold_topk (df_dict: dict, weight: float, k: int):
         #     # print("Other DFs: ", other_dfs)
 
             cur_row = cur_df.iloc[i]
+            #print("CurRow", cur_row)
             cur_id = cur_row.iloc[0] # The ModelID/ModelsetID 
 
             # Calculate Threshold:
@@ -163,6 +164,15 @@ def threshold_topk (df_dict: dict, weight: float, k: int):
                 if cur_id not in result_df.iloc[:, 0].values: #Ignore if model id already in result
                     #print("Result before adding: ", result)
                     result_df.loc[len(result_df)] = cur_row #Add complete seen item to end of result df
+                    # print("DF loc", result_df.loc[len(result_df)-1])
+
+                    # for key in df_dict.get("performance"):
+                    #     keyString = str(key)
+
+                    #     result_df.assign(test=cur_row[key])
+                    #     print("result df", result_df)
+
+
 
                     #print("Result after adding: ", result)
                     result_df = result_df.sort_values(by='score',ascending=False) #Sort values so worst model can be dropped
@@ -180,10 +190,10 @@ def threshold_topk (df_dict: dict, weight: float, k: int):
         # Stop condition:
         if result_df.shape[0] == k and result_df.iloc[-1, -1] >= threshold:
             result_df = round_result_df(result_df) #Round the values of the DF
+            print(result_df.head)
             for ind in range(k):
                 result.append(result_df.iloc[ind])  # add to result list
-            #result_df = result_df.to_json(orient='index') #Convert to JSON
-            print("Final Result: ", result)
+            #print("Final Result: ", result)
             return result
 
         i += 1    

@@ -61,9 +61,10 @@ def convert_to_json (result, isModelset:bool): #Convert result list into JSON fo
                     {
                         "Model ID": model_id,
                         "Model Name": row["model_name"],
-                        "Performance": row["1"],
-                        "Resource Awareness": row["2"],
-                        "Score": row["score"]
+                        "Period Minutes": int(row["period_minutes"]),
+                        "Performance Score": row["1"],
+                        "Resource Awareness Score": row["2"],
+                        "Model Score": row["score"]
                     }
                 ]   
             }
@@ -76,14 +77,14 @@ def convert_to_json (result, isModelset:bool): #Convert result list into JSON fo
 
     # If modelsets are retrieved
     elif isModelset == True: #If modelsets are queried
-        print("RRRRR", result)
         for i, modelset in enumerate(result):
             modelsetnumber = "Modelset"+str(i+1)
             modelset_dict = {
                 "Modelsetnumber" : modelsetnumber,
+                "Overall Score" : float(modelset.get('score')),
                 "Modelset Score" : float(modelset.get('1')), #Making sure each value is of type float
-                "Query Sharing" : float(modelset.get('2')),
-                "Overall Score" : float(modelset.get('score'))
+                "Query Sharing Level" : float(modelset.get('2'))
+                
             }
 
             for modelname, model in modelset['Models'].items(): 
@@ -93,9 +94,10 @@ def convert_to_json (result, isModelset:bool): #Convert result list into JSON fo
                             "Model ID": model.get('model_id'),
                             "Model Name": model.get("model_name"),
                             "Prediction Horizon": model.get('prediction_horizon'),
-                            "Performance": round(model.get("1"), 2),
-                            "Resource Awareness": model.get("2"),
-                            "Score": model.get("score")
+                            "Period Minutes": model.get('period_minutes'),
+                            "Performance Score": round(model.get("1"), 2),
+                            "Resource Awareness Score": model.get("2"),
+                            "Model Score": model.get("score")
                         }
                     ]
                 }
