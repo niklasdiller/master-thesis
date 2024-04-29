@@ -111,8 +111,8 @@ def convert_to_json (result, isModelset:bool): #Convert result list into JSON fo
 
 def round_result(obj): #Round attribute, performance and overall score of each model
     obj["score"] = round(obj["score"], 2)
-    obj[-1] = round(obj[-1], 2)
-    obj[-2] = round(obj[-2], 2)
+    obj["1"] = round(obj["1"], 2)
+    obj["2"] = round(obj["2"], 2)
     return obj
 
 def round_result_df(df):

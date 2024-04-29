@@ -40,9 +40,11 @@ def naive_topk (df: pd.DataFrame, weight: float, k: int):
 #                 print(seen)
 
 def fagin_topk (df_dict: dict, weight, k: int): #TODO: Improve efficiency by getting rif of multiple for loops
+    #print("DF dict anfang", df_dict)
     result = []
     i = 0
     seen = {} # TODO: Now a dict of dicts converted to a DF later, Or rather a DF directly ?
+
     all_seen = 0
 
     # Step 1: Serial Access
@@ -50,57 +52,62 @@ def fagin_topk (df_dict: dict, weight, k: int): #TODO: Improve efficiency by get
         for df in df_dict: #Look at every dataframe at same time
             df = df_dict.get(df)
             current = df.iloc[i] # Look at first item of dataframe
-            id = str(current['model_id'])
+            id = current.iloc[0] # The ModelID/ModelsetID 
             if id not in seen: #has not been seen before
                 values = {}
-                values.update({df.columns[1]:current.iloc[1], df.columns[2]:current.iloc[2]}) #1: model_name, 2: Metric
+                # print("Current", current)
+                # print("current.iloc", current[1])
+                for col_name in df.columns:  # For each column:
+                    values[col_name] = current[col_name]  # Fill values with that column
+                #print("Values", values)
+                #values.update({df.columns[1]:current.iloc[1], df.columns[-1]:current.iloc[-1]}) #1: model_name, -1: Metric
                 seen.update({id: values}) #Update the values
             else:  #has been seen before
                 values = seen.get(id)
-                values.update({df.columns[2]:current.iloc[2]}) #Put cell value for key of column name
+                values.update({df.columns[-1]:current.iloc[-1]}) #Put cell value for key of column name
                 seen.update({id: values}) #Update the values
-                if len(values) == 3: #Name, Performance and RA = 3
+                if values["1"] != None and values["2"] != None: #Both metrics have been seen
                     all_seen += 1
         if all_seen >= k:
-            #print("Seen all! ", all_seen, "Seen len: ", len(seen))
+            print("Seen all! All seen length:", all_seen, " Seen length: ", len(seen))
             break  
         i += 1
-        if i == len(df.index)-1:
-            raise Exception("Final row hit.")
+        if i == len(df.index):
+            print("No more . No more models/modelsets to inspect. All seen length:", all_seen)
+            raise Exception("Final row hit. Chosen n is probably too high. Try setting n = 'max'")
         #print("Row: ", i, " allseen: ", all_seen, " Total rows: ",len(df.index))
         
 
     # Step 2: Random Access
     for id in seen: # Iterate over all seen objects and fill in missing ones
         values = dict(seen.get(id))
-        if len(values) != 3:
+        if "1" not in values or "2" not in values: #If one metric is still missing
             keysList = list(values.keys())
-            try:
-                if keysList[1] == 'performance': # If RA is missing
-                    df = df_dict.get('attributes') # Get correct df #TODO: Adjust for different/more RA metrics
-                    pd.DataFrame(df)
-                    val = df.loc[df['model_id'] == int(id), 'attributes'].values[0]
-                    values.update({'attributes': val})
-                    seen.update({id: values}) # Update the values
-                elif keysList[1] == "attributes": # If Performance is missing
-                    df = df_dict.get('performance') #Get correct df
-                    pd.DataFrame(df)
-                    val = df.loc[df['model_id'] == int(id), 'performance'].values[0]
-                    values.update({'performance': val})
-                    seen.update({id: values}) # Update the values
-            except Exception as e: print("Model seems to be missing one or more relevant metrics.")
+            #try:
+            if keysList[-1] == '1': # If RA is missing
+                df = df_dict.get('2') # Get missing df
+                pd.DataFrame(df)
+                val = df.loc[df.iloc[:, 0] == int(id), '2'].values[0] #Where the first column (=id) is the considered id add the missing metric
+                values.update({'2': val})
+                seen.update({id: values}) # Update the values
+            elif keysList[-1] == "2": # If Performance is missing
+                df = df_dict.get('1') #Get missing df
+                pd.DataFrame(df)
+                val = df.loc[df.iloc[:, 0] == int(id), '1'].values[0] #Where the first column (=id) is the considered id add the missing metric
+                values.update({'1': val})
+                seen.update({id: values}) # Update the values
+            #except Exception as e: print("Model seems to be missing one or more relevant metrics.")
 
     # Turning the dict into a df            
-    df_final = pd.DataFrame.from_dict(seen, orient='index') 
-    df_final.reset_index(inplace=True) #Reset index so model_id has own column
-    df_final.columns = ['model_id', 'model_name', 'performance', 'attributes']
+    df_final = pd.DataFrame(columns =['model_id', 'model_name', 'prediction_horizon', 'period_minutes', 'Models', '1', '2', 'score'] )
+    df_final = pd.DataFrame.from_dict(seen, orient='index')
 
     # Convert columns to numeric values
-    df_final['performance'] = pd.to_numeric(df_final['performance'])
-    df_final['attributes'] = pd.to_numeric(df_final['attributes'])
+    df_final['1'] = pd.to_numeric(df_final['1'])
+    df_final['2'] = pd.to_numeric(df_final['2'])
 
     # Step 3: Computing the grade 
-    df_final['score'] = (df_final['performance'] * weight) + (df_final['attributes'] * (1 - weight))
+    df_final['score'] = (df_final['1'] * weight) + (df_final['2'] * (1 - weight))
 
     df_final = df_final.sort_values(by='score', ascending=False, na_position='first') # sort by score
 
@@ -164,16 +171,6 @@ def threshold_topk (df_dict: dict, weight: float, k: int):
                 if cur_id not in result_df.iloc[:, 0].values: #Ignore if model id already in result
                     #print("Result before adding: ", result)
                     result_df.loc[len(result_df)] = cur_row #Add complete seen item to end of result df
-                    # print("DF loc", result_df.loc[len(result_df)-1])
-
-                    # for key in df_dict.get("performance"):
-                    #     keyString = str(key)
-
-                    #     result_df.assign(test=cur_row[key])
-                    #     print("result df", result_df)
-
-
-
                     #print("Result after adding: ", result)
                     result_df = result_df.sort_values(by='score',ascending=False) #Sort values so worst model can be dropped
                     result_df = result_df.reset_index(drop = True) #Reset Index 
@@ -190,7 +187,6 @@ def threshold_topk (df_dict: dict, weight: float, k: int):
         # Stop condition:
         if result_df.shape[0] == k and result_df.iloc[-1, -1] >= threshold:
             result_df = round_result_df(result_df) #Round the values of the DF
-            print(result_df.head)
             for ind in range(k):
                 result.append(result_df.iloc[ind])  # add to result list
             #print("Final Result: ", result)

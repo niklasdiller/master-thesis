@@ -167,7 +167,7 @@ def topkmodelsets():
         df_perf = df_perf.sort_values(by='1', ascending=False, na_position='first') #Sort with highest performance first
         df_reaw = df_reaw.sort_values(by='2', ascending=False, na_position='first') #Sort with least numner of attributes first
 
-        df_metric.update([('performance', df_perf), ('attributes', df_reaw)])
+        df_metric.update([('1', df_perf), ('2', df_reaw)])
         df_dict.update({key: df_metric}) # Adding into dict each df containing a unique predHor
         df_dict_naive.update({key:df_predHor}) # Fill dict for naive algortithm
 
@@ -256,6 +256,7 @@ def topkmodelsets():
 
     df_QSL = df_fromOD.drop(columns=['1'])
     df_MSS = df_fromOD.drop(columns=['2'])
+    print("df_MSS", df_MSS.tail)
 
     #print("Head", df_QSL.head)
     df_QSL = df_QSL.sort_values(by='2', ascending=False, na_position='first')
