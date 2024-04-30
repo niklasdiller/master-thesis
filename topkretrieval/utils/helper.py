@@ -10,7 +10,7 @@ def normalize (df: pd.DataFrame, col: str, rev: bool):
     normCol = [col]
     if not rev: #E.g. for performance data: High values -> high score 
         df[normCol] = df[normCol].apply(lambda x: (x - x.min()) / (x.max() - x.min()))
-    else: #E.g. to have models with low number of attributes a high RA score: High value -> low score
+    else: #E.g. to have models with low number of attributes/low error metric have a high RA/Perf score: High value -> low score
         df[normCol] = df[normCol].apply(lambda x: ((x - x.min()) / (x.max() - x.min()) -1) * -1) 
         #Replace -0.0 with 0.0 for reverse normalization
         for ind in df.index:
@@ -19,7 +19,6 @@ def normalize (df: pd.DataFrame, col: str, rev: bool):
     return df
 
     
-
 def create_combinations (resultList: list, combineSameFeatures: bool):
     if combineSameFeatures == True: # Only combine models to modelsets that have the same features
         combinations = []
@@ -45,13 +44,17 @@ def create_combinations (resultList: list, combineSameFeatures: bool):
             combinations.append(cur_combi)
         return combinations
 
-
-def convert_to_json (result, isModelset:bool): #Convert result list into JSON format
+ 
+def convert_to_json (result, isModelset:bool, perfMetric): #Convert result list into JSON format
     json_list = []
+    perfMetricString = str(perfMetric) # String formatting 
+    if perfMetricString == "acc":
+        perfMetricString = "Accuracy"
+    else: 
+        perfMetricString = perfMetricString.upper() 
     # If single models are retrieved
     if isModelset == False:
         count = 1
-
         for row in result:
             modelnumber = "model"+str(count) #For model identifier in reply
             model_id = int(row["model_id"]) #Convert serial to int
@@ -62,6 +65,7 @@ def convert_to_json (result, isModelset:bool): #Convert result list into JSON fo
                         "Model ID": model_id,
                         "Model Name": row["model_name"],
                         "Period Minutes": int(row["period_minutes"]),
+                        perfMetricString: row["perfMetric"],
                         "Performance Score": row["1"],
                         "Resource Awareness Score": row["2"],
                         "Model Score": row["score"]
@@ -95,6 +99,7 @@ def convert_to_json (result, isModelset:bool): #Convert result list into JSON fo
                             "Model Name": model.get("model_name"),
                             "Prediction Horizon": model.get('prediction_horizon'),
                             "Period Minutes": model.get('period_minutes'),
+                            perfMetricString: model.get('perfMetric'),
                             "Performance Score": round(model.get("1"), 2),
                             "Resource Awareness Score": model.get("2"),
                             "Model Score": model.get("score")
@@ -135,8 +140,9 @@ def penalize_small_window_size(df, ind):
     return df
 
 
-def reshape_perf_table(df: pd.DataFrame):
+def reshape_perf_table(df: pd.DataFrame, perfMetric):
     df = df.rename(columns = {'accuracydt':'1'})
+    df.insert(2, 'perfMetric', None) # New column that shows the absolute value of the performance metric
     for ind in df.index: #Collect the performance values into a single one
         if df.at[ind, '1'] == 'no classifier':
             if df.at[ind, 'accuracyrf'] != 'no classifier':
@@ -145,9 +151,21 @@ def reshape_perf_table(df: pd.DataFrame):
                  df.at[ind, '1'] = df.at[ind, 'accuracylr']
             else: 
                  df.at[ind, '1'] = df.at[ind, 'accuracyknn']
-        str = df.at[ind, '1']
-        val = get_acc(str) #Specify which metric should be considered here
-        df.at[ind, '1'] = val #Set float value
+        completeString = df.at[ind, '1']
+
+        match perfMetric:
+            case "acc":
+                val = get_acc(completeString) #Specify which metric should be considered here
+            case "mae":
+                val = get_mae(completeString)
+            case "mse":
+                 val = get_mse(completeString)
+            case "rmse":
+                val = get_rmse(completeString)
+            case _:
+                raise Exception ("Not a valid performance metric! Try 'acc', 'mae', 'mse' or 'rmse'.")
+        df.at[ind, 'perfMetric'] = val #Set float value for the score later
+        df.at[ind, '1'] = val #Set float value for the absolute performance metric for later display
     df = df.drop(columns=['accuracyrf', 'accuracylr', 'accuracyknn']) #Remove redundant columns
     return df
 

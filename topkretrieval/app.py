@@ -55,15 +55,16 @@ def topk():
     pID = int(data["pID"])
     if pID != 38 and pID != 634:
         raise Exception ("Not a valid parking lot ID. Try 38 or 634.")
-    # perMin = data["perMin"]
-    # predHor = int(data["predHor"])
     perMinList = data["perMin"]
     perMinVars = ', '.join(['%s'] * len(perMinList)) # Join single strings for each element in perMin list for the SQL statement
     predHorList = (data["predHor"])
     predHorVars = ', '.join(['%s'] * len(predHorList)) # Join single strings for each element in predHorList for the SQL statement
+    perfMetric = (data["perfMetric"]) # Metric that should be used to calculate the performance score
     k = int(data["k"]) #Number of objects that should be returned to client
     weight = float(data["accWeight"]) #Importance of Performance in comparison to Resource Awareness; Value [0-1]
     algorithm = data["algorithm"] #The algorithm that should be called. Possible values: fagin, threshold, naive.
+   
+   # Execute SQL Statement
     with connection:
         with connection.cursor() as cursor:
             if predHorList == [] or predHorList == 0: #SQL statement without filter for predHor
@@ -75,10 +76,13 @@ def topk():
     if df.size == 0: #If no model match the requirements
         raise Exception ("No models found with specified metrics.")   
 
-    df = reshape_perf_table(df) #Call function that summarizes the accuracy for acc
+    df = reshape_perf_table(df, perfMetric) #Call function that summarizes the accuracy for acc
     df = count_attributes(df) #Call function that counts the number of attributes of each model
 
-    df = normalize(df, '1', rev = False)
+    if perfMetric == "acc":
+        df = normalize(df, '1', rev = False)
+    else : # If error metric is chosen, reverse the normalization (Low error value is better)
+        df = normalize(df, '1', rev = True)
     df = normalize(df, '2', rev = True)
 
     df = df.sort_values(by='1', ascending=False, na_position='first') #Sort with highest performance first
@@ -96,11 +100,11 @@ def topk():
     # Call the desired algrotihm:
     match algorithm:
         case 'fagin':
-            result = convert_to_json(fagin_topk(df_dict, weight, k), False)
+            result = convert_to_json(fagin_topk(df_dict, weight, k), False, perfMetric)
         case 'threshold':
-            result = convert_to_json(threshold_topk(df_dict, weight, k), False)
+            result = convert_to_json(threshold_topk(df_dict, weight, k), False, perfMetric)
         case 'naive':
-            result = convert_to_json(naive_topk(df, weight, k), False)
+            result = convert_to_json(naive_topk(df, weight, k), False, perfMetric)
         case _:
             raise Exception ("Not a valid algorithm! Try 'naive', 'fagin', or 'threshold'.")
 
@@ -120,7 +124,10 @@ def topkmodelsets():
     perMinList = data["perMin"]
     perMinVars = ', '.join(['%s'] * len(perMinList)) # Join single strings for each element in perMin list for the SQL statement
     predHorList = (data["predHor"])
+    if len(predHorList) == 1:
+        raise Exception ("For modelset retrieval at least 2 prediction horizons must be selected!")
     predHorVars = ', '.join(['%s'] * len(predHorList)) # Join single strings for each element in predHorList for the SQL statement
+    perfMetric = (data["perfMetric"]) # Metric that should be used to calculate the performance score
     k = int(data["k"]) #Number of models that should be used per prediction Horizon to create modelsets
     if data["n"] == "max": #Number of modelsets that should be returned to the client
         n = "max"
@@ -141,15 +148,14 @@ def topkmodelsets():
     
     if df.size == 0: #If no model match the requirements
         raise Exception ("No models found with specified metrics.")   
-
-    df = reshape_perf_table(df) #Puts the performance metric into an atomic
+    df = reshape_perf_table(df, perfMetric) #Puts the performance metric into an atomic
     df = count_attributes(df) #Counts the number of attributes of each model
 
     df = normalize(df, '1', rev = False)
     df = normalize(df, '2', rev = True)
 
     df = df.sort_values(by='1', ascending=False, na_position='first') #Sort with highest performance first
-    #print(df.head)
+    print(df.head)
     df_dict = {}
     df_dict_naive = {} #Dict of DF for the naive algorithm: No splitting done for performance/attributes
 
@@ -185,7 +191,6 @@ def topkmodelsets():
                 result.append(naive_topk(df_dict_naive.get(key), weight1, k))
             case _:
                 raise Exception ("Not a valid algorithm! Try 'naive', 'fagin', or 'threshold'.")
-
 
     combinations_raw = create_combinations(result, combineSameFeatures) # Create modelsets by combining models
     combinations = [] # List that contains JSON convertable datatypes only
@@ -256,7 +261,6 @@ def topkmodelsets():
 
     df_QSL = df_fromOD.drop(columns=['1'])
     df_MSS = df_fromOD.drop(columns=['2'])
-    print("df_MSS", df_MSS.tail)
 
     #print("Head", df_QSL.head)
     df_QSL = df_QSL.sort_values(by='2', ascending=False, na_position='first')
@@ -276,5 +280,5 @@ def topkmodelsets():
 
     #print("Result", result)
 
-    result_json= convert_to_json(result, True)
+    result_json= convert_to_json(result, True, perfMetric)
     return (result_json), 200
