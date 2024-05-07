@@ -97,6 +97,11 @@ public class ModelTrainer implements Serializable {
      * The Decision Tree classifier.
      */
     private M5P m_DecisionTreeClassifier = new M5P();
+
+    private int corrPred;
+    private double MAE;
+    private double MSE;
+    private double RMSE;
     /**
      * Decision Tree accuracy variables
      */
@@ -523,8 +528,13 @@ public class ModelTrainer implements Serializable {
             attributesString = attributesString.substring(0, attributesString.length() - 2); //remove last ", "
         }
 
-        String accuracyInfoDTString = "no classifier", accuracyInfoRFString = "no classifier",
-                accuracyInfoLRString = "no classifier", accuracyInfoKNNString = "no classifier";
+        // Set the performance metrics
+        double modelAccuracy, modelMae, modelMse, modelRmse;
+        modelAccuracy = (double) Math.round((corrPred / (double) m_Test_Data.size()) * 100 * 100) / 100;
+        modelMae = (double) Math.round(MAE / (double) m_Test_Data.size() * 100) / 100;
+        modelMse = (double) Math.round(MSE / (double) m_Test_Data.size() * 100) / 100;
+        modelRmse = (double) Math.round(Math.sqrt(MSE / (double) m_Test_Data.size()) * 100) / 100;
+
         List<Integer> listForClassifierIndexes = new ArrayList<Integer>();
         if (settings.classifiersData.isEmpty()) {
             listForClassifierIndexes.add(0);
@@ -536,8 +546,10 @@ public class ModelTrainer implements Serializable {
                 listForClassifierIndexes.add(settings.classifiersData.get(i));
             }
         }
-        //TODO: Low Prio: Make performance metrics atomic and as own columns in DB
-        for (int i = 0; i < listForClassifierIndexes.size(); i++) {
+
+        // Obsolete, as performance metrics are now atomic
+
+       /* for (int i = 0; i < listForClassifierIndexes.size(); i++) {
             if (listForClassifierIndexes.get(i) == 0) {
                 accuracyInfoDTString = "Correctly predicted: "
                         + (double) Math.round((correctPredictedDT / (double) m_Test_Data.size()) * 100 * 100) / 100 + "%"
@@ -566,7 +578,7 @@ public class ModelTrainer implements Serializable {
                         + " MSE: " + (double) Math.round(MSE_KNN / (double) m_Test_Data.size() * 100) / 100
                         + " RMSE: " + (double) Math.round(Math.sqrt(MSE_KNN / (double) m_Test_Data.size()) * 100) / 100;
             }
-        }
+        }*/
 
         // saving in database
         System.out.println("Saving model to database...");
@@ -577,7 +589,7 @@ public class ModelTrainer implements Serializable {
                 "parking_id, training_data_size, period_minutes, slotsIDs," +
                 "classifiers, attributes, trainingDataProportion," +
                 "accuracyPercent, randomForestMaxDepth, kNeighbours, " +
-                "accuracyDT, accuracyRF, accuracyLR, accuracyKNN, decision_tree," +
+                "accuracy, mae, mse, rmse, decision_tree," +
                 "random_forest, linear_regression, k_nearest_neighbors, window_stride, training_weeks, " +
                 "start_of_training_data, prediction_horizon) " +
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"); // number of ? has to be the same as the number of columns
@@ -608,11 +620,11 @@ public class ModelTrainer implements Serializable {
             ps.setInt(15, -1); //not applicable to other classifiers
         }
 
-        // accuracy results
-        ps.setString(16, accuracyInfoDTString);
-        ps.setString(17, accuracyInfoRFString);
-        ps.setString(18, accuracyInfoLRString);
-        ps.setString(19, accuracyInfoKNNString);
+        // Performance metrics
+        ps.setDouble(16, modelAccuracy);
+        ps.setDouble(17, modelMae);
+        ps.setDouble(18, modelMse);
+        ps.setDouble(19, modelRmse);
 
         // writing trained classifiers (if exist) binary data
         int columnIndexToWrite = 20;
@@ -723,27 +735,12 @@ public class ModelTrainer implements Serializable {
                     correctPredicted++;
                 }
             }
-            if (index == 0) {
-                correctPredictedDT = correctPredicted;
-                MAE_DT = meanAbsErr;
-                MSE_DT = meanSqErr;
-                RMSE_DT = Math.sqrt(meanSqErr);
-            } else if (index == 1) {
-                correctPredictedRF = correctPredicted;
-                MAE_RF = meanAbsErr;
-                MSE_RF = meanSqErr;
-                RMSE_RF = Math.sqrt(meanSqErr);
-            } else if (index == 2) {
-                correctPredictedLR = correctPredicted;
-                MAE_LR = meanAbsErr;
-                MSE_LR = meanSqErr;
-                RMSE_LR = Math.sqrt(meanSqErr);
-            } else if (index == 3) {
-                correctPredictedKNN = correctPredicted;
-                MAE_KNN = meanAbsErr;
-                MSE_KNN = meanSqErr;
-                RMSE_KNN = Math.sqrt(meanSqErr);
-            }
+
+            corrPred = correctPredicted;
+            MAE = meanAbsErr;
+            MSE = meanSqErr;
+            RMSE = Math.sqrt(meanSqErr);
+
             System.out.println("\nCorrectly predicted " + classifierNamesMap.get(index) + " "
                     + (double) Math.round((correctPredicted / (double) m_Test_Data.size()) * 100 * 100) / 100 + "%");
             System.out.println(classifierNamesMap.get(index) + " Mean Absolute Error: "
@@ -1204,7 +1201,6 @@ public class ModelTrainer implements Serializable {
                 //Prediction Horizon
                 for (int predHor = 0; predHor <= trainer.predHorMap.size() - 1; predHor++) {
                     predHor_val = trainer.predHorMap.get(predHor);
-
 
                     //Training Data Size in Weeks. Initial value 1, see hashmap
                     for (int weeks = 1; weeks <= trainer.periodMinuteMap.get(perMin).size() - 1; weeks++) {
