@@ -1,6 +1,5 @@
 package main.java;
 
-import org.json.simple.parser.ParseException;
 import tech.tablesaw.io.DataFrameReader;
 import tech.tablesaw.io.ReaderRegistry;
 import weka.classifiers.Classifier;
@@ -8,6 +7,8 @@ import weka.classifiers.functions.LinearRegression;
 import weka.classifiers.lazy.IBk;
 import weka.classifiers.trees.M5P;
 import weka.classifiers.trees.RandomForest;
+import weka.filters.Filter;
+import weka.filters.unsupervised.attribute.Normalize;
 import weka.core.*;
 
 import java.io.*;
@@ -55,7 +56,7 @@ public class ModelTrainer implements Serializable {
     /**
      * Map for attribute names
      **/
-    private Map<Integer, String> attributesNamesMap = new HashMap<Integer, String>();
+    private ArrayList<String> attributesNamesList = new ArrayList<>();
 
     /**
      * All settings specified in properties file
@@ -78,6 +79,11 @@ public class ModelTrainer implements Serializable {
     private int periodMinutes;
 
     /**
+     * Flag to use when feature scaling is activated
+     */
+    private boolean featureScaling;
+
+    /**
      * The training data gathered so far.
      */
     private Instances m_Train_Data;
@@ -97,6 +103,7 @@ public class ModelTrainer implements Serializable {
     private int correctPredictedDT;
     private double MAE_DT;
     private double MSE_DT;
+    private double RMSE_DT;
 
     /**
      * The Random Forest classifier.
@@ -109,6 +116,7 @@ public class ModelTrainer implements Serializable {
     private int correctPredictedRF;
     private double MAE_RF;
     private double MSE_RF;
+    private double RMSE_RF;
 
     /**
      * The Linear Regression classifiert
@@ -121,6 +129,7 @@ public class ModelTrainer implements Serializable {
     private int correctPredictedLR;
     private double MAE_LR;
     private double MSE_LR;
+    private double RMSE_LR;
 
     /**
      * The k-Nearest Neighbors classifier.
@@ -133,6 +142,7 @@ public class ModelTrainer implements Serializable {
     private int correctPredictedKNN;
     private double MAE_KNN;
     private double MSE_KNN;
+    private double RMSE_KNN;
 
     /**
      * Map for classifier choice
@@ -148,7 +158,6 @@ public class ModelTrainer implements Serializable {
      * Map for periodMinute values
      **/
     public Map<Integer, List<Integer>> periodMinuteMap = new HashMap<>();
-
 
     /**
      * Number of Rows to use for training. Determined using trainingWeeks in settings.
@@ -166,13 +175,24 @@ public class ModelTrainer implements Serializable {
     public Map<Integer, Integer> parkingLotMap = new HashMap<>();
 
     /**
+     * Map for maxDepthMap values for random forest classifier
+     **/
+    public Map<Integer, Integer> maxDepthMap = new HashMap<>();
+
+    /**
+     * Map for k values for KNN classifier
+     **/
+    public Map<Integer, Integer> kMap = new HashMap<>();
+
+    /**
      * Create a model trainer
      *
      * @param settings Contains all settings to run training pipeline
      */
-    public ModelTrainer(Settings settings) throws IOException, ParseException {
+    public ModelTrainer(Settings settings) throws Exception {
         this.settings = settings;
         this.periodMinutes = settings.periodMinutes;
+        this.featureScaling = featureScaling;
 
         String nameOfDataset = "ParkingOccupancyProblem";
 
@@ -214,13 +234,13 @@ public class ModelTrainer implements Serializable {
         this.classifierNamesMap.put(3, "K-Nearest Neighbours");
 
         // fill an attributes map with attribute names
-        this.attributesNamesMap.put(0, "temperature");
-        this.attributesNamesMap.put(1, "humidity");
-        this.attributesNamesMap.put(2, "day of the week");
-        this.attributesNamesMap.put(3, "month");
-        this.attributesNamesMap.put(4, "year");
-        this.attributesNamesMap.put(5, "previous occupancy");
-        this.attributesNamesMap.put(6, "time slot");
+        this.attributesNamesList.add("temperature");
+        this.attributesNamesList.add("humidity");
+        this.attributesNamesList.add("day of the week");
+        this.attributesNamesList.add("month");
+        this.attributesNamesList.add("year");
+        this.attributesNamesList.add("time slot");
+        this.attributesNamesList.add("previous occupancy");
 
         // fill a periodMinuteMap with values for the training pipeline and their corresponding trainingDataSize
         // first value: periodMinutes
@@ -241,11 +261,15 @@ public class ModelTrainer implements Serializable {
         values2.add(1);
         values2.add(4);
         this.periodMinuteMap.put(2, values2);
-        List<Integer> values3 = new ArrayList<>();
+        List<Integer> values3 = new ArrayList<>(); //24h Shift
         values3.add(60);
-        values3.add(1); //to get values for 24h after the last instance
+        values3.add(1);
         values3.add(4);
         this.periodMinuteMap.put(3, values3);
+        List<Integer> values4 = new ArrayList<>(); // Feature Scaling: Standardized
+        values4.add(60);
+        values4.add(4);
+        this.periodMinuteMap.put(4, values4);
 //        values.clear();
 
         // fill a parkingLot Map with the corresponding Parking Lot IDs
@@ -255,6 +279,16 @@ public class ModelTrainer implements Serializable {
         // hyperparameter, for RF and KNN
         this.m_RandomForestClassifier.setMaxDepth(settings.randomForestMaxDepth);
         this.m_KNNClassifier.setKNN(settings.kNeighbours);
+
+        //// fill a hyperparameter Map with changing values for maxdepth of random forest classifier
+        this.maxDepthMap.put(0, 1);
+        this.maxDepthMap.put(1, 5);
+        this.maxDepthMap.put(2, 20);
+
+        //// fill a hyperparameter Map with changing values for k of KNN classifier
+        this.kMap.put(0, 3);
+        this.kMap.put(1, 19);
+        this.kMap.put(2, 33);
     }
 
     /**
@@ -296,7 +330,6 @@ public class ModelTrainer implements Serializable {
         Instance instance = new DenseInstance(this.m_Train_Data.numAttributes());
         instance.setDataset(this.m_Train_Data);
 
-
         for (int attribute : this.attributeIndexes) {
             if (attribute == 0 || attribute == 1 || attribute == 6) {
                 instance.setValue(this.m_Train_Data.attribute(occupancyPredictAttributes.get(attribute)),
@@ -313,11 +346,11 @@ public class ModelTrainer implements Serializable {
         return instance;
     }
 
-
     /**
      * Get the preprocessed data for model training from DB
      *
      * @param settings for the model to be trained
+     * @param shift24h Flag for 24h Shift
      */
     private Table getPreprocData(Settings settings, boolean shift24h) throws SQLException {
         System.out.println("Data from table " + settings.preprocessedTable + ".");
@@ -328,13 +361,11 @@ public class ModelTrainer implements Serializable {
         String context = "pID" + settings.parkingId + "_perMin" + settings.periodMinutes;
         if (shift24h) context += "_24h";
 
-        trainingDataSize = settings.trainingWeeks * 7 * (1440/ settings.periodMinutes); //rows that make up trainingWeeks weeks
-
-        //TODO: make sure data is ordered correctly -> Not only mondays etc.
+        trainingDataSize = settings.trainingWeeks * 7 * (1440 / settings.periodMinutes); //rows that make up trainingWeeks weeks
 
         String query = "SELECT temp, humidity, weekday, month, year, time_slot, previous_occupancy, occupancy " +
                 "FROM public.\"" + settings.preprocessedTable + "\"  WHERE context = '" + context +
-                "' LIMIT " + trainingDataSize +";";
+                "' LIMIT " + trainingDataSize + ";";
 
 //        System.out.println(query);
         System.out.println("Getting training data for model " + settings.modelName + ".");
@@ -347,7 +378,7 @@ public class ModelTrainer implements Serializable {
         res.column("previous_occupancy").setName("previousOccupancy"); //rename
 
         //Set startOFTrainingData
-        startOfTrainingData = res.row(0).getInt("month")+ "/";
+        startOfTrainingData = res.row(0).getInt("month") + "/";
         startOfTrainingData += res.row(0).getInt("year");
 
         rs.getStatement().close();
@@ -360,8 +391,9 @@ public class ModelTrainer implements Serializable {
      * Convert the DB result to instances
      *
      * @param table from preprocessing
+     * @param fs    Flag for feature scaling
      */
-    private void saveQueryAsInstances(Table table) throws Exception {
+    private void saveQueryAsInstances(Table table, boolean fs) throws Exception {
         Instance instance;
 
         int i = 0;
@@ -406,6 +438,9 @@ public class ModelTrainer implements Serializable {
                 currentRow = table.row(currentRowIndex);
             }
         }
+
+        // Apply feature scaling if flag is set
+        if (fs) featureScale();
 
         System.out.println("Converted data to instances.");
     }
@@ -453,7 +488,7 @@ public class ModelTrainer implements Serializable {
             System.err.println("Attributes cannot be empty!"); //empty case handled through all selected
         } else {
             for (int attributNumber : settings.attributesData) {
-                attributesString += (attributesNamesMap.get(attributNumber) + ", ");
+                attributesString += (attributesNamesList.get(attributNumber) + ", ");
             }
             attributesString = attributesString.substring(0, attributesString.length() - 2); //remove last ", "
         }
@@ -476,22 +511,29 @@ public class ModelTrainer implements Serializable {
                 accuracyInfoDTString = "Correctly predicted: "
                         + (double) Math.round((correctPredictedDT / (double) m_Test_Data.size()) * 100 * 100) / 100 + "%"
                         + " MAE: " + (double) Math.round(MAE_DT / (double) m_Test_Data.size() * 100) / 100
-                        + " MSE: " + (double) Math.round(MSE_DT / (double) m_Test_Data.size() * 100) / 100;
+                        + " MSE: " + (double) Math.round(MSE_DT / (double) m_Test_Data.size() * 100) / 100
+                        + " RMSE: " + (double) Math.round(Math.sqrt(MSE_DT / (double) m_Test_Data.size()) * 100) / 100;
+
             } else if (listForClassifierIndexes.get(i) == 1) {
                 accuracyInfoRFString = "Correctly predicted: "
                         + (double) Math.round((correctPredictedRF / (double) m_Test_Data.size()) * 100 * 100) / 100 + "%"
                         + " MAE: " + (double) Math.round(MAE_RF / (double) m_Test_Data.size() * 100) / 100
-                        + " MSE: " + (double) Math.round(MSE_RF / (double) m_Test_Data.size() * 100) / 100;
+                        + " MSE: " + (double) Math.round(MSE_RF / (double) m_Test_Data.size() * 100) / 100
+                        + " RMSE: " + (double) Math.round(Math.sqrt(MSE_RF / (double) m_Test_Data.size()) * 100) / 100;
+
             } else if (listForClassifierIndexes.get(i) == 2) {
                 accuracyInfoLRString = "Correctly predicted: "
                         + (double) Math.round((correctPredictedLR / (double) m_Test_Data.size()) * 100 * 100) / 100 + "%"
                         + " MAE: " + (double) Math.round(MAE_LR / (double) m_Test_Data.size() * 100) / 100
-                        + " MSE: " + (double) Math.round(MSE_LR / (double) m_Test_Data.size() * 100) / 100;
+                        + " MSE: " + (double) Math.round(MSE_LR / (double) m_Test_Data.size() * 100) / 100
+                        + " RMSE: " + (double) Math.round(Math.sqrt(MSE_LR / (double) m_Test_Data.size()) * 100) / 100;
+
             } else if (listForClassifierIndexes.get(i) == 3) {
                 accuracyInfoKNNString = "Correctly predicted: "
                         + (double) Math.round((correctPredictedKNN / (double) m_Test_Data.size()) * 100 * 100) / 100 + "%"
                         + " MAE: " + (double) Math.round(MAE_KNN / (double) m_Test_Data.size() * 100) / 100
-                        + " MSE: " + (double) Math.round(MSE_KNN / (double) m_Test_Data.size() * 100) / 100;
+                        + " MSE: " + (double) Math.round(MSE_KNN / (double) m_Test_Data.size() * 100) / 100
+                        + " RMSE: " + (double) Math.round(Math.sqrt(MSE_KNN / (double) m_Test_Data.size()) * 100) / 100;
             }
         }
 
@@ -521,8 +563,18 @@ public class ModelTrainer implements Serializable {
         ps.setString(11, attributesString); // attributes
         ps.setDouble(12, settings.trainProp); // train part
         ps.setInt(13, settings.accuracyPercent);     // deviation percentage for accuracy calculation
-        ps.setInt(14, settings.randomForestMaxDepth);     // max depth for Random Forest Classifier
-        ps.setInt(15, settings.kNeighbours);     // number of neighbours for k-Nearest Neighbours Classifier
+
+        if (Objects.equals(classifierNamesString, "Random Forest")) {
+            ps.setInt(14, settings.randomForestMaxDepth); // max depth for Random Forest Classifier
+        } else {
+            ps.setInt(14, -1); //not applicable to other classifiers
+        }
+
+        if (Objects.equals(classifierNamesString, "K-Nearest Neighbours")) {
+            ps.setInt(15, settings.kNeighbours); // number of neighbours for k-Nearest Neighbours Classifier
+        } else {
+            ps.setInt(15, -1); //not applicable to other classifiers
+        }
 
         // accuracy results
         ps.setString(16, accuracyInfoDTString);
@@ -642,18 +694,22 @@ public class ModelTrainer implements Serializable {
                 correctPredictedDT = correctPredicted;
                 MAE_DT = meanAbsErr;
                 MSE_DT = meanSqErr;
+                RMSE_DT = Math.sqrt(meanSqErr);
             } else if (index == 1) {
                 correctPredictedRF = correctPredicted;
                 MAE_RF = meanAbsErr;
                 MSE_RF = meanSqErr;
+                RMSE_RF = Math.sqrt(meanSqErr);
             } else if (index == 2) {
                 correctPredictedLR = correctPredicted;
                 MAE_LR = meanAbsErr;
                 MSE_LR = meanSqErr;
+                RMSE_LR = Math.sqrt(meanSqErr);
             } else if (index == 3) {
                 correctPredictedKNN = correctPredicted;
                 MAE_KNN = meanAbsErr;
                 MSE_KNN = meanSqErr;
+                RMSE_KNN = Math.sqrt(meanSqErr);
             }
             System.out.println("\nCorrectly predicted " + classifierNamesMap.get(index) + " "
                     + (double) Math.round((correctPredicted / (double) m_Test_Data.size()) * 100 * 100) / 100 + "%");
@@ -661,13 +717,16 @@ public class ModelTrainer implements Serializable {
                     + (double) Math.round(meanAbsErr / (double) m_Test_Data.size() * 100) / 100);
             System.out.println(classifierNamesMap.get(index) + " Mean Squared Error: " +
                     (double) Math.round(meanSqErr / (double) m_Test_Data.size() * 100) / 100);
+            System.out.println(classifierNamesMap.get(index) + " Root Mean Squared Error: " +
+                    (double) Math.round(Math.sqrt(meanSqErr / (double) m_Test_Data.size()) * 100) / 100);
         }
     }
 
     /**
      * Return processed table of occupancy data
      *
-     * @param rs Set of data to process
+     * @param rs       Set of data to process
+     * @param shift24h Flag for 24hShift
      * @return Table object
      * @throws Exception
      */
@@ -776,7 +835,6 @@ public class ModelTrainer implements Serializable {
                 DoubleColumn.create("previousOccupancy", dataWithOccupancyAndWeather.rowCount()), // occupancy N minutes ago
                 DoubleColumn.create("occupancy", dataWithOccupancyAndWeather.rowCount())); // occupancy now
 
-
         // if horizon is less than an hour, hour
         int periodsInHour = 1;
         if (periodMinutes < 60)
@@ -814,7 +872,7 @@ public class ModelTrainer implements Serializable {
                 dataWithOccupancyAndWeather.row(i).setInt("month", newDate.getMonthValue());
                 dataWithOccupancyAndWeather.row(i).setInt("year", newDate.getYear());
                 //because prev. occ. makes no sense in this case:
-                dataWithOccupancyAndWeather.row(i).setDouble("previousOccupancy", -1);
+//                dataWithOccupancyAndWeather.row(i).setDouble("previousOccupancy", -1);
             }
         }
 
@@ -984,8 +1042,19 @@ public class ModelTrainer implements Serializable {
         return parkingOccupancyWithWetter;
     }
 
-    private String generateModelName(String att, String clas, int perMin, int weeks, boolean shift24h) {
-        String shift = null;
+
+    /**
+     * Applies feature scaling to train and test dataset
+     */
+    private void featureScale() throws Exception {
+
+        Normalize filter = new Normalize();
+        filter.setInputFormat(m_Train_Data);
+        m_Train_Data = Filter.useFilter(m_Train_Data, filter);
+        m_Test_Data = Filter.useFilter(m_Test_Data, filter);
+    }
+
+    private String generateModelName(int pID, String att, String clas, int perMin, int weeks, boolean shift24h, boolean fs) {
         String cleanedAtt = att.replace(" ", "");
         String shortClas = "";
         switch (clas) {
@@ -1004,15 +1073,43 @@ public class ModelTrainer implements Serializable {
         }
 
         if (shift24h) {
-            shift = "-24h";
-            return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + weeks + shift;
+            String shift = "-24h";
+            return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + weeks + "-" + pID + shift;
+        } else if (fs) {
+            String fscale = "-fs";
+            return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + weeks + "-" + pID + fscale;
+
         }
-        return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + weeks;
+        return shortClas + "-" + cleanedAtt + "-" + perMin + "-" + weeks + "-" + pID;
     }
 
-    private Properties changeValues(String settingsPath, int pID, String att, String clas, int perMin, int weeks, boolean shift24h) {
+    private void changeHyperparameters(String settingsPath, String clas_val, int val) {
         try {
-//            att = att.substring(0, att.length() - 2); //remove last ", " for when TimeSLot is not set
+            FileInputStream in = new FileInputStream("src/" + settingsPath);
+            Properties props = new Properties();
+            props.load(in);
+            in.close();
+
+            FileOutputStream out = new FileOutputStream("src/" + settingsPath);
+
+            //if random forest, set maxDepth
+            if (Objects.equals(clas_val, "1")) props.setProperty("randomForestMaxDepth", String.valueOf(val));
+
+            //if KNN, set k
+            if (Objects.equals(clas_val, "3")) props.setProperty("kNeighbours", String.valueOf(val));
+
+            props.store(out, null);
+            out.close();
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    private Properties changeValues(String settingsPath, int pID, String att, String clas, int perMin,
+                                    int weeks, boolean shift24h, boolean fs) {
+        try {
+            att = att.substring(0, att.length() - 2); //remove last ", "
 
             FileInputStream in = new FileInputStream("src/" + settingsPath);
             Properties props = new Properties();
@@ -1025,7 +1122,7 @@ public class ModelTrainer implements Serializable {
             props.setProperty("classifiers", "{" + clas + "}");
             props.setProperty("periodMinutes", String.valueOf(perMin));
             props.setProperty("trainingWeeks", String.valueOf(weeks));
-            props.setProperty("modelName", generateModelName(att, clas, perMin, weeks, shift24h));
+            props.setProperty("modelName", generateModelName(pID, att, clas, perMin, weeks, shift24h, fs));
 
             props.store(out, null);
             out.close();
@@ -1053,6 +1150,8 @@ public class ModelTrainer implements Serializable {
             int perMin_val;
             int weeks_val;
             boolean shift24h = false;
+            boolean fs = false;
+            int hyperMax = 0; //End condition for for-loop for hyperparameters RF and KNN
 
             //Parking Lot
             for (int pID = 0; pID <= trainer.parkingLotMap.size() - 1; pID++) {
@@ -1067,69 +1166,88 @@ public class ModelTrainer implements Serializable {
                         weeks_val = trainer.periodMinuteMap.get(perMin).get(weeks);
 
                         //Classifier
-                        for (int clas = 0; clas <= trainer.classifierMap.size() - 1; clas++) {
+                        for (int clas = 0; clas <= 3; clas++) {
                             clas_val = String.valueOf(clas);
 
                             //Attributes
-                            for (int att0 = 0; att0 <= 1; att0++) {
-                                for (int att1 = 0; att1 <= 1; att1++) {
-                                    for (int att2 = 0; att2 <= 1; att2++) {
-                                        for (int att3 = 0; att3 <= 1; att3++) {
-                                            for (int att4 = 0; att4 <= 1; att4++) {
-                                                for (int att5 = 0; att5 <= 1; att5++) {
+                            for (int att0 = 0; att0 <= 1; att0++) { //Temp
+                                for (int att1 = 0; att1 <= 1; att1++) { // Humidity
+                                    for (int att2 = 0; att2 <= 1; att2++) { //Weekday
+                                        for (int att3 = 0; att3 <= 1; att3++) { //Month
+                                            for (int att4 = 0; att4 <= 1; att4++) { //Year
+                                                for (int att6 = 0; att6 <= 1; att6++) { // Previous Occupancy
 
-                                                    //set flag for 24h occupancy prediction used in preprocessing
-                                                    if (perMin == 3) shift24h = true;
-
-                                                    att_val = "";
-
-                                                    if (att0 == 1) {
-                                                        att_val = att_val + "0, ";
+                                                    //Get size of map for RF / KNN for for-loop end condition
+                                                    if (clas_val.equals("1")) {
+                                                        hyperMax = trainer.maxDepthMap.size() - 1;
+                                                    } else if (clas_val.equals("3")) {
+                                                        hyperMax = trainer.kMap.size() - 1;
                                                     }
-                                                    if (att1 == 1) {
-                                                        att_val = att_val + "1, ";
-                                                    }
-                                                    if (att2 == 1) {
-                                                        att_val = att_val + "2, ";
-                                                    }
-                                                    if (att3 == 1) {
-                                                        att_val = att_val + "3, ";
-                                                    }
-                                                    if (att4 == 1) {
-                                                        att_val = att_val + "4, ";
-                                                    }
-                                                    if (att5 == 1 && !shift24h) { //as no prev. occ. in 24h shift
-                                                        att_val = att_val + "5, ";
-                                                    }
-                                                    att_val += "6"; //TimeSlot always a feature
 
-                                                    //Initialize new Object for every iteration
-                                                    props = trainer.changeValues(settingsPath, pID_val, att_val,
-                                                            clas_val, perMin_val, weeks_val, shift24h);
-                                                    settings = new Settings(settingsPath, props);
-                                                    trainer = new ModelTrainer(settings);
+                                                    //if no changes to the hyperparamteres should be made,
+                                                    // remove this for-loop
+                                                    for (int h = 0; h <= hyperMax; h++) {
 
-//                                                    ResultSet rs = trainer.queryDB();
-//                                                    Table tableData = trainer.preprocessing(rs, shift24h);
+                                                        //set flag for 24h occupancy prediction used in preprocessing
+                                                        if (perMin == 3) shift24h = true;
 
-                                                    Table tableData =  trainer.getPreprocData(settings, shift24h);
+                                                        //set flag for usage of feature scaling in preprocessing
+                                                        if (perMin == 4) fs = true;
 
-                                                    trainer.saveQueryAsInstances(tableData);
-//                                                    rs.getStatement().close(); // closes the resource
-                                                    shift24h = false; //reset shift flag
+                                                        att_val = "";
+                                                        if (att0 == 1) att_val = att_val + "0, ";
+                                                        if (att1 == 1) att_val = att_val + "1, ";
+                                                        if (att2 == 1) att_val = att_val + "2, ";
+                                                        if (att3 == 1) att_val = att_val + "3, ";
+                                                        if (att4 == 1) att_val = att_val + "4, ";
+                                                        att_val += "5, "; //TimeSlot always a feature
 
-                                                    // classifiers building
-                                                    if (settings.classifiersData.isEmpty()) {
-                                                        System.err.println("Classifier cannot be empty!");
-                                                        break;
-                                                    } else {
-                                                        for (int i : settings.classifiersData) {
-                                                            trainer.classifierMap.get(i).buildClassifier
-                                                                    (trainer.m_Train_Data);
+                                                        if (att6 == 1 && !shift24h) { //as no prev. occ. in 24h shift
+                                                            att_val = att_val + "6, ";
+                                                        } else if (att6 == 1 && shift24h) { //to avoid duplicates
+                                                            shift24h = false;
+                                                            fs = false;
+                                                            continue;
+                                                        }
+
+                                                        if (clas_val.equals("1")) {
+                                                            trainer.changeHyperparameters
+                                                                    (settingsPath, clas_val, trainer.maxDepthMap.get(h));
+                                                        } else if (clas_val.equals("3")) {
+                                                            trainer.changeHyperparameters
+                                                                    (settingsPath, clas_val, trainer.kMap.get(h));
+                                                        }
+
+                                                        //Initialize new Object for every iteration
+                                                        props = trainer.changeValues(settingsPath, pID_val, att_val,
+                                                                clas_val, perMin_val, weeks_val, shift24h, fs);
+
+                                                        settings = new Settings(settingsPath, props);
+                                                        trainer = new ModelTrainer(settings);
+
+                                                        Table tableData = trainer.getPreprocData(settings, shift24h);
+                                                        trainer.saveQueryAsInstances(tableData, fs);
+
+                                                        shift24h = false; //reset shift flag
+                                                        fs = false; //reset feature scale flag
+
+                                                        // classifiers building
+                                                        if (settings.classifiersData.isEmpty()) {
+                                                            System.err.println("Classifier cannot be empty!");
+                                                            break;
+                                                        } else {
+                                                            for (int i : settings.classifiersData) {
+                                                                trainer.classifierMap.get(i).buildClassifier
+                                                                        (trainer.m_Train_Data);
+                                                            }
+                                                        }
+                                                        trainer.testClassifier();
+                                                        trainer.saveModelToDB();
+
+                                                        if (!clas_val.equals("1") && !clas_val.equals("3")) {
+                                                            break;
                                                         }
                                                     }
-                                                    trainer.testClassifier();
-                                                    trainer.saveModelToDB();
                                                 }
                                             }
                                         }
