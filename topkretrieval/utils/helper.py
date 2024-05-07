@@ -2,9 +2,7 @@ from tokenize import String
 import pandas as pd
 import re
 import json
-from collections import OrderedDict
 import itertools
-import numpy as np
 
 def normalize (df: pd.DataFrame, col: str, rev: bool):
     normCol = [col]
@@ -139,7 +137,40 @@ def penalize_small_window_size(df, ind):
         df.at[ind, '2'] += 3 #If model is using perMin = 1, penalize the RA score by adding 3. Customizable value
     return df
 
+def get_perf_metric (df: pd.DataFrame, perfMetric):
+    df.insert(2, 'perfMetric', None) # New column that shows the absolute value of the performance metric
+    numberOfCols = len(df.columns) 
+    df.insert(numberOfCols-1, '1', None) # New column that swill show the score later
 
+    match perfMetric:
+        case "acc":
+            for ind in df.index: #Get the desired performance metric
+                val = df.at[ind, 'accuracy'] #Specify which metric should be considered here
+                df.at[ind, 'perfMetric'] = val 
+                df.at[ind, '1'] = val 
+        case "mae":
+            for ind in df.index:
+                val = df.at[ind, 'mae']
+                df.at[ind, 'perfMetric'] = val 
+                df.at[ind, '1'] = val 
+        case "mse":
+            for ind in df.index:
+                val = df.at[ind, 'mse']
+                df.at[ind, 'perfMetric'] = val
+                df.at[ind, '1'] = val
+        case "rmse":
+            for ind in df.index:
+                val = df.at[ind, 'rmse']
+                df.at[ind, 'perfMetric'] = val 
+                df.at[ind, '1'] = val
+        case _:
+            raise Exception ("Not a valid performance metric! Try 'acc', 'mae', 'mse' or 'rmse'.")
+    df = df.drop(columns=['accuracy', 'mae', 'mse', 'rmse'])
+    return df
+
+
+# Obsolete functions, now that the performance metrics are saved atomically
+'''
 def reshape_perf_table(df: pd.DataFrame, perfMetric):
     df = df.rename(columns = {'accuracydt':'1'})
     df.insert(2, 'perfMetric', None) # New column that shows the absolute value of the performance metric
@@ -204,3 +235,4 @@ def get_rmse(str): #Root Mean Squared Error
         return val
     else:
         return None
+'''

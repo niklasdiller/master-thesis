@@ -1,11 +1,9 @@
-from email import utils
 from tokenize import String
 from flask import Flask, request, jsonify
 import os
 import psycopg2
 from dotenv import load_dotenv
 import pandas as pd
-import numpy as np
 from collections import OrderedDict
 
 pd.options.mode.chained_assignment = None  # default='warn' # Ignores warnings regarding chaning values to df copy
@@ -22,6 +20,7 @@ connection = psycopg2.connect(url)
 
 @app.get("/") #Define endpoint for home screen
 def home():
+    #TODO: Set up a simple homepage with instructions on how to use the modelset retrieval system.
     return "Hello, world!"
 
 # Select a model with a given name
@@ -71,13 +70,13 @@ def topk():
                 cursor.execute(FILTER_MODELS_NO_PREDHOR.format(perMinVars), (pID,) + tuple(perMinList))
             else:cursor.execute(FILTER_MODELS.format(perMinVars, predHorVars), (pID,) + tuple(perMinList + predHorList))
 
-            df = pd.DataFrame(cursor.fetchall(), columns=['model_id', 'model_name', 'period_minutes', 'accuracydt', 'accuracyrf', 'accuracylr', 'accuracyknn', '2'])
+            df = pd.DataFrame(cursor.fetchall(), columns=['model_id', 'model_name', 'period_minutes', 'accuracy', 'mae', 'mse', 'rmse', '2'])
     
     if df.size == 0: #If no model match the requirements
         raise Exception ("No models found with specified metrics.")   
 
-    df = reshape_perf_table(df, perfMetric) #Call function that summarizes the accuracy for acc
-    df = count_attributes(df) #Call function that counts the number of attributes of each model
+    df = get_perf_metric(df, perfMetric) #Get required Performance Metric 
+    df = count_attributes(df) #Counts the number of attributes of each model
 
     if perfMetric == "acc":
         df = normalize(df, '1', rev = False)
@@ -144,17 +143,20 @@ def topkmodelsets():
             else:
                 #Putting the variables into the statement
                 cursor.execute(FILTER_MODELS_MODELSETS.format(perMinVars, predHorVars), (pID,) + tuple(perMinList + predHorList))
-            df = pd.DataFrame(cursor.fetchall(), columns=['model_id', 'model_name', 'prediction_horizon', 'period_minutes', 'accuracydt', 'accuracyrf', 'accuracylr', 'accuracyknn', '2'])
+            df = pd.DataFrame(cursor.fetchall(), columns=['model_id', 'model_name', 'prediction_horizon', 'period_minutes', 'accuracy', 'mae', 'mse', 'rmse', '2'])
     
     if df.size == 0: #If no model match the requirements
         raise Exception ("No models found with specified metrics.")   
-    df = reshape_perf_table(df, perfMetric) #Puts the performance metric into an atomic
+    
+    df = get_perf_metric(df, perfMetric) #get the required Performacne Metric
     df = count_attributes(df) #Counts the number of attributes of each model
 
-    df = normalize(df, '1', rev = False)
+    if perfMetric == "acc":
+        df = normalize(df, '1', rev = False)
+    else : # If error metric is chosen, reverse the normalization (Low error value is better)
+        df = normalize(df, '1', rev = True)
     df = normalize(df, '2', rev = True)
 
-    df = df.sort_values(by='1', ascending=False, na_position='first') #Sort with highest performance first
     print(df.head)
     df_dict = {}
     df_dict_naive = {} #Dict of DF for the naive algorithm: No splitting done for performance/attributes

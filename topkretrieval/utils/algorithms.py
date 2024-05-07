@@ -5,13 +5,12 @@ pd.options.mode.chained_assignment = None  # default='warn' # Ignores warnings r
 
 
 def naive_topk (df: pd.DataFrame, weight: float, k: int):
+    print("Head", df.head)
     result = []
-    lastCol = str(df.columns[-1])
-    secondLastCol = str(df.columns[-2])
     for ind in df.index:
        #Compute Score and put in new column
-        score = (df.at[ind, secondLastCol] * weight) + (df.at[ind, lastCol] * (1-weight)) # Using the last 2 columns (= Performance/Attributes or MSS/QSL)
-        #score = (df.at[ind, df.columns[-2]] * weight) + (df.at[ind, df.columns[-1]] * (1-weight)) # Using the last 2 columns (= Performance/Attributes or MSS/QSL)
+        score = (df.at[ind, '1'] * weight) + (df.at[ind, '2'] * (1-weight)) # Using the last 2 columns (= Performance/Attributes or MSS/QSL)
+        #score = (df.at[ind, df.columns[-2]] * weight) + (df.at[ind, df.columns[-1]] * (1-weight))
 
         df.at[ind, 'score'] = score
 
@@ -39,11 +38,11 @@ def naive_topk (df: pd.DataFrame, weight: float, k: int):
 #                 seen[cur_id] = (cur_row['model_name'], cur_row['performance'], cur_row['attributes'], cur )
 #                 print(seen)
 
-def fagin_topk (df_dict: dict, weight, k: int): #TODO: Improve efficiency by getting rif of multiple for loops
+def fagin_topk (df_dict: dict, weight, k: int):
     #print("DF dict anfang", df_dict)
     result = []
     i = 0
-    seen = {} # TODO: Now a dict of dicts converted to a DF later, Or rather a DF directly ?
+    seen = {} 
 
     all_seen = 0
 
