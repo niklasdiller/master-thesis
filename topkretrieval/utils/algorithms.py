@@ -38,7 +38,7 @@ def naive_topk (df: pd.DataFrame, weight: float, k: int):
 #                 seen[cur_id] = (cur_row['model_name'], cur_row['performance'], cur_row['attributes'], cur )
 #                 print(seen)
 
-def fagin_topk (df_dict: dict, weight, k: int):
+def fagin_topk (df_dict, weight, k: int):
     #print("DF dict anfang", df_dict)
     result = []
     i = 0
@@ -121,7 +121,7 @@ def fagin_topk (df_dict: dict, weight, k: int):
 
 
 
-def threshold_topk (df_dict: dict, weight: float, k: int):
+def threshold_topk (df_dict, weight: float, k: int):
     i = 0 
     result_df = pd.DataFrame(columns =['model_id', 'model_name', 'perfMetric', 'prediction_horizon', 'period_minutes', 'Models', '1', '2', 'score'] )
     result = []
