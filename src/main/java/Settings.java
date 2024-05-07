@@ -25,6 +25,7 @@ class Settings {
     int kNeighbours;
     int accuracyPercent;
     int trainTestStrategy;
+    int predictionHorizon;
     String trainTestText;
     String featuresJSON;
     String slotsIDJSON;
@@ -40,6 +41,7 @@ class Settings {
     double trainProp;
     String saveIn;
     String modelName;
+
 
     Settings(String propertiesFile, Properties props) throws IOException, ParseException {
         InputStream input = ModelTrainer.class.getClassLoader().getResourceAsStream(propertiesFile);
@@ -69,6 +71,7 @@ class Settings {
         }
         preprocessedTable = getSettingAsString("preprocessedTable", false);
         tableName = getSettingAsString("tableName", false);
+        predictionHorizon = getSettingAsInt("predictionHorizon", false);
 
         // optional parameters
         rawTable = getSettingAsString("rawTable", true);

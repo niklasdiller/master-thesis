@@ -29,16 +29,13 @@ public class Preprocessor {
     }
 
     private void saveTable(Table table, int pID, int perMin, boolean shift24h) throws SQLException {
-        //add pID+perMin+24hShift identifier to table
-        String context = "pID" + pID + "_perMin" + perMin;
-        if (shift24h) context += "_24h";
 
-        System.out.println("Saving table with context " + context + " to DB.");
+        System.out.println("Saving table with pID=" + pID + " and perMin=" + perMin + " to DB.");
 
         PreparedStatement ps = trainer.conn.prepareStatement("" +
                 "INSERT INTO " + settings.tableName + " (" +
-                "temp, humidity, weekday, month, year, time_Slot, previous_Occupancy, occupancy, context) " +
-                "VALUES (?,?,?,?,?,?,?,?,?);");
+                "temp, humidity, weekday, month, year, time_Slot, previous_Occupancy, occupancy, pID, period_minutes," +
+                " shift24h, period_start_time) " + "VALUES (?,?,?,?,?,?,?,?,?,?,?,?);");
 
         System.out.println(table.rowCount() + " Rows in Table");
 
@@ -51,7 +48,10 @@ public class Preprocessor {
             ps.setInt(6, table.row(i).getInt("timeSlot"));
             ps.setDouble(7, table.row(i).getDouble("previousOccupancy"));
             ps.setDouble(8, table.row(i).getDouble("occupancy"));
-            ps.setString(9, context);
+            ps.setInt(9, pID);
+            ps.setInt(10, perMin);
+            ps.setBoolean(11, shift24h); // Indicates if a 24h Shift was used for this data entry
+            ps.setString(12, table.row(i).getDateTime("periodStartTime").toString()); // Time of start of this period
 
             ps.addBatch();
 
@@ -60,7 +60,7 @@ public class Preprocessor {
             }
         }
         ps.close();
-        System.out.println("Data saved to DB as " + context);
+        System.out.println("Data with pID=" + pID + " and perMin=" + perMin +" saved to DB.");
     }
 
     private Properties changeValues(String settingsPath, int pID, int perMin) {
@@ -104,23 +104,24 @@ public class Preprocessor {
                 pID_val = trainer.parkingLotMap.get(pID);
 
                 //Period Minutes
-                for (int perMin = 0; perMin <= trainer.periodMinuteMap.size() - 1; perMin++) {
-                    perMin_val = trainer.periodMinuteMap.get(perMin).get(0);
+//                for (int perMin = 0; perMin <= trainer.periodMinuteMap.size() - 1; perMin++) {
+//                    perMin_val = trainer.periodMinuteMap.get(perMin).get(0); //TODO: Uncomment lines
+                perMin_val = 5;
 
-                    //set flag for 24h occupancy prediction used in preprocessing
-                    if (perMin == 3) shift24h = true;
+                //set flag for 24h occupancy prediction used in preprocessing
+//                    if (perMin == 3) shift24h = true; //TODO Uncomment
 
-                    props = prep.changeValues(settingsPath, pID_val, perMin_val);
-                    settings = new Settings(settingsPath, props);
-                    trainer = new ModelTrainer(settings);
-                    prep = new Preprocessor(settings, trainer);
+                props = prep.changeValues(settingsPath, pID_val, perMin_val);
+                settings = new Settings(settingsPath, props);
+                trainer = new ModelTrainer(settings);
+                prep = new Preprocessor(settings, trainer);
 
-                    ResultSet rs = trainer.queryDB();
-                    Table tableData = trainer.preprocessing(rs, shift24h);
-                    prep.saveTable(tableData, pID_val, perMin_val, shift24h);
-                    rs.getStatement().close(); // closes the resource
-                    shift24h = false; //resets flag
-                }
+                ResultSet rs = trainer.queryDB();
+                Table tableData = trainer.preprocessing(rs, shift24h);
+                prep.saveTable(tableData, pID_val, perMin_val, shift24h);
+                rs.getStatement().close(); // closes the resource
+                shift24h = false; //resets flag
+//                }
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
