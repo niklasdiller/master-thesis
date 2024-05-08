@@ -589,10 +589,10 @@ public class ModelTrainer implements Serializable {
                 "parking_id, training_data_size, period_minutes, slotsIDs," +
                 "classifiers, attributes, trainingDataProportion," +
                 "accuracyPercent, randomForestMaxDepth, kNeighbours, " +
-                "accuracy, mae, mse, rmse, decision_tree," +
-                "random_forest, linear_regression, k_nearest_neighbors, window_stride, training_weeks, " +
+                "accuracy, mae, mse, rmse," +
+                "model_content, window_stride, training_weeks, " +
                 "start_of_training_data, prediction_horizon) " +
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"); // number of ? has to be the same as the number of columns
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"); // number of ? has to be the same as the number of columns
 
         ps.setString(1, settings.modelName);
         ps.setString(2, settings.developer);
@@ -626,38 +626,35 @@ public class ModelTrainer implements Serializable {
         ps.setDouble(18, modelMse);
         ps.setDouble(19, modelRmse);
 
-        // writing trained classifiers (if exist) binary data
-        int columnIndexToWrite = 20;
-        for (int i = 0; i < 4; i++) {
-            if (listForClassifierIndexes.isEmpty() || listForClassifierIndexes.contains(i)) {
+        // writing trained classifiers binary data
+        int clasindex = listForClassifierIndexes.get(0);
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutputStream out = new ObjectOutputStream(bos);
 
-                ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                ObjectOutputStream out = new ObjectOutputStream(bos);
-                if (i == 0) {
-                    out.writeObject(this.m_DecisionTreeClassifier);
-                } else if (i == 1) {
-                    out.writeObject(this.m_RandomForestClassifier);
-                } else if (i == 2) {
-                    out.writeObject(this.m_LinearRegressionClassifier);
-                } else if (i == 3) {
-                    out.writeObject(this.m_KNNClassifier);
-                }
-                out.flush();
-                byte[] serializedClassifier = bos.toByteArray();
-                modelSize += serializedClassifier.length;
-                bos.close();
-                ByteArrayInputStream bis = new ByteArrayInputStream(serializedClassifier);
-                ps.setBinaryStream(columnIndexToWrite + i, bis, serializedClassifier.length);
-                bis.close();
-            } else {
-                ps.setString(columnIndexToWrite + i, "no classifier");
-            }
-        }
+        if (clasindex == 0) {
+            out.writeObject(this.m_DecisionTreeClassifier);
+        } else if (clasindex == 1) {
+            out.writeObject(this.m_RandomForestClassifier);
+        } else if (clasindex == 2) {
+            out.writeObject(this.m_LinearRegressionClassifier);
+        } else if (clasindex == 3) {
+            out.writeObject(this.m_KNNClassifier);
+        } else throw new NullPointerException("Classifier index is invalid.");
+
+        out.flush();
+        byte[] serializedClassifier = bos.toByteArray();
+        modelSize += serializedClassifier.length;
+        bos.close();
+        ByteArrayInputStream bis = new ByteArrayInputStream(serializedClassifier);
+        ps.setBinaryStream(20, bis, serializedClassifier.length);
+        bis.close();
+
+
         ps.setInt(5, modelSize);
-        ps.setInt(24, settings.periodMinutes); //Window Stride always same as Window Size (period minutes)
-        ps.setInt(25, settings.trainingWeeks); //Weeks worth of training data
-        ps.setString(26, startOfTrainingData); //Month and Year of first entry of training data for model
-        ps.setInt(27, settings.predictionHorizon); //Prediction Horizon
+        ps.setInt(21, settings.periodMinutes); //Window Stride always same as Window Size (period minutes)
+        ps.setInt(22, settings.trainingWeeks); //Weeks worth of training data
+        ps.setString(23, startOfTrainingData); //Month and Year of first entry of training data for model
+        ps.setInt(24, settings.predictionHorizon); //Prediction Horizon
 
         ps.executeUpdate(); // execution
         ps.close();
