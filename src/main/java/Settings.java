@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 
 /**
  * Contains all the configurations
- * Parsed from config.properties file
+ * Parsed from properties file
  */
 class Settings {
     public Properties properties;
@@ -41,40 +41,42 @@ class Settings {
     double trainProp;
     String saveIn;
     String modelName;
+    String settingsType; // Type either preprocess or training
 
 
     Settings(String propertiesFile, Properties props) throws IOException, ParseException {
         InputStream input = ModelTrainer.class.getClassLoader().getResourceAsStream(propertiesFile);
         properties = props;
 
-        // mandatory parameters
+        // parameters
         dbUri = getSettingAsString("dbUri", false);
         dbUsername = getSettingAsString("dbUsername", false);
         dbPassword = getSettingAsString("dbPassword", false);
         developer = getSettingAsString("developer", false);
         slotsIDJSON = getSettingAsString("slotsIDs", false);
-        classifiersJSON = getSettingAsString("classifiers", false);
-        attributesJSON = getSettingAsString("attributes", false);
+        classifiersJSON = getSettingAsString("classifiers", true);
+        attributesJSON = getSettingAsString("attributes", true);
+        settingsType = getSettingAsString("type", false);
         slotsIDData = parseStringToIntList(slotsIDJSON);
-        classifiersData = parseStringToIntList(classifiersJSON);
-        attributesData = parseStringToIntList(attributesJSON);
+        if  (slotsIDJSON != null && classifiersJSON != null && attributesJSON != null){
+            classifiersData = parseStringToIntList(classifiersJSON);
+            attributesData = parseStringToIntList(attributesJSON);
+        }
         parkingId = getSettingAsInt("parkingId", false);
         periodMinutes = getSettingAsInt("periodMinutes", false);
-        trainingWeeks = getSettingAsInt("trainingWeeks", false);
+        trainingWeeks = getSettingAsInt("trainingWeeks", true);
         saveIn = getSettingAsString("saveIn", false);
-        modelName = getSettingAsString("modelName", false);
-        trainTestStrategy = getSettingAsInt("trainTestStrategy", false);
+        modelName = getSettingAsString("modelName", true);
+        trainTestStrategy = getSettingAsInt("trainTestStrategy", true);
         if (trainTestStrategy == 0) {
             trainTestText = "Test and Train Data Mixed";
         } else {
             trainTestText = "Test Data after Train Data";
         }
-        preprocessedTable = getSettingAsString("preprocessedTable", false);
-        tableName = getSettingAsString("tableName", false);
-        predictionHorizon = getSettingAsInt("predictionHorizon", false);
-
-        // optional parameters
-        rawTable = getSettingAsString("rawTable", true);
+        preprocessedTable = getSettingAsString("preprocessedTable", true); //Table with preprocessed data
+        tableName = getSettingAsString("tableName", false); // Table to save to
+        predictionHorizon = getSettingAsInt("predictionHorizon", true);
+        rawTable = getSettingAsString("rawTable", true); // Table with raw parking data
         trainProp = getTrainProp();
         randomForestMaxDepth = getSettingAsInt("randomForestMaxDepth", true);
         accuracyPercent = getSettingAsInt("accuracyPercent", true);

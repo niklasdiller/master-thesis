@@ -1,8 +1,6 @@
 package main.java;
 
 import org.json.simple.parser.ParseException;
-import tech.tablesaw.api.IntColumn;
-import tech.tablesaw.api.StringColumn;
 import tech.tablesaw.api.Table;
 
 import java.io.FileInputStream;
@@ -86,7 +84,7 @@ public class Preprocessor {
 
     public static void main(String[] args) {
         try {
-            String settingsPath = "main/java/preprocessedDB.properties";
+            String settingsPath = "main/java/preprocess.properties";
             InputStream input = ModelTrainer.class.getClassLoader().getResourceAsStream(settingsPath);
             Properties props = new Properties();
             props.load(input);
@@ -106,7 +104,7 @@ public class Preprocessor {
                 //Period Minutes
 //                for (int perMin = 0; perMin <= trainer.periodMinuteMap.size() - 1; perMin++) {
 //                    perMin_val = trainer.periodMinuteMap.get(perMin).get(0); //TODO: Uncomment lines
-                perMin_val = 5;
+                perMin_val = 400;
 
                 //set flag for 24h occupancy prediction used in preprocessing
 //                    if (perMin == 3) shift24h = true; //TODO Uncomment

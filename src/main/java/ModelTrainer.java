@@ -208,29 +208,31 @@ public class ModelTrainer implements Serializable {
         String nameOfDataset = "ParkingOccupancyProblem";
 
         ArrayList<Attribute> attributes = new ArrayList<>();
-        if (settings.attributesData.isEmpty()) {
-            for (int i = 0; i < occupancyPredictAttributes.size() - 1; i++) {
-                attributes.add(new Attribute(occupancyPredictAttributes.get(i)));
-                this.attributeIndexes.add(i);
-            }
-        } else {
-            for (int i : settings.attributesData) {
-                attributes.add(new Attribute(occupancyPredictAttributes.get(i)));
-                this.attributeIndexes.add(i);
+        if (settings.settingsType == "training"){
+            if (settings.attributesData.isEmpty() || settings.attributesData == null) {
+                for (int i = 0; i < occupancyPredictAttributes.size() - 1; i++) {
+                    attributes.add(new Attribute(occupancyPredictAttributes.get(i)));
+                    this.attributeIndexes.add(i);
+                }
+            } else {
+                for (int i : settings.attributesData) {
+                    attributes.add(new Attribute(occupancyPredictAttributes.get(i)));
+                    this.attributeIndexes.add(i);
+                }
             }
         }
         Attribute occupancyAttribute = new Attribute(occupancyPredictAttributes.get(occupancyPredictAttributes.size() - 1));
         attributes.add(occupancyAttribute);
 
-        int targetAttributIndex = attributes.indexOf(occupancyAttribute);
+        int targetAttributeIndex = attributes.indexOf(occupancyAttribute);
 
         // create dataset with initial capacity of 10000
         m_Train_Data = new Instances(nameOfDataset, attributes, 10000);
-        // add label at index targetAttributIndex of output attributes
-        m_Train_Data.setClassIndex(targetAttributIndex);
+        // add label at index targetAttributeIndex of output attributes
+        m_Train_Data.setClassIndex(targetAttributeIndex);
 
         m_Test_Data = new Instances(nameOfDataset, attributes, 10000);
-        m_Test_Data.setClassIndex(targetAttributIndex);
+        m_Test_Data.setClassIndex(targetAttributeIndex);
 
         // fill a map with classifiers
         this.classifierMap.put(0, m_DecisionTreeClassifier);
@@ -1168,7 +1170,7 @@ public class ModelTrainer implements Serializable {
 
     public static void main(String[] args) {
         try {
-            String settingsPath = "main/java/pipeline.properties";
+            String settingsPath = "main/java/training.properties";
             InputStream input = ModelTrainer.class.getClassLoader().getResourceAsStream(settingsPath);
             Properties props = new Properties();
             props.load(input);
