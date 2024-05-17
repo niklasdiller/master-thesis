@@ -230,7 +230,9 @@ def topkmodelsets():
             #model[1] is the model specs; split('-')[1] is the second part split by '-', so the features
             sameFeauters =  model1[1]["model_name"].split('-')[1] == model2[1]["model_name"].split('-')[1] #Check if features are the same
             samePerMin =  model1[1]["period_minutes"] == model2[1]["period_minutes"] #Check if periodMinutes are the same
-            
+
+            # TODO: Use original level names & order like in percom paper
+                        
             if sameFeauters and samePerMin: # Level 2: Same features
                 qsl_list.append(2) 
 
@@ -253,9 +255,7 @@ def topkmodelsets():
             case _:
                 raise Exception ("Not a valid QSL calculation! Try 'max', 'min', or 'avg'.")
 
-
     #print(combinations)
-
 
     #Slicing Tables
     df_fromOD = pd.DataFrame(combinations) # Create DF from Ordered Dictionary
