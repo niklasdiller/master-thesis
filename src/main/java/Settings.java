@@ -19,7 +19,7 @@ class Settings {
     String dbPassword;
     String developer;
     int parkingId;
-    int periodMinutes;
+    int windowSize;
     int trainingWeeks;
     int randomForestMaxDepth;
     int kNeighbours;
@@ -28,11 +28,11 @@ class Settings {
     int predictionHorizon;
     String trainTestText;
     String featuresJSON;
-    String slotsIDJSON;
+    String spaceIDJSON;
     String classifiersJSON;
     String attributesJSON;
     HashMap<String, ArrayList<String>> featureData;
-    List<Integer> slotsIDData;
+    List<Integer> spaceIDData;
     List<Integer> classifiersData;
     List<Integer> attributesData;
     String rawTable; //table with raw parking data
@@ -53,17 +53,17 @@ class Settings {
         dbUsername = getSettingAsString("dbUsername", false);
         dbPassword = getSettingAsString("dbPassword", false);
         developer = getSettingAsString("developer", false);
-        slotsIDJSON = getSettingAsString("slotsIDs", false);
+        spaceIDJSON = getSettingAsString("spaceIDs", false);
         classifiersJSON = getSettingAsString("classifiers", true);
         attributesJSON = getSettingAsString("attributes", true);
         settingsType = getSettingAsString("type", false);
-        slotsIDData = parseStringToIntList(slotsIDJSON);
-        if  (slotsIDJSON != null && classifiersJSON != null && attributesJSON != null){
+        spaceIDData = parseStringToIntList(spaceIDJSON);
+        if  (spaceIDJSON != null && classifiersJSON != null && attributesJSON != null){
             classifiersData = parseStringToIntList(classifiersJSON);
             attributesData = parseStringToIntList(attributesJSON);
         }
         parkingId = getSettingAsInt("parkingId", false);
-        periodMinutes = getSettingAsInt("periodMinutes", false);
+        windowSize = getSettingAsInt("windowSize", false);
         trainingWeeks = getSettingAsInt("trainingWeeks", true);
         saveIn = getSettingAsString("saveIn", false);
         modelName = getSettingAsString("modelName", true);
@@ -108,14 +108,14 @@ class Settings {
     private static List<Integer> parseStringToIntList(String stringToParse) throws ParseException {
         String cleanedString = stringToParse.replace("{", "").replace("}", "")
                 .replace(" ", "").replace(",", " ");
-        List<Integer> slotsIDList = new ArrayList<>();
+        List<Integer> spaceIDList = new ArrayList<>();
 
         if (!cleanedString.isBlank()) {
-            slotsIDList = Arrays.stream(cleanedString.split("\\s"))
+            spaceIDList = Arrays.stream(cleanedString.split("\\s"))
                     .map(Integer::parseInt)
                     .collect(Collectors.toList());
         }
-        return slotsIDList;
+        return spaceIDList;
     }
 
     private double getTrainProp() {

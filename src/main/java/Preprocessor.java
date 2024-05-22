@@ -26,13 +26,13 @@ public class Preprocessor {
         this.trainer = trainer;
     }
 
-    private void saveTable(Table table, int pID, int perMin, boolean shift24h) throws SQLException {
+    private void saveTable(Table table, int pID, int winSize, boolean shift24h) throws SQLException {
 
-        System.out.println("Saving table with pID=" + pID + " and perMin=" + perMin + " to DB.");
+        System.out.println("Saving table with pID=" + pID + " and winSize=" + winSize + " to DB.");
 
         PreparedStatement ps = trainer.conn.prepareStatement("" +
                 "INSERT INTO " + settings.tableName + " (" +
-                "temp, humidity, weekday, month, year, time_Slot, previous_Occupancy, occupancy, pID, period_minutes," +
+                "temp, humidity, weekday, month, year, time_Slot, previous_Occupancy, occupancy, pID, window_size," +
                 " shift24h, period_start_time) " + "VALUES (?,?,?,?,?,?,?,?,?,?,?,?);");
 
         System.out.println(table.rowCount() + " Rows in Table");
@@ -47,7 +47,7 @@ public class Preprocessor {
             ps.setDouble(7, table.row(i).getDouble("previousOccupancy"));
             ps.setDouble(8, table.row(i).getDouble("occupancy"));
             ps.setInt(9, pID);
-            ps.setInt(10, perMin);
+            ps.setInt(10, winSize);
             ps.setBoolean(11, shift24h); // Indicates if a 24h Shift was used for this data entry
             ps.setString(12, table.row(i).getDateTime("periodStartTime").toString()); // Time of start of this period
 
@@ -58,10 +58,10 @@ public class Preprocessor {
             }
         }
         ps.close();
-        System.out.println("Data with pID=" + pID + " and perMin=" + perMin +" saved to DB.");
+        System.out.println("Data with pID=" + pID + " and winSize=" + winSize +" saved to DB.");
     }
 
-    private Properties changeValues(String settingsPath, int pID, int perMin) {
+    private Properties changeValues(String settingsPath, int pID, int winSize) {
         try {
             FileInputStream in = new FileInputStream("src/" + settingsPath);
             Properties props = new Properties();
@@ -70,7 +70,7 @@ public class Preprocessor {
 
             FileOutputStream out = new FileOutputStream("src/" + settingsPath);
             props.setProperty("parkingId", String.valueOf(pID));
-            props.setProperty("periodMinutes", String.valueOf(perMin));
+            props.setProperty("windowSize", String.valueOf(winSize));
 
             props.store(out, null);
             out.close();
@@ -84,7 +84,7 @@ public class Preprocessor {
 
     public static void main(String[] args) {
         try {
-            String settingsPath = "main/java/preprocessedDB.properties";
+            String settingsPath = "main/java/preprocess.properties";
             InputStream input = ModelTrainer.class.getClassLoader().getResourceAsStream(settingsPath);
             Properties props = new Properties();
             props.load(input);
@@ -94,29 +94,29 @@ public class Preprocessor {
             trainer.createDBConnection();
 
             int pID_val;
-            int perMin_val;
+            int winSize_val;
             boolean shift24h = false;
 
             //Parking Lot
             for (int pID = 0; pID <= trainer.parkingLotMap.size() - 1; pID++) {
                 pID_val = trainer.parkingLotMap.get(pID);
 
-                //Period Minutes
-//                for (int perMin = 0; perMin <= trainer.periodMinuteMap.size() - 1; perMin++) {
-//                    perMin_val = trainer.periodMinuteMap.get(perMin).get(0); //TODO: Uncomment lines
-                perMin_val = 5;
+                //Window Size
+//                for (int winSize = 0; winSize <= trainer.windowSizeMap.size() - 1; winSize++) {
+//                    winSize_val = trainer.windowSizeMap.get(winSize).get(0); //TODO: Uncomment lines
+                winSize_val = 5;
 
                 //set flag for 24h occupancy prediction used in preprocessing
-//                    if (perMin == 3) shift24h = true; //TODO Uncomment
+//                    if (winSize == 3) shift24h = true; //TODO Uncomment
 
-                props = prep.changeValues(settingsPath, pID_val, perMin_val);
+                props = prep.changeValues(settingsPath, pID_val, winSize_val);
                 settings = new Settings(settingsPath, props);
                 trainer = new ModelTrainer(settings);
                 prep = new Preprocessor(settings, trainer);
 
                 ResultSet rs = trainer.queryDB();
                 Table tableData = trainer.preprocessing(rs, shift24h);
-                prep.saveTable(tableData, pID_val, perMin_val, shift24h);
+                prep.saveTable(tableData, pID_val, winSize_val, shift24h);
                 rs.getStatement().close(); // closes the resource
                 shift24h = false; //resets flag
 //                }

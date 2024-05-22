@@ -98,7 +98,7 @@ def fagin_topk (df_dict, weight, k: int):
             #except Exception as e: print("Model seems to be missing one or more relevant metrics.")
 
     # Turning the dict into a df            
-    df_final = pd.DataFrame(columns =['model_id', 'model_name', 'perfMetric', 'prediction_horizon', 'period_minutes', 'Models', '1', '2', 'score'] )
+    df_final = pd.DataFrame(columns =['model_id', 'model_name', 'perfMetric', 'prediction_horizon', 'window_size', 'Models', '1', '2', 'score'] )
     df_final = pd.DataFrame.from_dict(seen, orient='index')
 
     # Convert columns to numeric values
@@ -123,7 +123,7 @@ def fagin_topk (df_dict, weight, k: int):
 
 def threshold_topk (df_dict, weight: float, k: int):
     i = 0 
-    result_df = pd.DataFrame(columns =['model_id', 'model_name', 'perfMetric', 'prediction_horizon', 'period_minutes', 'Models', '1', '2', 'score'] )
+    result_df = pd.DataFrame(columns =['model_id', 'model_name', 'perfMetric', 'prediction_horizon', 'window_size', 'Models', '1', '2', 'score'] )
     result = []
     while True:
         threshold = 0

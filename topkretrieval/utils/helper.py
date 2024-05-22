@@ -43,15 +43,15 @@ def create_combinations (resultList: list, combineSameFeatures: bool):
         return combinations
 
  
-def convert_to_json (result, isModelset:bool, perfMetric): #Convert result list into JSON format
+def convert_to_json (result, is_modelset:bool, perf_metric): #Convert result list into JSON format
     json_list = []
-    perfMetricString = str(perfMetric) # String formatting 
-    if perfMetricString == "acc":
-        perfMetricString = "Accuracy"
+    perf_metric_string = str(perf_metric) # String formatting 
+    if perf_metric_string == "acc":
+        perf_metric_string = "Accuracy"
     else: 
-        perfMetricString = perfMetricString.upper() 
+        perf_metric_string = perf_metric_string.upper() 
     # If single models are retrieved
-    if isModelset == False:
+    if is_modelset == False:
         count = 1
         for row in result:
             modelnumber = "model"+str(count) #For model identifier in reply
@@ -62,8 +62,8 @@ def convert_to_json (result, isModelset:bool, perfMetric): #Convert result list 
                     {
                         "Model ID": model_id,
                         "Model Name": row["model_name"],
-                        "Period Minutes": int(row["period_minutes"]),
-                        perfMetricString: row["perfMetric"],
+                        "Window Size": int(row["window_size"]),
+                        perf_metric_string: row["perfMetric"],
                         "Performance Score": row["1"],
                         "Resource Awareness Score": row["2"],
                         "Model Score": row["score"]
@@ -78,13 +78,13 @@ def convert_to_json (result, isModelset:bool, perfMetric): #Convert result list 
 
 
     # If modelsets are retrieved
-    elif isModelset == True: #If modelsets are queried
+    elif is_modelset == True: #If modelsets are queried
         for i, modelset in enumerate(result):
             modelsetnumber = "Modelset"+str(i+1)
             modelset_dict = {
-                "Modelsetnumber" : modelsetnumber,
-                "Overall Score" : float(modelset.get('score')),
-                "Modelset Score" : float(modelset.get('1')), #Making sure each value is of type float
+                "Modelset Number" : modelsetnumber,
+                "Modelset Score" : float(modelset.get('score')), #Making sure each value is of type float
+                "Aggregated Model Score" : float(modelset.get('1')), 
                 "Query Sharing Level" : float(modelset.get('2'))
                 
             }
@@ -96,8 +96,8 @@ def convert_to_json (result, isModelset:bool, perfMetric): #Convert result list 
                             "Model ID": model.get('model_id'),
                             "Model Name": model.get("model_name"),
                             "Prediction Horizon": model.get('prediction_horizon'),
-                            "Period Minutes": model.get('period_minutes'),
-                            perfMetricString: model.get('perfMetric'),
+                            "Window Size": model.get('window_size'),
+                            perf_metric_string: model.get('perfMetric'),
                             "Performance Score": round(model.get("1"), 2),
                             "Resource Awareness Score": model.get("2"),
                             "Model Score": model.get("score")
@@ -133,16 +133,16 @@ def count_attributes(df: pd.DataFrame): #Count the number of attributes used in 
     return df
 
 def penalize_small_window_size(df, ind):
-    if df.at[ind, 'period_minutes'] == 1:
-        df.at[ind, '2'] += 3 #If model is using perMin = 1, penalize the RA score by adding 3. Customizable value
+    if df.at[ind, 'window_size'] == 1:
+        df.at[ind, '2'] += 3 #If model is using winSize = 1, penalize the RA score by adding 3. Customizable value
     return df
 
-def get_perf_metric (df: pd.DataFrame, perfMetric):
+def get_perf_metric (df: pd.DataFrame, perf_metric):
     df.insert(2, 'perfMetric', None) # New column that shows the absolute value of the performance metric
     numberOfCols = len(df.columns) 
     df.insert(numberOfCols-1, '1', None) # New column that swill show the score later
 
-    match perfMetric:
+    match perf_metric:
         case "acc":
             for ind in df.index: #Get the desired performance metric
                 val = df.at[ind, 'accuracy'] #Specify which metric should be considered here

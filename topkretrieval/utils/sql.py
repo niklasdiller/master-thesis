@@ -11,18 +11,18 @@ SELECT_MODEL_DIRECT =  """SELECT model_id, model_name, developer, created_time, 
                 WHERE model_name = %s
                 ORDER BY model_id desc;"""
 
-FILTER_MODELS =  """SELECT model_id, model_name, period_minutes, accuracy, mae, mse, rmse, attributes
+FILTER_MODELS =  """SELECT model_id, model_name, window_size, accuracy, mae, mse, rmse, attributes
                 FROM niklas_trained_models
-                WHERE parking_id = %s AND period_minutes IN ({}) AND prediction_horizon IN ({})"""
+                WHERE parking_id = %s AND window_size IN ({}) AND prediction_horizon IN ({})"""
 
-FILTER_MODELS_NO_PREDHOR =  """SELECT model_id, model_name, period_minutes, accuracy, mae, mse, rmse, attributes
+FILTER_MODELS_NO_PREDHOR =  """SELECT model_id, model_name, window_size, accuracy, mae, mse, rmse, attributes
                 FROM niklas_trained_models
-                WHERE parking_id = %s AND period_minutes IN ({})"""
+                WHERE parking_id = %s AND window_size IN ({})"""
 
-FILTER_MODELS_MODELSETS = """SELECT model_id, model_name, prediction_horizon, period_minutes, accuracy, mae, mse, rmse, attributes
+FILTER_MODELS_MODELSETS = """SELECT model_id, model_name, prediction_horizon, window_size, accuracy, mae, mse, rmse, attributes
                 FROM niklas_trained_models
-                WHERE parking_id = %s AND period_minutes IN ({}) AND prediction_horizon IN ({})"""
+                WHERE parking_id = %s AND window_size IN ({}) AND prediction_horizon IN ({})"""
 
 # TABLE_ATT = """SELECT model_id, model_name, attributes
 #                 FROM niklas_trained_models
-#                 WHERE parking_id = %s and period_minutes = %s"""
+#                 WHERE parking_id = %s and window_size = %s"""
