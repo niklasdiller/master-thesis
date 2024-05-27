@@ -83,9 +83,11 @@ def convert_to_json (result, is_modelset:bool, perf_metric): #Convert result lis
             modelsetnumber = "Modelset"+str(i+1)
             modelset_dict = {
                 "Modelset Number" : modelsetnumber,
-                "Modelset Score" : float(modelset.get('score')), #Making sure each value is of type float
+
                 "Aggregated Model Score" : float(modelset.get('1')), 
-                "Query Sharing Level" : float(modelset.get('2'))
+                "Query Sharing Level" : float(modelset.get('Query Sharing Level')),
+                "QSL Score" : float(modelset.get('2')), 
+                "Modelset Score" : float(modelset.get('score')) #Making sure each value is of type float
                 
             }
 
@@ -113,6 +115,7 @@ def convert_to_json (result, is_modelset:bool, perf_metric): #Convert result lis
 
 
 def round_result(obj): #Round attribute, performance and overall score of each model
+    # Note: Decimals of only 2 might lead to inaccuracies for scores i.e. different absolute metrics (e.g. accuracy) might have the same score
     obj["score"] = round(obj["score"], 2)
     obj["1"] = round(obj["1"], 2)
     obj["2"] = round(obj["2"], 2)

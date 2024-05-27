@@ -43,7 +43,6 @@ def fagin_topk (df_dict, weight, k: int):
     result = []
     i = 0
     seen = {} 
-
     all_seen = 0
 
     # Step 1: Serial Access
@@ -122,8 +121,9 @@ def fagin_topk (df_dict, weight, k: int):
 
 
 def threshold_topk (df_dict, weight: float, k: int):
+    #print(df_dict)
     i = 0 
-    result_df = pd.DataFrame(columns =['model_id', 'model_name', 'perfMetric', 'prediction_horizon', 'window_size', 'Models', '1', '2', 'score'] )
+    result_df = pd.DataFrame(columns =['model_id', 'model_name', 'perfMetric', 'prediction_horizon', 'window_size', 'Query Sharing Level', 'Models', '1', '2', 'score'] )
     result = []
     while True:
         threshold = 0
@@ -163,7 +163,7 @@ def threshold_topk (df_dict, weight: float, k: int):
                     cur_row['2'] = other_val
 
                 else:
-                    #print(other_df.head)
+                    print(other_df.head)
                     raise Exception ("Unknown metric in data!")
 
                 # Adding seen model to result:

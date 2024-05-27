@@ -114,8 +114,6 @@ def topk():
 @app.post("/api/topk/modelsets")
 def topkmodelsets():
 
-    #TODO: unify vairblae names: camelcase or _? change json-names. etc
-
     data = request.get_json()
     pID = int(data["pID"])
     if pID != 38 and pID != 634:
@@ -157,20 +155,18 @@ def topkmodelsets():
         df = normalize(df, '1', rev = True)
     df = normalize(df, '2', rev = True)
 
-    print(df.head)
     df_dict = {}
     df_dict_naive = {} #Dict of DF for the naive algorithm: No splitting done for performance/attributes
 
     #Splitting Table into smaller tables for each predHor value * 2 (performance and attributes)
     # df_dict with df_metric as value per predHor, which holds 2 more df 
     for key in predhor_list: 
-        df_predhor = df.drop(df[df.prediction_horizon != int(key)].index)
+        df_predhor = df.drop(df[df.prediction_horizon != int(key)].index) # Only one predHor 
         key = "predHor"+str(key)
 
         df_metric = {}
         df_perf = df_predhor.drop(columns=['2'])
         df_reaw = df_predhor.drop(columns=['1'])
-        #df_reaw = df_predHor.drop(columns=['performance'])
 
         df_perf = df_perf.sort_values(by='1', ascending=False, na_position='first') #Sort with highest performance first
         df_reaw = df_reaw.sort_values(by='2', ascending=False, na_position='first') #Sort with least numner of attributes first
@@ -179,18 +175,20 @@ def topkmodelsets():
         df_dict.update({key: df_metric}) # Adding into dict each df containing a unique predHor
         df_dict_naive.update({key:df_predhor}) # Fill dict for naive algortithm
 
-    print("First TopK:")
+    print("First TopK...")
     # Call the desired algrotihm:
     result = []
     for key in df_dict:
         match algorithm:
             case 'fagin':
                 result.append(fagin_topk(df_dict.get(key), weight1, k1))
+                print("Fagin finished.")
             case 'threshold':
-                #result = threshold_topk(df_dict, weight, k)
                 result.append(threshold_topk(df_dict.get(key), weight1, k1))
+                print("Threshold finished.")
             case 'naive':
                 result.append(naive_topk(df_dict_naive.get(key), weight1, k1))
+                print("Naive finished.")
             case _:
                 raise Exception ("Not a valid algorithm! Try 'naive', 'fagin', or 'threshold'.")
 
@@ -199,20 +197,19 @@ def topkmodelsets():
 
     # Get the best modelset by calculating overall score
     for cur_combi in combinations_raw:
-            modelset = OrderedDict([('Modelset Number', None), ('Models', {}), ( 'Modelset Score', None), ('Query Sharing Level', None)]) #Define dict to turn into JSON
-            modelset_score = 0
+            modelset = OrderedDict([('Modelset Number', None), ('Models', {}), ('Query Sharing Level', None), ( 'Aggregated Model Score', None), ('QSL Score', None)]) #Define dict to turn into JSON
+            am_score = 0 #Aggregated model score: Average of individual model scores in set
             for index, model in enumerate(cur_combi):
                 model_dict = model.to_dict() # Converting the series into dict
                 modelname = 'Model'+str(index+1)
                 modelset['Models'][modelname] = model_dict
-                modelset_score += model['score'] #Calculate overall score for each combination
+                am_score += model['score'] #Calculate overall score for each combination
 
-            modelset_score = round(modelset_score, 2)
-            modelset.update({'Modelset Score': modelset_score}) #Append the overall score to each combination
+            am_score = am_score / len(cur_combi) # Average of modelscores in set
+            modelset.update({'Aggregated Model Score': am_score}) #Append aggregated model score to each combination
             combinations.append(modelset)
-            #print("MSS ", modelset_score)
     
-    combinations= sorted(combinations, key = lambda d: d['Modelset Score'], reverse=True) # Sort by value of Modelset Score
+    combinations= sorted(combinations, key = lambda d: d['Aggregated Model Score'], reverse=True) # Sort by value of Aggregated Model Score
 
     if k2 != "max": #If user put "max", all the created modelsets will be displayed.
         del combinations[k2:] #Delete every object from n to end of list
@@ -232,10 +229,10 @@ def topkmodelsets():
             same_winsize =  model1[1]["window_size"] == model2[1]["window_size"] #Check if window size is the same
 
             if same_features and same_winsize: # Level 4: Same features
-                qsl_list.append(4) 
+                qsl_list.append(4)
 
             elif same_winsize: # Level 3: Same segmentation (= window size)
-                qsl_list.append(3) 
+                qsl_list.append(3)
 
             else:  # Level 0: No sharing possible
                 qsl_list.append(0)
@@ -243,41 +240,50 @@ def topkmodelsets():
         # Aggregation function to determine QSL for entire modelset
         match calculate_qsl:
             case 'max': # Max level will be chosen as overall QSL
-                modelset.update({'Query Sharing Level' : max(qsl_list)})
+                qsl_val = max(qsl_list)
+                modelset.update({'Query Sharing Level' : qsl_val})
             case 'min': # Min level wil be chosen for overall QSL
-                modelset.update({'Query Sharing Level' : min(qsl_list)})
+                qsl_val = min(qsl_list)
+                modelset.update({'Query Sharing Level' : qsl_val})
             case 'avg': # Average of all levels will be calculated
                 level_sum = sum(qsl_list)
-                level_avg = level_sum / len(qsl_list)
-                level_avg = round(level_avg, 2)
-                modelset.update({'Query Sharing Level' : level_avg})
+                qsl_val = level_sum / len(qsl_list)
+                qsl_val = round(qsl_val, 2)
+                modelset.update({'Query Sharing Level' : qsl_val})
             case _:
                 raise Exception ("Not a valid QSL calculation! Try 'max', 'min', or 'avg'.")
 
+        qsl_score = ((qsl_val * 10) + 60) / 100 #Formula to calculate the QSL Score. Is between 0.6 and 1. Changes can be made here
+        modelset.update({'QSL Score' : qsl_score})
+        print("QSL Score", qsl_score)
+     
     #print(combinations)
 
     #Slicing Tables
     df_from_od = pd.DataFrame(combinations) # Create DF from Ordered Dictionary
-    df_from_od = df_from_od.rename(columns={"Modelset Score": "1", "Query Sharing Level": "2"})
+    df_from_od = df_from_od.rename(columns={"Aggregated Model Score": "1", "QSL Score": "2"})
 
     df_QSL = df_from_od.drop(columns=['1'])
-    df_MSS = df_from_od.drop(columns=['2'])
+    df_AMS = df_from_od.drop(columns=['2'])
 
     #print("Head", df_QSL.head)
     df_QSL = df_QSL.sort_values(by='2', ascending=False, na_position='first')
-    df_MSS = df_MSS.sort_values(by='1', ascending=False, na_position='first')
+    df_AMS = df_AMS.sort_values(by='1', ascending=False, na_position='first')
     df_dict = {}
-    df_dict.update([('QSL', df_QSL), ('MSS', df_MSS)])
+    df_dict.update([('QSL', df_QSL), ('AMS', df_AMS)])
 
-    print("Second TopK:")
+    print("Second TopK...")
      # Call the desired algrotihm:
     match algorithm:
         case 'fagin':
             result = fagin_topk(df_dict, weight2, k2)
+            print("Fagin finished.")
         case 'threshold':
             result = threshold_topk(df_dict, weight2, k2)
+            print("Threshold finished.")
         case 'naive':
             result = naive_topk(df_from_od, weight2, k2)
+            print("Naive finished.")
 
     #print("Result", result)
 
