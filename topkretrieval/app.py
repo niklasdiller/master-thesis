@@ -56,6 +56,7 @@ def topk():
     pID = int(data["pID"])
     if pID != 38 and pID != 634:
         raise Exception ("Not a valid parking lot ID. Try 38 or 634.")
+    
     winsize_list = data["windowSize"]
     winsize_vars = ', '.join(['%s'] * len(winsize_list)) # Join single strings for each element in window size list for the SQL statement
     predhor_list = (data["predHor"])
@@ -138,22 +139,26 @@ def topkmodelsets():
     pID = int(data["pID"])
     if pID != 38 and pID != 634:
         raise Exception ("Not a valid parking lot ID. Try 38 or 634.")
+    
     winsize_list = data["windowSize"]
     winsize_vars = ', '.join(['%s'] * len(winsize_list)) # Join single strings for each element in winsize list for the SQL statement
     predhor_list = (data["predHor"])
     if len(predhor_list) == 1:
         raise Exception ("For modelset retrieval at least 2 prediction horizons must be selected!")
+    
     predhor_vars = ', '.join(['%s'] * len(predhor_list)) # Join single strings for each element in predHorList for the SQL statement
     perf_metric = (data["perfMetric"]) # Metric that should be used to calculate the performance score
     k1 = int(data["k1"]) #Number of models that should be used per prediction Horizon to create modelsets
     if data["k2"] == "max": #Number of modelsets that should be returned to the client
         k2 = "max"
     else: k2 = int(data["k2"])
+
     weight1 = float(data["perfWeight"]) #Importance of Performance in comparison to Resource Awareness; Value [0-1]
     weight2 = float(data["AMSWeight"]) #Importance of Modelset Score in comparison to Query Sharing Level; Value [0-1]
     algorithm = data["algorithm"] #The algorithm that should be called. Possible values: fagin, threshold, naive.
     combine_same_features = (data["combineSameFeatures"]) #Indicates, whether modelsets should only be generated if the models have the same features
     calculate_qsl = data["calculateQSL"]
+
     with connection:
         with connection.cursor() as cursor:
             if predhor_list == [] or predhor_list == 0:
@@ -233,15 +238,8 @@ def topkmodelsets():
     
     combinations= sorted(combinations, key = lambda d: d['Aggregated Model Score'], reverse=True) # Sort by value of Aggregated Model Score
 
-    # TODO: Uncomment?
-    # if k2 != "max": #If user put "max", all the created modelsets will be displayed.
-    #     del combinations[k2:] #Delete every object from n to end of list
-    # else:
-    #     k2 = len(combinations) # If max was set, return the total number of combinations to the client
-
     if k2 == "max": #If user put "max", all the created modelsets will be displayed.
         k2 = len(combinations) # If max was set, return the total number of combinations to the client
-
 
     for index,modelset in enumerate(combinations): 
         modelset.update({'Modelset Number' : index+1 }) #Give each modelset a number
