@@ -1,10 +1,12 @@
 from tokenize import String
 from flask import Flask, request, jsonify
 import os
+from numpy import size
 import psycopg2
 from dotenv import load_dotenv
 import pandas as pd
 from collections import OrderedDict
+import time
 
 pd.options.mode.chained_assignment = None  # default='warn' # Ignores warnings regarding chaning values to df copy
 
@@ -97,6 +99,7 @@ def topk():
     df_dict.update([('1', df_perf), ('2', df_reaw)])
 
     # Call the desired algrotihm:
+    time_start = time.time()
     match algorithm:
         case 'fagin':
             result = convert_to_json(fagin_topk(df_dict, weight, k), False, perf_metric)
@@ -106,6 +109,23 @@ def topk():
             result = convert_to_json(naive_topk(df, weight, k), False, perf_metric)
         case _:
             raise Exception ("Not a valid algorithm! Try 'naive', 'fagin', or 'threshold'.")
+    time_end = time.time()
+
+    #Store time measurements in separate file
+    time_sum = str((time_end - time_start))
+    if algorithm == 'fagin':
+        f = open("timestats/models/fagin_time.txt", "a")
+        f.write(time_sum + "\n")
+        f.close
+    elif algorithm == 'threshold':
+        f = open("timestats/models/threshold_time.txt", "a")
+        f.write(time_sum + "\n")
+        f.close
+    elif algorithm == 'naive':
+        f = open("timestats/models/naive_time.txt", "a")
+        f.write(time_sum + "\n")
+        f.close
+
 
     return result, 200
 
@@ -128,7 +148,7 @@ def topkmodelsets():
     k1 = int(data["k1"]) #Number of models that should be used per prediction Horizon to create modelsets
     if data["k2"] == "max": #Number of modelsets that should be returned to the client
         k2 = "max"
-    else: k2 = int(data["n"])
+    else: k2 = int(data["k2"])
     weight1 = float(data["perfWeight"]) #Importance of Performance in comparison to Resource Awareness; Value [0-1]
     weight2 = float(data["AMSWeight"]) #Importance of Modelset Score in comparison to Query Sharing Level; Value [0-1]
     algorithm = data["algorithm"] #The algorithm that should be called. Possible values: fagin, threshold, naive.
@@ -142,7 +162,7 @@ def topkmodelsets():
                 #Putting the variables into the statement
                 cursor.execute(FILTER_MODELS_MODELSETS.format(winsize_vars, predhor_vars), (pID,) + tuple(winsize_list + predhor_list))
             df = pd.DataFrame(cursor.fetchall(), columns=['model_id', 'model_name', 'prediction_horizon', 'window_size', 'accuracy', 'mae', 'mse', 'rmse', '2'])
-    
+
     if df.size == 0: #If no model match the requirements
         raise Exception ("No models found with specified metrics.")   
     
@@ -178,6 +198,7 @@ def topkmodelsets():
     print("First TopK...")
     # Call the desired algrotihm:
     result = []
+    time1_start = time.time()
     for key in df_dict:
         match algorithm:
             case 'fagin':
@@ -191,6 +212,7 @@ def topkmodelsets():
                 print("Naive finished.")
             case _:
                 raise Exception ("Not a valid algorithm! Try 'naive', 'fagin', or 'threshold'.")
+    time1_end = time.time()
 
     combinations_raw = create_combinations(result, combine_same_features) # Create modelsets by combining models
     combinations = [] # List that contains JSON convertable datatypes only
@@ -211,10 +233,15 @@ def topkmodelsets():
     
     combinations= sorted(combinations, key = lambda d: d['Aggregated Model Score'], reverse=True) # Sort by value of Aggregated Model Score
 
-    if k2 != "max": #If user put "max", all the created modelsets will be displayed.
-        del combinations[k2:] #Delete every object from n to end of list
-    else:
+    # TODO: Uncomment?
+    # if k2 != "max": #If user put "max", all the created modelsets will be displayed.
+    #     del combinations[k2:] #Delete every object from n to end of list
+    # else:
+    #     k2 = len(combinations) # If max was set, return the total number of combinations to the client
+
+    if k2 == "max": #If user put "max", all the created modelsets will be displayed.
         k2 = len(combinations) # If max was set, return the total number of combinations to the client
+
 
     for index,modelset in enumerate(combinations): 
         modelset.update({'Modelset Number' : index+1 }) #Give each modelset a number
@@ -255,7 +282,6 @@ def topkmodelsets():
 
         qsl_score = ((qsl_val * 10) + 60) / 100 #Formula to calculate the QSL Score. Is between 0.6 and 1. Changes can be made here
         modelset.update({'QSL Score' : qsl_score})
-        print("QSL Score", qsl_score)
      
     #print(combinations)
 
@@ -270,10 +296,11 @@ def topkmodelsets():
     df_QSL = df_QSL.sort_values(by='2', ascending=False, na_position='first')
     df_AMS = df_AMS.sort_values(by='1', ascending=False, na_position='first')
     df_dict = {}
-    df_dict.update([('QSL', df_QSL), ('AMS', df_AMS)])
+    df_dict.update([('1', df_AMS), ('2', df_QSL),])
 
     print("Second TopK...")
      # Call the desired algrotihm:
+    time2_start = time.time()
     match algorithm:
         case 'fagin':
             result = fagin_topk(df_dict, weight2, k2)
@@ -284,8 +311,25 @@ def topkmodelsets():
         case 'naive':
             result = naive_topk(df_from_od, weight2, k2)
             print("Naive finished.")
+    time2_end = time.time()
+
+    #Store time measurements in separate file
+    time1_sum = time1_end - time1_start
+    time2_sum = time2_end - time2_start
+    time_sum = str(time1_sum + time2_sum)
+    if algorithm == 'fagin':
+        f = open("timestats/modelsets/fagin_time.txt", "a")
+        f.write("Time 1: " + str(time1_sum) + " Time 2: " + str(time2_sum) + " Sum: " + time_sum + "\n")
+        f.close
+    elif algorithm == 'threshold':
+        f = open("timestats/modelsets/threshold_time.txt", "a")
+        f.write("Time 1: " + str(time1_sum) + " Time 2: " + str(time2_sum) + " Sum: " + time_sum + "\n")
+        f.close
+    elif algorithm == 'naive':
+        f = open("timestats/modelsets/naive_time.txt", "a")
+        f.write("Time 1: " + str(time1_sum) + " Time 2: " + str(time2_sum) + " Sum: " + time_sum + "\n")
+        f.close
 
     #print("Result", result)
-
     result_json= convert_to_json(result, True, perf_metric)
     return (result_json), 200
