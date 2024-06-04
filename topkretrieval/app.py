@@ -193,8 +193,8 @@ def topkmodelsets():
         df_perf = df_predhor.drop(columns=['2'])
         df_reaw = df_predhor.drop(columns=['1'])
 
-        df_perf = df_perf.sort_values(by='1', ascending=False, na_position='first') #Sort with highest performance first
-        df_reaw = df_reaw.sort_values(by='2', ascending=False, na_position='first') #Sort with least numner of attributes first
+        df_perf = df_perf.sort_values(by=['1', 'model_id'], ascending=False, na_position='first') #Sort with highest performance first
+        df_reaw = df_reaw.sort_values(by=['2', 'model_id'], ascending=False, na_position='first') #Sort with least numner of attributes first
 
         df_metric.update([('1', df_perf), ('2', df_reaw)])
         df_dict.update({key: df_metric}) # Adding into dict each df containing a unique predHor
@@ -291,8 +291,8 @@ def topkmodelsets():
     df_AMS = df_from_od.drop(columns=['2'])
 
     #print("Head", df_QSL.head)
-    df_QSL = df_QSL.sort_values(by='2', ascending=False, na_position='first')
-    df_AMS = df_AMS.sort_values(by='1', ascending=False, na_position='first')
+    df_QSL = df_QSL.sort_values(by=['2', 'Modelset Number'], ascending=False, na_position='first')
+    df_AMS = df_AMS.sort_values(by=['1', 'Modelset Number'], ascending=False, na_position='first')
     df_dict = {}
     df_dict.update([('1', df_AMS), ('2', df_QSL),])
 
@@ -317,15 +317,15 @@ def topkmodelsets():
     time_sum = str(time1_sum + time2_sum)
     if algorithm == 'fagin':
         f = open("timestats/modelsets/fagin_time.txt", "a")
-        f.write("Time 1: " + str(time1_sum) + " Time 2: " + str(time2_sum) + " Sum: " + time_sum + "\n")
+        f.write("Time 1: " + str(time1_sum) + " Time 2: " + str(time2_sum) + " Sum: " + time_sum + "\n"+ "\n")
         f.close
     elif algorithm == 'threshold':
         f = open("timestats/modelsets/threshold_time.txt", "a")
-        f.write("Time 1: " + str(time1_sum) + " Time 2: " + str(time2_sum) + " Sum: " + time_sum + "\n")
+        f.write("Time 1: " + str(time1_sum) + " Time 2: " + str(time2_sum) + " Sum: " + time_sum + "\n"+ "\n")
         f.close
     elif algorithm == 'naive':
         f = open("timestats/modelsets/naive_time.txt", "a")
-        f.write("Time 1: " + str(time1_sum) + " Time 2: " + str(time2_sum) + " Sum: " + time_sum + "\n")
+        f.write("Time 1: " + str(time1_sum) + " Time 2: " + str(time2_sum) + " Sum: " + time_sum + "\n"+ "\n")
         f.close
 
     #print("Result", result)

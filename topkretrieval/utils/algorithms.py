@@ -6,8 +6,8 @@ pd.options.mode.chained_assignment = None  # default='warn' # Ignores warnings r
 
 
 def naive_topk (df: pd.DataFrame, weight: float, k: int):
+    time_naive1 = time.time()
     #print("Head", df.head)
-    print("df.size", df.size)
     result = []
     for ind in df.index:
         #Compute Score and put in new column
@@ -24,10 +24,17 @@ def naive_topk (df: pd.DataFrame, weight: float, k: int):
     for ind in range(len(result)):
         round_result(result[ind]) # round values
 
+    time_naive2 = time.time()
+    time_naive_sum = time_naive2 - time_naive1
+    f = open("timestats/modelsets/naive_time.txt", "a")
+    f.write("Time: " + str(time_naive_sum) + " Accesses: " + str(df.size) + "\n")
+    f.close
+
     return result
 
 
 def fagin_topk (df_dict, weight, k: int):
+    time_fagin1 = time.time()
     #print("DF dict anfang", df_dict)
     result = []
     i = 0
@@ -61,8 +68,8 @@ def fagin_topk (df_dict, weight, k: int):
             break  
         i += 1
         if i == len(df.index):
-            print("No more . No more models/modelsets to inspect. All seen length:", all_seen)
-            raise Exception("Final row hit. Chosen n is probably too high. Try setting n = 'max'")
+            print("No more models/modelsets to inspect. All seen length:", all_seen)
+            raise Exception("Final row hit. Chosen k is probably too high. Try lowering k1 and setting k2 = 'max'")
         #print("Row: ", i, " allseen: ", all_seen, " Total rows: ",len(df.index))
         
     # Step 2: Random Access
@@ -107,17 +114,25 @@ def fagin_topk (df_dict, weight, k: int):
     for ind in range(len(result)):
         round_result(result[ind]) # round values
 
-    print("Number of random accesses: ", ran_acc)
+    time_fagin2 = time.time()
+    time_fagin_sum = time_fagin2 - time_fagin1
+    f = open("timestats/modelsets/fagin_time.txt", "a")
+    f.write("Time: " + str(time_fagin_sum) + " Sorted Accesses: " + str(i) + " Random Accesses: " + str(ran_acc) + "\n")
+    f.close
+
     return result
 
 
-def threshold_topk (df_dict, weight: float, k: int):
+def threshold_topkk (df_dict, weight: float, k: int):
     #print("DF dict am Anfang: ", df_dict)
+    time_threshold1 = time.time()
     i = 0 
     result = []
     ran_acc = 0
     while True:
         threshold = 0
+        seen_models = set()
+
         for key in df_dict: # Keep track of index to delete cur_df later
             cur_df = df_dict.get(key)
             other_dfs = df_dict.copy()
@@ -126,7 +141,6 @@ def threshold_topk (df_dict, weight: float, k: int):
                raise Exception ("Looking at more than 2 metrics!")
             # print("Cur DF: ", cur_df)
             # print("Other DFs: ", other_dfs)
-
             cur_row = cur_df.iloc[i]
             cur_id = cur_row.iloc[0] # The ModelID/ModelsetID 
 
@@ -137,8 +151,10 @@ def threshold_topk (df_dict, weight: float, k: int):
                 threshold += cur_row.iloc[-1]*(1-weight)
 
             # Random Access:
-            if cur_id not in [row.iloc[0] for row in result]: #If the current object has not been looked at before
-                for other_key, other_df in other_dfs.items(): # is only one key
+            if cur_id not in seen_models: #If the current object has not been looked at before
+                seen_models.add(cur_id)
+
+                for other_key, other_df in other_dfs.items():
                     other_row = other_df.loc[other_df.iloc[:, 0] == cur_id] # getting row for same object in other list
                     other_metric = other_df.columns[-1] # Last column
                     other_val = other_row.iloc[0][other_metric] # Getting value of missing metric
@@ -157,23 +173,25 @@ def threshold_topk (df_dict, weight: float, k: int):
 
                 # Adding seen model to result:
                 result.append(cur_row)
-                #print("Result after adding: ", result)
-                result = sorted(result, key=lambda x: ['score'], reverse=True) #Sort values so worst model can be dropped
-                #print("Result after sorting: ", result)
+                result = sorted(result, key=lambda x: x['score'], reverse=True) #Sort values so worst model can be dropped
 
                 # Only keep k best models:
                 if len(result) > k:
-                    #print ("Result too long! Length: ", len(result))
                     result= result[:k]
-                    #print("Now length: ", len(result))
+                    #print("Result ", result)
 
         # Stop condition:
         if len(result) >= k and result[-1]['score'] >= threshold:
-            time_stop1 = time.time()
+            
             #print("Final Result: ", result)
             for ind in range(len(result)):
                 round_result(result[ind]) # round values
-            print("Number of sorted accesses: ", i, "Number of random accesses: ", ran_acc)
+
+            time_threshold2 = time.time()
+            time_threshold_sum = time_threshold2 - time_threshold1
+            f = open("timestats/modelsets/threshold_time.txt", "a")
+            f.write("Time: " + str(time_threshold_sum) + " Sorted Accesses: " + str(i) + " Random Accesses: " + str(ran_acc) + "\n")
+            f.close
 
             return result
 
