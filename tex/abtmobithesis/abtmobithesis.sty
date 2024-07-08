@@ -1,0 +1,326 @@
+%% Stylepaket als Grundlage f\"{u}r Studentische Arbeiten
+%% in der Abteilung Informationssysteme, Carl von Ossietzky UniversitÃ¤t Oldenburg
+%% und des Lehrstuhls fÃ¼r Informatik, insb. fÃ¼r Mobile Software Systeme / MobilitÃ¤t der Otto Friedrich UniversitÃ¤t Bamberg
+%%
+%% Erstellt am 02.06.2007 von Markus Schmees
+%% Neue Version (abtisstud) f\"{u}r Studentische Arbeiten am 25.06.2007 von Marco Grawunder
+%% Caption jetzt durch das Caption-Paket einheitlich 20.2.2008 Marco Grawunder
+%% Schusterjungen und Hurenkinder werden vermieden 14.04.2008 Marco Grawunder
+%% Anpassungen Uni Bamberg Mobile Software Systeme / MobilitÃ¤t 12.11.2014 Jan Benno Meyer zu Holte
+%%
+%% Bitte einbinden mit \usepackage{abtmobithesis}
+
+% Paket-Deklaration
+\ProvidesPackage{abtmobithesis/abtmobithesis}
+
+% Importierte Pakete
+\usepackage{color}      % Wegen Farbigen Kapitel\"{u}berschriften
+\usepackage{fancyhdr}   % F\"{u}r die eigenen Headerdefinitionen
+\usepackage{graphicx}
+\usepackage{caption}
+
+\captionsetup{font={sf,it}, justification=centering}
+
+% Tiefe des Inhaltsverzeichnisses, Numerierung der Abschnitte
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{1}
+
+% Oberer Rand und Header, Textstart ab 3.5cm
+\setlength{\voffset}{-1.0in}
+\setlength{\topmargin}{2.3cm}
+\setlength{\headheight}{0.5cm}
+\setlength{\headsep}{0.7cm}
+
+% Rand immer 3.5cm
+\setlength{\hoffset}{-1.0in}
+\setlength{\oddsidemargin}{3.2 cm}
+\setlength{\evensidemargin}{2.3 cm}
+
+% Textfeldgr\"{o}{\ss}e
+\setlength{\textwidth}{15.5cm}
+\setlength{\textheight}{22.2cm}
+
+% Fu{\ss}zeileunterseite 1cm unter Textende
+\setlength{\footskip}{1.0cm}
+
+% Paragraphen-Layout
+\setlength{\parindent}{0.37cm}  % Linker Einzug beim neuen Absatz
+\newcommand{\standardparskip}[0]{\setlength{\parskip}{6pt}}
+\newcommand{\miniparskip}[0]{\setlength{\parskip}{2pt}}
+\standardparskip   % Abstand zwischen den Abs\"{a}tzen
+
+
+% Einstellen der Header
+\pagestyle{fancy}
+\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+\renewcommand{\sectionmark}[1]{\markright{\thesection\ #1}}
+\fancyhf{} % delete current setting for header and footer
+\fancyhead[LE,RO]{\small \sffamily \thepage}
+\fancyhead[LO]{\small \sffamily \rightmark}
+\fancyhead[RE]{\small \sffamily \leftmark}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0pt}
+\fancypagestyle{plain}{%
+  \fancyhead[RO]{\small \sffamily \thepage}
+  %\fancyhead[LO]{\small \sffamily \chaptername~\thechapter}
+  \fancyhead[LO]{~}
+} % Ende von fancypagestyle
+
+
+
+% \"{U}berschriften und Abst\"{a}nde zum Text
+% Das Chapter muss rein wegen Umbr\"{u}chen auf Kapitel\"{u}berschriftsebene
+\renewcommand\chapter{\if@openright\cleardoublepage\else\clearpage\fi%
+                      \addtocontents{lof}{\protect\addvspace{10\p@}}%
+                      \addtocontents{lot}{\protect\addvspace{10\p@}}%
+                                  \@startsection{chapter}{0}{\z@}%
+                                   {-18pt}%
+                                   {12pt}%
+                                   {\sffamily\LARGE\bfseries\color[rgb]{0.6,0.6,0.6} }}
+\renewcommand\section{\@startsection{section}{1}{\z@}%
+                                   {-18pt}%
+                                   {6pt}%
+                                   {\sffamily\large\bfseries}}
+\renewcommand\subsection{\@startsection{subsection}{2}{\z@}%
+                                   {-18pt}%
+                                   {6pt}%
+                                   {\sffamily\large}}
+\renewcommand\subsubsection{\@startsection{subsubsection}{3}{\z@}%
+                                   {-12pt}%
+                                   {3pt}%
+                                   {\sffamily\large}}
+\renewcommand\paragraph{\@startsection{paragraph}{4}{\z@}%
+                                   {-12pt}%
+                                   {1pt}%
+                                   {\sffamily\normalsize}}
+
+
+% Spezielle farbige Einstellungen und Abst\"{a}nde f\"{u}r \chapter*
+\def\@makeschapterhead#1{%
+  {\parindent \z@ \raggedright \normalfont
+    \interlinepenalty\@M
+    \LARGE \color[rgb]{0.6,0.6,0.6} \sffamily \bfseries  #1\par\nobreak
+    \vskip 12\p@
+    \chaptermark{#1}
+  }}
+
+
+% Indexitems weniger stark einr\"{u}cken, mehr Abstand zwischen Indexbuchstaben
+\renewcommand\subitem{\@idxitem \hspace*{10\p@}}
+\renewcommand\subsubitem{\@idxitem \hspace*{20\p@}}
+\newcommand\indexfrontskip{\vskip 4\p@}
+
+
+% Verzeichnisdeklaration anpassen f\"{u}r Header
+\renewcommand\tableofcontents{%
+    \if@twocolumn
+      \@restonecoltrue\onecolumn
+    \else
+      \@restonecolfalse
+    \fi
+    \chapter*{\contentsname
+        \@mkboth{\contentsname}{~}}%
+    \miniparskip%
+    \@starttoc{toc}%
+    \standardparskip%
+    \if@restonecol\twocolumn\fi
+    }
+\renewcommand\listoffigures{%
+    \if@twocolumn
+      \@restonecoltrue\onecolumn
+    \else
+      \@restonecolfalse
+    \fi
+    \chapter*{\listfigurename}%
+      \@mkboth{\listfigurename}{~}%
+    \miniparskip%
+    \@starttoc{lof}%
+    \standardparskip%
+    \if@restonecol\twocolumn\fi
+    }
+%\renewcommand\listofalgorithms{%
+%    \if@twocolumn
+%      \@restonecoltrue\onecolumn
+%    \else
+%      \@restonecolfalse
+%    \fi
+%    \chapter*{\listalgorithmcfname}%
+%      \@mkboth{\listalgorithmcfname}{~}%
+%    \miniparskip%
+%    \@starttoc{lof}%
+%    \standardparskip%
+%    \if@restonecol\twocolumn\fi
+%    }
+\renewcommand\listoftables{%
+    \if@twocolumn
+      \@restonecoltrue\onecolumn
+    \else
+      \@restonecolfalse
+    \fi
+    \chapter*{\listtablename}%
+      \@mkboth{\listtablename}{~}%
+    \miniparskip%
+    \@starttoc{lot}%
+    \standardparskip%
+    \if@restonecol\twocolumn\fi
+    }
+
+% Umgebungen f\"{u}r Header anpassen
+\renewenvironment{thebibliography}[1]
+     {\chapter*{\bibname}%
+      \@mkboth{\bibname}{~}%
+      \list{\@biblabel{\@arabic\c@enumiv}}%
+           {\settowidth\labelwidth{\@biblabel{#1}}%
+            \leftmargin\labelwidth
+            \advance\leftmargin\labelsep
+            \@openbib@code
+            \usecounter{enumiv}%
+            \let\p@enumiv\@empty
+            \renewcommand\theenumiv{\@arabic\c@enumiv}}%
+      \sloppy
+      \clubpenalty4000
+      \@clubpenalty \clubpenalty
+      \widowpenalty4000%
+      \sfcode`\.\@m}
+     {\def\@noitemerr
+       {\@latex@warning{Empty `thebibliography' environment}}%
+      \endlist
+      }
+
+\renewenvironment{theindex}
+               {\if@twocolumn
+                  \@restonecolfalse
+                \else
+                  \@restonecoltrue
+                \fi
+                \twocolumn[\@makeschapterhead{\indexname}]%
+                \@mkboth{\indexname}{~}%
+                \thispagestyle{plain}\parindent\z@
+                \parskip\z@ \@plus .3\p@\relax
+                \columnseprule \z@
+                \columnsep 35\p@
+                \let\item\@idxitem}
+               {\if@restonecol\onecolumn\else\clearpage\fi}
+
+
+% Abbildungen und deren Unterschriften
+%\setlength\abovecaptionskip{0.42cm}     % Abstand zwischen Bild und Unterschrift
+%\long\def\@caption#1[#2]#3{%
+%  \par
+%  \addcontentsline{\csname ext@#1\endcsname}{#1}%
+%    {\protect\numberline{\csname the#1\endcsname}{\ignorespaces #2}}%
+%  \begingroup
+%    \@parboxrestore
+%    \if@minipage
+%      \@setminipage
+%    \fi
+%    \small
+%    \@makecaption{\sffamily \itshape \csname fnum@#1\endcsname}{\ignorespaces #3}\par
+%  \endgroup}
+
+
+% Fu{\ss}noten linksb\"{u}ndig und ein Space zwischen Nummer und Text
+\usepackage[bottom,hang]{footmisc}
+\setlength{\footnotemargin}{0pt}
+\let\oldfncomm=\footnote
+\renewcommand{\footnote}[1]{\oldfncomm{~#1}}
+
+
+% Listen (itemize, enumerate) linksb\"{u}ndig
+\usepackage[flushright]{paralist}
+\setdefaultleftmargin{0.5cm}{}{}{}{}{}
+
+
+% N\"{u}tzliche Zusatzbefehle f\"{u}r das Glossar usw.
+\newcommand{\comment}[1]{}
+\newcommand{\siehe}[1]{$\uparrow$#1}
+\newcommand{\this}[0]{$\sim$ }
+
+
+% Zusatzkapitel ohne Nummer aber mit Eintrag im TOC
+\newcommand{\addonchapter}[1]{
+  \cleardoublepage%
+  \chapter*{#1}%
+  \addcontentsline{toc}{chapter}{#1}
+  \chaptermark{#1}
+}
+
+%%Silbentrennung in Typewriter
+\newcommand{\origttfamily}{}% sollte noch nicht definiert sein!
+\let\origttfamily=\ttfamily % alte Definition von \ttfamily sichern
+\renewcommand{\ttfamily}{\origttfamily \hyphenchar\font=`\-}
+
+% Offizielle Titelseite
+\def\erstgutachter#1{\gdef\@erstgutachter{#1}}
+\def\zweitgutachter#1{\gdef\@zweitgutachter{#1}}
+\def\arbeitstyp#1{\gdef\@arbeitstyp{#1}}
+\def\studiengang#1{\gdef\@studiengang{#1}}
+
+\renewcommand\maketitle{\begin{titlepage}%
+  \begin{center}%
+  %\includegraphics[width=0.4\textwidth]{abtmobithesis/unilogo.eps} \\
+  \rotatebox{0}{\includegraphics[width=0.4\textwidth]{abtmobithesis/unilogo.png}} \\
+  \begin{sffamily}
+  University of Bamberg \\
+  Faculty of Information Systems and Applied Computer Science \\
+   Chair of Mobile Systems \\
+   
+  \end{sffamily}
+
+  \vspace*{0.5cm}
+
+  \@studiengang
+
+  \vspace*{0.5cm}
+
+  \@arbeitstyp
+
+  \begin{sffamily}
+    \huge \bfseries \@title
+  \end{sffamily}
+
+  \vspace*{2cm}
+
+
+
+  Author \\[0.75em]
+  \large \textbf{\@author}
+
+  \vspace*{1.2cm}
+
+  \normalsize
+
+  Reviewers \\[0.75em]
+  \begin{bfseries}
+    \@erstgutachter\\[0.2em]
+    \@zweitgutachter
+  \end{bfseries}
+  \vspace*{1.2cm}
+
+  Bamberg, \@date
+  \vfill
+  \end{center}
+\end{titlepage}
+}
+
+\newcommand\versicherung[1]{\chapter*{Versicherung}
+\thispagestyle{empty}
+Hiermit versichere ich, dass ich diese Arbeit selbst\"{a}ndig verfasst und keine anderen als die angegebenen Quellen und Hilfsmittel benutzt habe. Au{\ss}erdem versichere ich, dass ich die allgemeinen Prinzipien wissenschaftlicher Arbeit und Ver\"{o}ffentlichung, wie sie in den Leitlinien guter wissenschaftlicher Praxis der Otto Friedrich Universit\"{a}t Bamberg festgelegt sind, befolgt habe.
+
+\vspace{1.5cm}
+
+#1, den \today
+
+\vspace*{-0.5cm}\hspace*{5.5cm}\hrulefill\\
+\hspace*{6.5cm}\hfill \@author\hfill\mbox{}
+}
+
+
+\newcommand\tchapter{\@startsection{chapter}{0}{\z@}%
+                                   {-18pt}%
+                                   {12pt}%
+                                   {\sffamily\LARGE\bfseries\color[rgb]{0.6,0.6,0.6} }}
+
+%Schusterjungen und Hurenkinder vermeiden
+\clubpenalty = 10000
+\widowpenalty = 10000 \displaywidowpenalty = 10000 

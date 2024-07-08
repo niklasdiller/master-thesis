@@ -6,7 +6,7 @@ pd.options.mode.chained_assignment = None  # default='warn' # Ignores warnings r
 
 
 def naive_topk (df: pd.DataFrame, weight: float, k: int):
-    time_naive1 = time.time()
+    #time_naive1 = time.time()
     #print("Head", df.head)
     result = []
     for ind in df.index:
@@ -24,17 +24,17 @@ def naive_topk (df: pd.DataFrame, weight: float, k: int):
     for ind in range(len(result)):
         round_result(result[ind]) # round values
 
-    time_naive2 = time.time()
-    time_naive_sum = time_naive2 - time_naive1
-    f = open("timestats/modelsets/naive_time.txt", "a")
-    f.write("Time: " + str(time_naive_sum) + " Accesses: " + str(df.size) + "\n")
-    f.close
+    # time_naive2 = time.time()
+    # time_naive_sum = time_naive2 - time_naive1
+    # f = open("timestats/modelsets/naive_time.txt", "a")
+    # f.write("Time: " + str(time_naive_sum) + " Accesses: " + str(df.size) + "\n")
+    # f.close
 
     return result
 
 
 def fagin_topk (df_dict, weight, k: int):
-    time_fagin1 = time.time()
+   # time_fagin1 = time.time()
     #print("DF dict anfang", df_dict)
     result = []
     i = 0
@@ -114,18 +114,18 @@ def fagin_topk (df_dict, weight, k: int):
     for ind in range(len(result)):
         round_result(result[ind]) # round values
 
-    time_fagin2 = time.time()
-    time_fagin_sum = time_fagin2 - time_fagin1
-    f = open("timestats/modelsets/fagin_time.txt", "a")
-    f.write("Time: " + str(time_fagin_sum) + " Sorted Accesses: " + str(i) + " Random Accesses: " + str(ran_acc) + "\n")
-    f.close
+    # time_fagin2 = time.time()
+    # time_fagin_sum = time_fagin2 - time_fagin1
+    # f = open("timestats/modelsets/fagin_time.txt", "a")
+    # f.write("Time: " + str(time_fagin_sum) + " Sorted Accesses: " + str(i) + " Random Accesses: " + str(ran_acc) + "\n")
+    # f.close
 
     return result
 
 
-def threshold_topkk (df_dict, weight: float, k: int):
+def threshold_topk (df_dict, weight: float, k: int):
     #print("DF dict am Anfang: ", df_dict)
-    time_threshold1 = time.time()
+    #time_threshold1 = time.time()
     i = 0 
     result = []
     ran_acc = 0
@@ -187,11 +187,11 @@ def threshold_topkk (df_dict, weight: float, k: int):
             for ind in range(len(result)):
                 round_result(result[ind]) # round values
 
-            time_threshold2 = time.time()
-            time_threshold_sum = time_threshold2 - time_threshold1
-            f = open("timestats/modelsets/threshold_time.txt", "a")
-            f.write("Time: " + str(time_threshold_sum) + " Sorted Accesses: " + str(i) + " Random Accesses: " + str(ran_acc) + "\n")
-            f.close
+            # time_threshold2 = time.time()
+            # time_threshold_sum = time_threshold2 - time_threshold1
+            # f = open("timestats/modelsets/threshold_time.txt", "a")
+            # #f.write("Time: " + str(time_threshold_sum) + " Sorted Accesses: " + str(i) + " Random Accesses: " + str(ran_acc) + "\n")
+            # f.close
 
             return result
 

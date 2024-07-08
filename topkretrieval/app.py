@@ -316,16 +316,19 @@ def topkmodelsets():
     time2_sum = time2_end - time2_start
     time_sum = str(time1_sum + time2_sum)
     if algorithm == 'fagin':
-        f = open("timestats/modelsets/fagin_time.txt", "a")
-        f.write("Time 1: " + str(time1_sum) + " Time 2: " + str(time2_sum) + " Sum: " + time_sum + "\n"+ "\n")
+        f = open("timestats/modelsets/fagin_timeonly.txt", "a")
+        #f.write("Time 1: " + str(time1_sum) + " Time 2: " + str(time2_sum) + " Sum: " + time_sum + "\n"+ "\n")
+        f.write(time_sum + "\n")
         f.close
     elif algorithm == 'threshold':
-        f = open("timestats/modelsets/threshold_time.txt", "a")
-        f.write("Time 1: " + str(time1_sum) + " Time 2: " + str(time2_sum) + " Sum: " + time_sum + "\n"+ "\n")
+        f = open("timestats/modelsets/threshold_timeonly.txt", "a")
+        #f.write("Time 1: " + str(time1_sum) + " Time 2: " + str(time2_sum) + " Sum: " + time_sum + "\n"+ "\n")
+        f.write(time_sum + "\n")
         f.close
     elif algorithm == 'naive':
-        f = open("timestats/modelsets/naive_time.txt", "a")
-        f.write("Time 1: " + str(time1_sum) + " Time 2: " + str(time2_sum) + " Sum: " + time_sum + "\n"+ "\n")
+        f = open("timestats/modelsets/naive_timeonly.txt", "a")
+        #f.write("Time 1: " + str(time1_sum) + " Time 2: " + str(time2_sum) + " Sum: " + time_sum + "\n"+ "\n")
+        f.write(time_sum + "\n")
         f.close
 
     #print("Result", result)

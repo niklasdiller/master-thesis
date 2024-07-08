@@ -1,0 +1,95 @@
+\documentclass[11pt,a4paper]{book} % Basisdokumentenklasse
+\usepackage[ngerman]{babel}        % Deutsche Standardbezeichner und Trennung
+\usepackage[utf8]{inputenc}      
+\usepackage[T1]{fontenc}           % und {\ss}
+\usepackage{makeidx}               % Indexpaket
+\usepackage{times}                 % Sch\"{o}nere Schriften, Achtung, nicht pslatex verwenden!
+\usepackage{longtable}             % Lange Tabelle für Abkürzungsverzeichnis
+\usepackage{graphics}              % EPS-Grafiken einbinden
+\usepackage{hyperref}
+
+\usepackage{fancyvrb}              % Fancy-Verbatin f\"{u}r Programmlistings
+
+
+\usepackage{abtmobithesis/abtmobithesis}           % Das Abteilungs-Stylepaket, am Ende einbinden!
+
+
+% Einstellungen f\"{u}r die "offizielle" Titelseite
+\title{Balancing Performance and \\[-0.2em]Resource-Awareness:\\[0.6em] Optimizing the Model Selection and Ensemble Process in Machine Learning} % Titel der Arbeit
+\author{Niklas Diller} % Name des Autors
+\date{\today}
+\studiengang{Master’s Degree in Computing in the Humanities}
+\arbeitstyp{Master's  Thesis}
+\erstgutachter{Prof. Dr. Daniela Nicklas}
+\zweitgutachter{Michael Freitag}
+
+% Index erneuern
+\makeindex
+
+% Das eigentliche Dokument
+\begin{document}
+
+
+% Anfang des Dokuments
+\maketitle              % Offizielle Titelseite der Uni
+
+\newpage
+\thispagestyle{empty}
+\cleardoublepage
+
+\pagenumbering{Roman}   
+
+% Zusammenfassung und Abstract
+\input{content/abstract.tex}
+
+
+% Inhaltsverzeichnis
+\renewcommand{\contentsname}{Content} 
+\tableofcontents        % Inhaltsverzeichnis einbinden
+\cleardoublepage        % Danach auf ungerader Seite weitermachen
+\pagenumbering{arabic}  % Arabische Seitenzahlen starten neu
+
+
+% Der eigentliche Inhalt, hier könnte man dann auch jedes Kapitel einzeln einfügen
+\input{content/templatecontent.tex} %Das hier noch entfernen!!
+
+\input{content/introduction.tex}
+\input{content/relatedwork.tex}
+\input{content/design}
+\input{content/implementation}
+
+
+% Verzeichnisse am Ende, erst das Glossar
+\addonchapter{Glossar} %
+\input{content/glossar.tex}
+
+% Dann die Abkürzungen
+\addonchapter{Abbreviations} 
+\input{content/abkuerzungen.tex}
+
+% Weiter mit Abbildungen
+\cleardoublepage
+\phantomsection % generiert Anker für \addcontentsline
+\addcontentsline{toc}{chapter}{Abbildungen} % Sowohl im Inhaltsverzeichnis als auch als
+\renewcommand{\listfigurename}{Abbildungen} % Überschrift als "Abbildungen" ohne -verzeichnis
+\listoffigures
+
+% Schließlich Literatur
+\cleardoublepage
+\phantomsection % generiert Anker für \addcontentsline
+\addcontentsline{toc}{chapter}{Literature} % Soll als "Literature" auftauchen
+\bibliographystyle{alpha}                % Unser Standard-Bibliopgraphiestyle
+\renewcommand{\bibname}{Literature}        % Auch als Überschrift soll "Literatur" erscheinen
+\bibliography{content/betterbib}            % Literaturverzeichnis einbinden
+
+% Und ganz am Ende der Index
+\cleardoublepage
+\phantomsection % generiert Anker für \addcontentsline
+\addcontentsline{toc}{chapter}{Index} % Der auch Index hei{\ss}en soll
+\input{content/index.tex}                     % Index einbinden, vorher aber mit makeindex erzeugen!
+
+% Und schließlich noch die Versicherung für das Prüfungsamt, Parameter ist der Ort der Unterschrift
+\cleardoublepage
+\versicherung{Bamberg}
+
+\end{document}

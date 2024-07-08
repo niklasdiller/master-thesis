@@ -1,0 +1,11 @@
+% MakeIndex-Stildatei olwir.ist
+heading_prefix "{\\indexfrontskip\\Large\\sffamily\\bfseries\\hfill "     % vor Buchstabe einfügen
+heading_suffix "\\hfill}\\nopagebreak\n "    % nach Buchstabe einfügen
+symhead_positive "Symbole"          %
+numhead_positive "Zahlen"           %
+headings_flag 1                 % Überschriften ein
+                        % (Grossbuchstaben)
+delim_0   "\\dotfill "
+delim_1   "\\dotfill "
+delim_2   "\\dotfill "
+                        

@@ -1,10 +1,115 @@
-Time: 0.14493680000305176 Sorted Accesses: 198 Random Accesses: 382
-Time: 0.04566502571105957 Sorted Accesses: 196 Random Accesses: 378
-Time: 0.003398895263671875 Sorted Accesses: 12 Random Accesses: 20
-Time 1: 0.19098806381225586 Time 2: 0.003515005111694336 Sum: 0.1945030689239502
+Time: 0.04766511917114258 Sorted Accesses: 198 Random Accesses: 382
+Time: 0.04014420509338379 Sorted Accesses: 177 Random Accesses: 340
+Time: 0.046411991119384766 Sorted Accesses: 196 Random Accesses: 378
+Time: 0.005220890045166016 Sorted Accesses: 19 Random Accesses: 34
+Time 1: 0.1348280906677246 Time 2: 0.005336761474609375 Sum: 0.14016485214233398
 
-Time: 0.04599404335021973 Sorted Accesses: 198 Random Accesses: 382
-Time: 0.04655623435974121 Sorted Accesses: 196 Random Accesses: 378
-Time: 0.0034453868865966797 Sorted Accesses: 12 Random Accesses: 20
-Time 1: 0.09291887283325195 Time 2: 0.0035369396209716797 Sum: 0.09645581245422363
+Time: 0.049932003021240234 Sorted Accesses: 198 Random Accesses: 382
+Time: 0.045690059661865234 Sorted Accesses: 177 Random Accesses: 340
+Time: 0.050813913345336914 Sorted Accesses: 196 Random Accesses: 378
+Time: 0.005861759185791016 Sorted Accesses: 19 Random Accesses: 34
+Time 1: 0.14724302291870117 Time 2: 0.0060117244720458984 Sum: 0.15325474739074707
+
+Time: 0.046706199645996094 Sorted Accesses: 198 Random Accesses: 382
+Time: 0.040273189544677734 Sorted Accesses: 177 Random Accesses: 340
+Time: 0.04435372352600098 Sorted Accesses: 196 Random Accesses: 378
+Time: 0.005506753921508789 Sorted Accesses: 19 Random Accesses: 34
+Time 1: 0.13178396224975586 Time 2: 0.005682945251464844 Sum: 0.1374669075012207
+
+Time: 0.045297861099243164 Sorted Accesses: 198 Random Accesses: 382
+Time: 0.040464162826538086 Sorted Accesses: 177 Random Accesses: 340
+Time: 0.04409503936767578 Sorted Accesses: 196 Random Accesses: 378
+Time: 0.005446910858154297 Sorted Accesses: 19 Random Accesses: 34
+Time 1: 0.13056731224060059 Time 2: 0.005773782730102539 Sum: 0.13634109497070312
+
+Time: 0.04958176612854004 Sorted Accesses: 198 Random Accesses: 382
+Time: 0.04329705238342285 Sorted Accesses: 177 Random Accesses: 340
+Time: 0.04698514938354492 Sorted Accesses: 196 Random Accesses: 378
+Time: 0.005172014236450195 Sorted Accesses: 19 Random Accesses: 34
+Time 1: 0.14041399955749512 Time 2: 0.005381107330322266 Sum: 0.14579510688781738
+
+Time: 0.048140764236450195 Sorted Accesses: 198 Random Accesses: 382
+Time: 0.042591094970703125 Sorted Accesses: 177 Random Accesses: 340
+Time: 0.04724001884460449 Sorted Accesses: 196 Random Accesses: 378
+Time: 0.005249977111816406 Sorted Accesses: 19 Random Accesses: 34
+Time 1: 0.13851213455200195 Time 2: 0.0053980350494384766 Sum: 0.14391016960144043
+
+Time: 0.04495882987976074 Sorted Accesses: 198 Random Accesses: 382
+Time: 0.042253971099853516 Sorted Accesses: 177 Random Accesses: 340
+Time: 0.04434490203857422 Sorted Accesses: 196 Random Accesses: 378
+Time: 0.005537986755371094 Sorted Accesses: 19 Random Accesses: 34
+Time 1: 0.13211703300476074 Time 2: 0.005708932876586914 Sum: 0.13782596588134766
+
+Time: 0.04590106010437012 Sorted Accesses: 198 Random Accesses: 382
+Time: 0.040960073471069336 Sorted Accesses: 177 Random Accesses: 340
+Time: 0.044267892837524414 Sorted Accesses: 196 Random Accesses: 378
+Time: 0.010474920272827148 Sorted Accesses: 19 Random Accesses: 34
+Time 1: 0.13186025619506836 Time 2: 0.011416196823120117 Sum: 0.14327645301818848
+
+Time: 0.04454612731933594 Sorted Accesses: 198 Random Accesses: 382
+Time: 0.039878129959106445 Sorted Accesses: 177 Random Accesses: 340
+Time: 0.044039011001586914 Sorted Accesses: 196 Random Accesses: 378
+Time: 0.005377054214477539 Sorted Accesses: 19 Random Accesses: 34
+Time 1: 0.12955284118652344 Time 2: 0.005611896514892578 Sum: 0.13516473770141602
+
+Time: 0.048088788986206055 Sorted Accesses: 198 Random Accesses: 382
+Time: 0.04230093955993652 Sorted Accesses: 177 Random Accesses: 340
+Time: 0.04665088653564453 Sorted Accesses: 196 Random Accesses: 378
+Time: 0.005109071731567383 Sorted Accesses: 19 Random Accesses: 34
+Time 1: 0.13747620582580566 Time 2: 0.005299091339111328 Sum: 0.142775297164917
+
+Time: 0.04691600799560547 Sorted Accesses: 193 Random Accesses: 376
+Time: 0.07150101661682129 Sorted Accesses: 170 Random Accesses: 330
+Time: 0.003448963165283203 Sorted Accesses: 35 Random Accesses: 0
+Time 1: 0.11890196800231934 Time 2: 0.003515958786010742 Sum: 0.12241792678833008
+
+Time: 0.044509172439575195 Sorted Accesses: 193 Random Accesses: 376
+Time: 0.03850388526916504 Sorted Accesses: 170 Random Accesses: 330
+Time: 0.0034570693969726562 Sorted Accesses: 35 Random Accesses: 0
+Time 1: 0.08326578140258789 Time 2: 0.003525972366333008 Sum: 0.0867917537689209
+
+Time: 0.04627513885498047 Sorted Accesses: 193 Random Accesses: 376
+Time: 0.04112887382507324 Sorted Accesses: 170 Random Accesses: 330
+Time: 0.003584146499633789 Sorted Accesses: 35 Random Accesses: 0
+Time 1: 0.08785605430603027 Time 2: 0.003695249557495117 Sum: 0.09155130386352539
+
+Time: 0.04632401466369629 Sorted Accesses: 193 Random Accesses: 376
+Time: 0.042582035064697266 Sorted Accesses: 170 Random Accesses: 330
+Time: 0.0034270286560058594 Sorted Accesses: 35 Random Accesses: 0
+Time 1: 0.0897667407989502 Time 2: 0.003522157669067383 Sum: 0.09328889846801758
+
+Time: 0.04374408721923828 Sorted Accesses: 193 Random Accesses: 376
+Time: 0.040537118911743164 Sorted Accesses: 170 Random Accesses: 330
+Time: 0.0038270950317382812 Sorted Accesses: 35 Random Accesses: 0
+Time 1: 0.08472013473510742 Time 2: 0.0040280818939208984 Sum: 0.08874821662902832
+
+Time: 0.0449681282043457 Sorted Accesses: 193 Random Accesses: 376
+Time: 0.040490150451660156 Sorted Accesses: 170 Random Accesses: 330
+Time: 0.0035631656646728516 Sorted Accesses: 35 Random Accesses: 0
+Time 1: 0.08583927154541016 Time 2: 0.003651142120361328 Sum: 0.08949041366577148
+
+Time: 0.04378104209899902 Sorted Accesses: 193 Random Accesses: 376
+Time: 0.03873777389526367 Sorted Accesses: 170 Random Accesses: 330
+Time: 0.0034902095794677734 Sorted Accesses: 35 Random Accesses: 0
+Time 1: 0.08282327651977539 Time 2: 0.0035750865936279297 Sum: 0.08639836311340332
+
+Time: 0.057977914810180664 Sorted Accesses: 193 Random Accesses: 376
+Time: 0.03914594650268555 Sorted Accesses: 170 Random Accesses: 330
+Time: 0.003567934036254883 Sorted Accesses: 35 Random Accesses: 0
+Time 1: 0.09747600555419922 Time 2: 0.003699779510498047 Sum: 0.10117578506469727
+
+Time: 0.04414200782775879 Sorted Accesses: 193 Random Accesses: 376
+Time: 0.038732051849365234 Sorted Accesses: 170 Random Accesses: 330
+Time: 0.0035829544067382812 Sorted Accesses: 35 Random Accesses: 0
+Time 1: 0.08321404457092285 Time 2: 0.0036640167236328125 Sum: 0.08687806129455566
+
+Time: 0.059774160385131836 Sorted Accesses: 193 Random Accesses: 376
+Time: 0.039035797119140625 Sorted Accesses: 170 Random Accesses: 330
+Time: 0.0037500858306884766 Sorted Accesses: 35 Random Accesses: 0
+Time 1: 0.09920215606689453 Time 2: 0.0038869380950927734 Sum: 0.1030890941619873
+
+Time: 0.04854726791381836 Sorted Accesses: 145 Random Accesses: 272
+Time: 0.055613040924072266 Sorted Accesses: 151 Random Accesses: 284
+Time: 0.009217977523803711 Sorted Accesses: 43 Random Accesses: 68
+Time 1: 0.10496902465820312 Time 2: 0.009376049041748047 Sum: 0.11434507369995117
 
