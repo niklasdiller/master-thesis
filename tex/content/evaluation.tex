@@ -1,0 +1,294 @@
+\chapter{Evaluation} \label{chap:evaluation}
+
+The evaluation of this work is divided into two parts. First, there will be a short summary of the observations that could be made after the previously mentioned run of the training-pipeline was executed. In the second subchapter, the implemented top-k retrieval system will be evaluated using different methods. Here, the effects of the integrated top-k algorithms will be examined first and compared to one another. By doing that, both the number of accesses to the sorted lists as introduced in \autoref{chap:relatedwork}, as well as the runtime of the algorithms, will be analyzed. Afterward, an evaluation of the impacts of resource aware model sets on the data usage will be made.
+  
+  
+  
+  \section{Training Pipeline}
+  
+  Upon execution of the training-pipeline runs that were introduced in the previous chapter, several different observations could be made. The following analysis of the models that were created in the previously mentioned training pipeline runs will be done for all created models – models that were created in the first as well as in the second run. Therefore, observations about models with window sizes of 1, 5, 10, 30, and 60 minutes will be made. Additionally, the performance metrics of models that use the concept of prediction horizons will be analyzed together with models that use the previously introduced 24 hour-shift or no future prediction aspect at all.
+  
+  One thing that immediately became apparent when looking at the created models, was that small variations in certain metrics could make big differences in performance. One of the biggest influences comes from the window size of a model: a small segmentation mostly means an increase in performance metrics like accuracy, compared to a large segmentation. Small window sizes for models using a prediction horizon are always performing better, than big window sizes for models using a prediction horizon. This observation holds for models using the 24 hour-shift and models with no future prediction aspects. However, the accuracy for models with neither prediction horizon nor 24 hour-shift tends to be higher than for models that use some form of future prediction: In total, 250 models that use no form of future prediction have an accuracy value of over 90\%, while the same is true for only 116 models that make use of a prediction horizon. The highest accuracy value for a model that was trained using a 24 hour-shift only reached an accuracy of 67\%. 
+  
+  Another observation that was made, is that feature scaling seemed to have close to no impact on the performance of the models. The vast majority of performance metrics (accuracy, MAE, MSE, RMSE) stay the same for a model compared to its feature-scaled pendant. However, as stated in the previous chapter, feature scaling was only done for some models. Further tests and evaluations using feature scaling on models with different window sizes and prediction horizons could produce unexpected new insights.
+  
+  The feature \texttt{previousOccuapncy} seems to be the feature with the most impact on performance. Out of all trained and stored models with an accuracy of over 90\%, 346 use \texttt{previousOccupancy}, and only 20 don’t. However, 18 out of those 20 models allegedly have an accuracy of 100\%, which with a high probability makes them candidates of overfitting. This speaks for an indispensability of using the occupancy of the previous time slot as a feature when training a new model. Models that don’t have access to this information seem to perform worse overall. When looking at this finding from a theoretical perspective, it should not be hard to see the reason for this behavior: In between two consecutive time slots (may it be one minute, or even 60 minutes), the occupancy of a specific parking lot usually should not change too much. Of course, a considerable change in occupancy during rush hours in the early morning or afternoon hours would be not surprising. However, this volatility in occupied parking spaces would most likely not happen rapidly in a matter of a few minutes, but rather in longer time periods, like a few hours. It therefore does not come as a surprise, that \texttt{previousOccupancy} plays such an important role in a model’s performance.
+  
+  In summary, the observations that could be made when looking at the performance metrics of the models trained by the constructed pipeline are mostly in line with prior expectations. Window size and the feature \texttt{previousOccupancy} rightfully have a large influence on a model’s performance. The lack of impact of feature-scaled models is something to further research and analyze.
+  
+  
+  
+  \section{Retrieval System}
+
+To evaluate whether the previously introduced top-k algorithms perform any better than a simple-to-implement naïve algorithm, various tests have been performed to show both time consumption as well as sorted and random accesses of all implemented top-k algorithms. In order to assess the necessary data about time consumption and computational resources used, the implementation of the algorithm has been changed slightly. Counters were added that would increment every time a sorted access or a random access was made. In addition, the Python standard module \texttt{time} was used to create time stamps at the beginning and end of each operating algorithm in order to exactly measure the time, each algorithm execution takes. Both accesses and time consumption have been measured separately for every algorithm round. Consequently, if an API call contains three different prediction horizons, in total four execution times are measured: One for each prediction horizon and one for the second round of top-k algorithms which selects the best model sets out of the created combinations. 
+
+To give insight into how the data for the evaluation was gathered, the used settings for the API calls are displayed along with the corresponding observations. 
+
+
+
+\subsection{Accesses}
+
+Before comparing the number of accesses across the different kinds of top-k algorithms, first, it had to be made sure that inside each algorithm the number of accesses stayed the same, which was previously not the case. The reason for this was that the lists that were handed over to the top-k algorithm were sorted in an arbitrary way when dealing with the same values. For example, all models having 3 features were sorted differently in the list (while of course still being ranked after the models with 2 features, and before the models with 4 features). This results in varying favorability of processing which leads to different orders in each API call. Therefore, a second attribute has been added to the sorting function that is called when creating the different lists before executing the algorithms. It is therefore ensured, that when carrying out the same API call multiple times, all items contained in the lists (models in round one, or model sets in round two) are always in the exact same order, even when having to deal with ties. To minimize this randomness and have the models be sorted in the exact same way, the model ID has been added as a second sorting attribute. Subsequently, per algorithm the number of accesses stays the same for a predetermined request.
+
+
+% Models used for evaluating number of accesses
+\begin{table}[h]
+\centering
+    \begin{tabular}{ l | c  c  c }
+        \toprule
+        &
+\textbf{Request 1}      
+& \textbf{Request 2}   
+& \textbf{Request 3} \\\midrule
+
+\textbf{pID} & 38 & 38 & 634 \\\midrule
+\textbf{windowSize} & [1,5] & [1,5] & [1] \\\midrule
+\textbf{perfMetric} & acc & rmse & acc \\\midrule
+\textbf{k1} & 8 & 6 &10 \\\midrule
+\textbf{k2} & 3 & max & 10 \\\midrule
+\textbf{predHor} & [10,30,60] & [10,60] & [10,30]\\\midrule
+\textbf{perfWeight} & 0.8 & 0.78 & 1 \\\midrule
+\textbf{AMSWeight} & 0.65 & 0.2 & 1\\\midrule
+\textbf{algorithm}  & \multicolumn{3}{c}{NA, FA and TA for every request}  \\\midrule
+\textbf{combineSameFeatures} & false & false & false \\\midrule
+\textbf{calculateQSL} & min & avg & max\\
+        \bottomrule
+    \end{tabular}
+\caption{Requests used for evaluating number of accesses} \label{accesses}
+\end{table}
+
+After the consistency of the number of accesses for an algorithm has been ensured, the actual evaluation could be started. To evaluate the number of accesses for each algorithm, three different exemplary requests have been created, as seen in \autoref{accesses}. The API calls were designed to represent a diverse spectrum of possible requests. Each request was then run for every algorithm each. As stated before, following Fagin’s reasoning, TA will in every case require less than or the same amount of sorted accesses as FA \cite{fagin2002}. This is indeed backed by the observed data: In every one of the three requests, TA required the least number of sorted accesses, followed by FA and NA. Across all algorithm rounds and requests, TA used a mean of 48,1 sorted accesses per algorithm call whilst this value was 132,7 for FA and 10222,4 for NA. The computation advantage of FA and TA over naively iterating through the entire model/model set list is apparent. This observation however lacks informative value, as NA does not do any random accesses, that the other two algorithms heavily rely on. It might therefore be necessary to look at the number of total accesses per algorithm, by summing up both random and serial accesses. Doing this, TA uses a mean of 146,2 total accesses per algorithm call, followed by FA with 379,1 and NA with still 10222,4. Therefore it can be seen that if even every form of access is considered, NA will still have significantly more accesses to do, in order to return the top-k results. 
+
+Regarding the number of random accesses, a comparison between TA and FA can be made. As TA in its design relies more heavily on random accesses than FA, the former was expected to have at least a similar number of random accesses than the latter. This is because, in TA, every accessed grade is instantly followed up by the randomly accessed missing grade of the same item. In FA, however, the seen objects are only randomly accessed at the end, when k objects have been fully seen already. However, the average number of random accesses of 98,1 for TA and 246,4 for FA, came as a surprise. Apparently, TA still uses fewer random accesses than FA, which speaks for TA using less computational resources. Only in one occurrence did FA use fewer random accesses than TA: Getting the top k model sets in the second request required not a single random access by FA, whilst requiring 44 by TA. This however is easily explained when looking at the specified k2 in this request. Selecting “max” as k2 results in an algorithm returning all items that are in the model set list. In the case of FA, this means the algorithm serial accesses every item in order and by the time the random access phase is started, the algorithm already has seen every object in its entirety. FA does therefore not have to do any random accesses.
+
+In summary, the expectations of both FA and TA have been fulfilled, as both top-k algorithms use significantly less accesses than a naïve approach of selecting the top-k elements. In addition, TA required fewer accesses than FA, making it the most access-friendly out of all three observed algorithms. 
+
+
+
+\subsection{Time}
+
+After having assessed the number of accesses each algorithm has to do in order to return the top-k elements, the focus will now be the execution time of these algorithms. Here, it is important to not confuse the execution time of the model set retrieval process with the inference time of the models. The latter refers to the time a model takes between the model receiving an input and producing an output \cite{marco2019}. The execution or run time that will be analyzed in this chapter, however, addresses the aggregated time that passes between the calling of the algorithm function and returning its’ result for every algorithm call. 
+
+Because of changes in local memory like cache and other simultaneous running programs, it is apparent that the execution time for each algorithm will at least slightly vary for each run. It is therefore necessary to run the respective requests for each algorithm multiple times and then take the average out of the observed execution times in order to make a fair and valid comparison. When undergoing the first runs, using the same requests that were used for assessing the number of accesses, it became evident that there was little to no observable difference in run time between the three different algorithms. Using the previously used Request 1 as an example, the difference in total execution time over all rounds (summing up the three prediction horizon rounds and the model set round) between the algorithms were not larger than 0,02 seconds. Time differences like this are too small to make any meaningful interpretations about the algorithms’ runtime performance. To magnify the time differences and produce significant evaluation results it was then decided to add a much large number of models to the model database so the top-k algorithms would have longer lists to work with. Using a for-loop in \texttt{postgreSQL}, approximately 200.000 instances of the same model were added to the model database. For the evaluation, it was sufficient to only add the metadata about the model, like window size and features, without having to add the actual model content as a byte array. \autoref{time} shows the subsequently created request that made the algorithms consider those newly added models.
+
+
+
+% Models used for evaluating number of accesses
+\begin{table}[h]
+\centering
+    \begin{tabular}{ l | c}
+        \toprule
+        &
+\textbf{Request 1}      
+ \\\midrule
+
+\textbf{pID} & 634 \\\midrule
+\textbf{windowSize} & [5] \\\midrule
+\textbf{perfMetric} & acc  \\\midrule
+\textbf{k1} & 3\\\midrule
+\textbf{k2} & 5 \\\midrule
+\textbf{predHor} & [30,60]\\\midrule
+\textbf{perfWeight} & 0.75 \\\midrule
+\textbf{AMSWeight} & 0.2\\\midrule
+\textbf{algorithm}  & NA, FA and TA  \\\midrule
+\textbf{combineSameFeatures} & false \\\midrule
+\textbf{calculateQSL} & min \\
+        \bottomrule
+    \end{tabular}
+\caption{Requests used for evaluating number of accesses} \label{time}
+\end{table}
+
+
+As expected, the differences in runtime became apparent once a larger model database was used. The request shown in \autoref{time} was run 20 times per algorithm, each time adding up all the individual times per algorithm run (in this case 2 prediction horizon runs plus one model set run). As an average, it took NA 4,464 seconds to come up with the top-k results, whilst TA and FA took significantly less time: On average, FA returned the top-k objects in 0,032 seconds total, while TA took 0,030 seconds. While the difference in runtime of FA and TA is hardly interpretable, the longer runtime of NA is explainable by its general procedure: Having to access every item in a list of over 200.000 items takes up much more time than only accessing the topmost items in each list. 
+
+% TODO evtl ein anderes request hinzufügen?
+
+Nevertheless, it is important to mention that all stated times in this chapter refer to the net time the program spends in the specific algorithm function. The whole requests itself take up more time, especially when the additional added 200.000 models come into consideration. In this case, it is not uncommon for the whole request to take over 60 seconds. This can be traced back to the overhead of the model set retrieval system, mainly the preparation steps the lists must go through before they can be handed over to the specific top-k algorithm. Fetching the required data from the model database as well as normalizing and sorting it, will take up a large portion of time that makes the time spent in the top-k algorithm seem relatively short. It could therefore be argued that the additional 4 seconds that NA takes does not vehemently increase the perceived time from the request sent to receiving the returned response. Nonetheless, the measured times show the advantage of top-k algorithms that make use of random accessing: Not having to access every item serially does save time and computational resources. Even though the main app of the retrieval system offers several options for optimization in regard to runtime, TA and FA both offer a direct way to save execution time. 
+
+As TA uses significantly less sorted and random accesses than FA, it was expected to have a shorter runtime than FA. However, the similarities in runtime of the two algorithms can be caused by a variety of reasons. For one, an algorithmic overhead can cause TA to run slightly slower than expected. This of course could be due to varying processes running in the background of the local machine. In addition, sections like calculating the threshold value of TA could potentially cause to add time to the execution that could then further be compensated by the saved time accomplished by the fewer number of accesses. Furthermore, the chosen data structures like \texttt{pandas} \texttt{dataframe} could very well be not the most efficient way to handle the processed data. It is possible that other data structures like lists could make it possible to save some more fractions of a hundredth of a second in execution time. However, it is not the aim of this work to micro-optimize the provided source code. The evaluation of the implemented model set retrieval system shows that regarding execution time of the top-k algorithm, there is in fact a difference between a naïve approach and approaches that make use of random access. While these time differences might still seem marginal in relation to the total execution time, they might gain relevance once multiple queries are started after one another, or even a larger model database than the one utilized for evaluation is being used.
+  
+  
+  
+\subsection{Network Utilization}
+
+
+An analysis of the implications of using resource aware model sets will finalize the evaluation of this project. Up to this point, the various options for creating model sets that make efficient resource utilization possible have been introduced and the decisions that lead to the current implementation have been explained. However, the final advantages of using resource aware model sets are yet to be properly seen. This section aims to give an overview of the benefits resource aware model sets can bring regarding data transmission. For this, a simple extrapolation will be made using the structure of the parking occupancy prediction use case as an example.
+
+To show what implications the use of resource aware model sets has, there are some assumptions to be made. It is assumed that in a running prediction system, if m is the window size of a specific model, after m minutes this model produces a new prediction. This means that not only does a model with a window size of 5 minutes segment the training data into slots of the size of 5 minutes, but also does this model predict the parking occupancy for the chosen prediction horizon every 5 minutes. This behavior is also the reason for penalizing models with a small window size by reducing their intra-model resource awareness score: A small window size means more predictions which in turn require repetitious data transmissions. Another assumption is that features with more or less constant values like \texttt{year} or \texttt{month} have to be transmitted from the prediction system to the working model set for every prediction. In other words, there is no way for the model to directly access any time-specific features in order to save data transmission. Lastly, it is assumed that the datatypes and therefore the memory size of every feature is the same as they are stored in the preprocessed database. The reason for this presumption is, that it is likely that in a real-life scenario, accessing live data like temperature or humidity will require not only more time than getting other values but also more memory size than the single double value both temperature and humidity are stored as. For simplicity, this evaluation therefore assumes a predictable memory size for each feature. \autoref{datasizes} shows the data types used to store each feature and the resulting memory sizes.
+
+
+% Data types table
+\begin{table}[h]
+\centering
+    \begin{tabular}{  l  l  l }
+        \toprule
+\textbf{Feature}      
+& \textbf{Data type}   
+& \textbf{Memory size} \\\midrule
+
+temperature & double & 8 bytes \\\hline
+humidity & double & 8 bytes \\\hline
+weekday & integer & 4 bytes \\\hline
+month & integer & 4 bytes \\\hline
+year & integer & 4 bytes \\\hline
+timeslot & integer & 4 bytes \\\hline
+previous\char`_occupancy & double & 8 bytes \\
+
+        \bottomrule
+    \end{tabular}
+\caption{Data types and memory sizes of the different features} \label{datasizes}
+\end{table}
+
+
+
+For this evaluation, three different hypothetical scenarios will be looked at. This way, the implications of resource aware model sets in different circumstances will become apparent. For each scenario, two different explanatory model sets will be introduced, one having a low extent of resource awareness (Model Set 1), and the other one with a high resource awareness (Model Set 2). The meaning of the indexed features can be looked up in \autoref{indexfeatures}.
+
+\paragraph{Extreme Example}
+
+% TODO Vllt noch angeben, wie groß die Überschneidung der Features innerhalb eines model sets ist? Bzw wie viele unique features
+
+
+% Extreme Example Table
+\begin{table}[h]
+\centering
+    \begin{tabular}{  l | c  c | c  c }
+        \toprule   
+& \multicolumn{2}{c}{\textbf{Model Set 1}}   
+& \multicolumn{2}{c}{\textbf{Model Set 2}}\\
+
+ & \textbf{Model 1} & \textbf{Model 2} & \textbf{Model 1} & \textbf{Model 2} \\ \midrule
+Features & 0, 1, 2, 3, 4, 5, 6 & 0, 1, 2, 3, 5, 6 & 5 & 5 \\\hline
+Required bytes & 40 & 36 & 4 & 4 \\\hline
+Window Size & 1 min & 5 min & 5 min & 5 min\\\hline
+Bytes per minute & 40 & 7,2 & 0,8 & 0,8 \\\bottomrule
+QSL &  \multicolumn{2}{c |}{0} & \multicolumn{2}{c}{4}\\\hline
+Unique features &  \multicolumn{2}{c |}{7} & \multicolumn{2}{c}{1}\\\hline
+\textbf{Total bytes/min} & \multicolumn{2}{c |}{\textbf{40}} & \multicolumn{2}{c}{\textbf{0,8}} \\
+
+        \bottomrule
+    \end{tabular}
+\caption{Model sets for extreme example} \label{extreme}
+\end{table}
+
+
+In this extreme scenario, that uses both extreme ends of resource awareness, the theoretical impacts on the data transmission become obvious. Firstly, the focus will be on the low resource aware model set. Model 1 uses all 7 features, resulting in a data transmission of 40 bytes per prediction, which is the maximal amount in the implemented system. Pairing this with a relatively small window size of 1 minute implies a data transmission of 40 bytes every minute the prediction is running. Regarding RA, this is the worst possible combination of metrics in the context of this work. Because of this, it does not matter how many features the second model of the model set utilizes: There are no additional bytes that could be added to the maximum data transmission of 40 bytes per minute. Contrarily, combining Model 1 with a highly resource aware model inside one model set, would not enhance the necessary data transmission either: All 40 bytes still have to be transmitted every minute, no matter how well the second model utilizes its resources. In other words, the damage done by Model 1 in this example is too severe to be alleviated by combining it with resource aware models inside a model set.
+
+The highly resource aware model set in this example shows the other side of extremes: Two hugely resource aware models in the same model set, both using the same one feature (of the size of only 4 bytes, instead of 8 bytes) and the same relatively big window size of 5 minutes. These model settings are the best possible regarding resource awareness. In addition, the selected feature of Model 2 is also not changing the amount of data transmission of Model 1, just like for the low resource aware model set in this example. This would not be the case however if Model 2 would use other features than Model 1, which will be discussed in the next example. Because Model 1 and Model 2 in this highly resource aware model set are completely congruent, they require just as much data transmission as if there was only one model. This model set therefore only transmits 0,8 bytes per minute, which again is the least amount of data possible. While in practice it is unlikely that a comparison between the least and the most resource aware model sets becomes plausible, this example still shows the bandwidth in which the data transmission is settled in, depending on the utilization of resources.
+
+\paragraph{Realistic Example}
+
+Next, a more realistic example will be examined. Here, the two observed model sets do not differ as much from each other as in the last example. However, the impact of resource awareness will still be made evident.
+
+
+% Realistic Example Table
+\begin{table}[h]
+\centering
+    \begin{tabular}{  l | c  c | c  c }
+        \toprule   
+& \multicolumn{2}{c}{\textbf{Model Set 1}}   
+& \multicolumn{2}{c}{\textbf{Model Set 2}}\\
+
+ & \textbf{Model 1} & \textbf{Model 2} & \textbf{Model 1} & \textbf{Model 2} \\ \midrule
+Features & 0, 2, 3, 5, 6 & 0, 1, 2, 4, 5, 6 & 5, 6 & 5, 6 \\\hline
+Required bytes & 28 & 32 & 12 & 12 \\\hline
+Window Size & 1 min & 5 min & 5 min & 5 min\\\hline
+Bytes per minute & 28 & 6,4 & 0,8 & 0,8 \\\bottomrule
+QSL &  \multicolumn{2}{c |}{0} & \multicolumn{2}{c}{4}\\\hline
+Unique features &  \multicolumn{2}{c |}{7} & \multicolumn{2}{c}{2}\\\hline
+\textbf{Total bytes/min} & \multicolumn{2}{c |}{\textbf{30,4}} & \multicolumn{2}{c}{\textbf{2,4}} \\
+
+        \bottomrule
+    \end{tabular}
+\caption{Model sets for realistic example} \label{realistic}
+\end{table}
+
+The model set with the low resource awareness consists of two models, one using 5 features, and the other one using 6 features, out of which 4 are congruent to the one the former is using. This will result in an additional 12 bytes of necessary data transmission since 2 of the features Model 2 uses are not already used by Model 1. However, as Model 2 works on a segmentation of 5-minute windows, those additional 12 bytes only need to be sent every 5th prediction of Model 1. Because of the inconsistencies in window size and feature set, the QSL of the low resource aware model set is 0. Overall, this results in a total data transmission of 30,4 bytes per minute. On the other side, the models of the highly resource aware model set use the same segmentation as well as the same set of features, therefore reaching QSL 5. As the only used features are \texttt{time\char`_slot} and \texttt{previous\char`_occupancy} (which incidentally corresponds to a powerful combination when retrieving models that both have a good performance as well as RA), the transmitted data size is 12 bytes per prediction, which results in 2,4 bytes per minute when taking the 5-minute segmentation into account.
+
+This example shows, that even in a less extreme scenario, the amount of data needed to be sent can be well over 12 times as big when working with a low resource aware model set in comparison to a model set that utilized its resources efficiently.
+
+
+\paragraph{Large Model Set Example}
+
+
+In the following exemplary scenario, a model set containing three models (therefore predicting three different time horizons) will be compared to a model set of two models.
+
+
+% Large Model Set Example Table
+\begin{table}[h]
+\centering
+    \begin{tabular}{  l | c  c  | c  c  c}
+        \toprule
+& \multicolumn{2}{c |}{\textbf{Model Set 1}}   
+& \multicolumn{3}{c}{\textbf{Model Set 2}}\\
+
+ & \textbf{Model 1} & \textbf{Model 2} & \textbf{Model 1} & \textbf{Model 2} & \textbf{Model 3} \\\midrule
+Features & 5, 6 & 1, 3 &
+2, 5, 6 & 2, 5, 6 & 2, 5, 6 \\\hline
+Required bytes & 12 & 8 & 16 & 16 & 16 \\\hline
+Window Size & 1 min & 1 min & 1 min & 1 min & 1 min\\\hline
+Bytes per minute & 12 & 8 & 16 & 16 & 16 \\\bottomrule
+QSL &  \multicolumn{2}{c |}{3} & \multicolumn{3}{c}{4}\\\hline
+Unique features &  \multicolumn{2}{c |}{4} & \multicolumn{3}{c}{3}\\\hline
+\textbf{Total bytes/min} & \multicolumn{2}{c |}{\textbf{20}} & \multicolumn{3}{c}{\textbf{16}} \\
+
+        \bottomrule
+    \end{tabular}
+\caption{Model sets for large model set example} \label{large}
+\end{table}
+
+
+This example aims to show the significance of assessing the QSLs inside a model set. As Model Set 2 consists of one more model than Model Set 1, it would be natural to assume it automatically required more data transference. However, as the feature set across all models of model set 2 stays the same, the resources to be transmitted can be shared, which means the same data does not have to be processed more than once. Even though the models of model set 1 use the same segmentation (which results in a QSL of 3), the non-consistent feature set of the models greatly increases the total needed data usage. It is therefore crucial to assess the QSLs when comparing two model sets, as shared resources might have a bigger impact on resource awareness than the number of models inside a model set.
+
+\paragraph{QSL Counterexample}
+
+This last example serves as proof of the importance of intra-model resource awareness. For this, the two model sets from \autoref{counterexample} are assumed.
+
+% QSL Counterexample Table
+\begin{table}[h]
+\centering
+    \begin{tabular}{  l | c  c | c  c }
+        \toprule   
+& \multicolumn{2}{c}{\textbf{Model Set 1}}   
+& \multicolumn{2}{c}{\textbf{Model Set 2}}\\
+ & \textbf{Model 1} & \textbf{Model 2} & \textbf{Model 1} & \textbf{Model 2} \\ \midrule
+ 
+Features & 2, 5 & 6 & 0, 2, 5, 6 & 0, 2, 5, 6 \\\hline
+Required bytes & 8 & 8 & 24 & 24 \\\hline
+Window Size & 1 min & 5 min & 1 min & 1 min\\\hline
+Bytes per minute & 8 & 1,6 & 24 & 24 \\\bottomrule
+QSL &  \multicolumn{2}{c |}{0} & \multicolumn{2}{c}{4}\\\hline
+Unique features &  \multicolumn{2}{c |}{3} & \multicolumn{2}{c}{4}\\\hline
+\textbf{Total bytes/min} & \multicolumn{2}{c |}{\textbf{9,6}} & \multicolumn{2}{c}{\textbf{24}} \\
+
+        \bottomrule
+    \end{tabular}
+\caption{Model sets for QSL counterexample} \label{counterexample}
+\end{table}
+
+
+%Low QSL Model set
+%Model1:
+%TS, weekday: 8 bytes/min
+%winSize = 1
+%Model2:
+%Prev. Occ.: 8 bytes
+%winSize= 5
+%⇒ QSL 0
+%⇒ 9,6 bytes/min
+%
+%
+%High QSL Model set
+%Model1:
+%Temp, prev.O,  TS, weekday: 24 bytes/min
+%winSize= 1
+%Model 2:
+%Same features: no additional costs
+%
+%⇒ QSL: 4
+%→ 24 bytes/min
+
+When looking at the QSLs of both model sets, the first model set would be expected to have a higher data transfer than the second one. After all, the models of model set 1 do not only have two completely different feature sets, but also different segmentations. Model set 2 on the other hand uses the same feature set as well as a uniform window size of 1 minute across all models. Nevertheless, the transmitted data of model set 2 is more than double the size of the bytes per minute of model set 1. The reason for this behavior is easy to recognize when looking at the actual chosen feature sets and window sizes: By making use of more features (some of which even require 8 bytes to be sent), the base data transfer of model set 2 is multiple times bigger than for model set 1. Even if there are no additional costs for model set 2, as it’s Model 2 utilizes the same features as Model 1, the data needed to be sent is still more than for model set 1. Another benefit of model set 1 is that even though there are additional costs for model 2, these only occur every 5th prediction of Model 1. The resulting 9,6 bytes per minute against 24 bytes per minute might therefore seem unintuitive when comparing the low QSL of model set 1 with the high QSL of model set 2. 
+
+This example shows clearly, that a high QSL does not necessarily mean fewer data transmissions need to be undergone. It becomes clear, that if models have a high feature count, a small window size, and/or use features with large datatypes, a high QSL does not help to reduce the already high costs of data transmission. Moreover, this shows the importance of addressing the previously introduced intra-model resource awareness. Looking at a model’s window size and the number of chosen features is a required prerequisite when assessing any score of a model set regarding resource utilization. While the concept of QSL is suitable for finding out whether or not some resources can be shared among models, it is often not sufficient enough to evaluate a model set’s resource awareness. 
+
+In summary, these examples of constructed model sets show a variety of things to consider when assessing resource awareness: For one, the difference in data transmission can be huge. In the implemented system, the amount of data needed to be transferred per minute can be up to 50 times bigger for a model set with extremely low resource utilization, compared to a very resource aware model set. Even in less extreme circumstances, the amount of additional data usage might quickly add up over the course of several minutes or hours spent predicting future parking occupancy values. It has also been shown that the dimension of QSLs has to be considered when comparing model sets, even if they contain a different number of models. A model set comprised of three models does not automatically have a higher data usage than a model set of two models, provided that it uses its resources efficiently by sharing the same feature set. However, as shown in the last example, a high QSL does not subsequently imply a smaller data transmission. Measuring intra-model resource awareness is an essential requirement when the degree of efficient resource utilization in a model set is to be determined. Lastly, the evaluation has shown that introducing additional penalties regarding a model’s resource awareness score for using relatively large features (i.e. temperature, humidity, and previous occupancy use up to 8 bytes instead of 4 bytes) could make sense. 

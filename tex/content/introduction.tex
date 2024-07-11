@@ -1,6 +1,9 @@
-\chapter{Introduction} \index{Introduction}
+\chapter{Introduction} \label{chap:introduction}
 
 % TODO Disclaimer hinzufügen? : Die "gleiche" Variablen manchmal mit anderer schreibweise, weil sie in anderem kontext gemeint sind? zB window_size in DB und windoSize in Java. 
+
+
+% TODO Attributes vs. Features überall checken
 
 A common and widely known challenge in training and using machine learning models is to find a suitable balance between overfitting and underfitting \cite{vanderaalst2010}. The goal for coming up with valuable predictors for a specific problem therefore is often to create models that neither simply reproduce results gathered from the training data, nor make too broad generalizations. Overfitting would mean that the model would not only learn the underlying pattern of data, but also random noise that comes with it. This results in a bad performing model for new and unseen data, as the model is constantly trying to match its’ predictions with the training data too closely. Underfitting on the other hand happens if a model fails to completely cover the complexity of a specific problem. Because new data points are unfamiliar to the model, the resulting predictions will also be poor and not accurate \cite{montesinoslopez2022}.  It becomes a crucial task for machine learning engineers to balance the amount of the training data and the hyperparameters for machine learning models to find a suitable golden mean of creating models that correctly represent the underlying patterns but is at the same time capable of handling new data points. 
 

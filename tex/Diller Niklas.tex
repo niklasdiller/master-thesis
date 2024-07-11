@@ -1,22 +1,59 @@
-\documentclass[11pt,a4paper]{book} % Basisdokumentenklasse
-\usepackage[ngerman]{babel}        % Deutsche Standardbezeichner und Trennung
+\documentclass[11pt,a4paper]{book} 	% Basisdokumentenklasse
+\usepackage[english]{babel}        	% Deutsche Standardbezeichner und Trennung
 \usepackage[utf8]{inputenc}      
-\usepackage[T1]{fontenc}           % und {\ss}
-\usepackage{makeidx}               % Indexpaket
-\usepackage{times}                 % Sch\"{o}nere Schriften, Achtung, nicht pslatex verwenden!
-\usepackage{longtable}             % Lange Tabelle für Abkürzungsverzeichnis
-\usepackage{graphics}              % EPS-Grafiken einbinden
+\usepackage[T1]{fontenc}          	% und {\ss}
+\usepackage{makeidx}               	% Indexpaket
+\usepackage{times}                 	% Schönere Schriften, Achtung, nicht pslatex verwenden!
+\usepackage{longtable}             	% Lange Tabelle für Abkürzungsverzeichnis
+\usepackage{graphics}              	% EPS-Grafiken einbinden
+\usepackage{hyperref}
+\usepackage{fancyvrb}              	% Fancy-Verbatin für Programmlistings
+\usepackage{pdfpages}
+\usepackage{graphicx}
 \usepackage{hyperref}
 
-\usepackage{fancyvrb}              % Fancy-Verbatin f\"{u}r Programmlistings
+\usepackage{tabularx}
+\usepackage{booktabs}
+
+
+
+\setlength{\textfloatsep}{6pt plus 2.0pt minus 4.0pt}
+
+
+\usepackage{listings}			  	% For code snippet
+\usepackage{color}
+\definecolor{commentgray}{HTML}{8C8C8C}
+\definecolor{stringgreen}{HTML}{077D16}
+\definecolor{keywordorange}{HTML}{CB7832}
+\definecolor{constantpurple}{HTML}{92268F}
+\lstset{frame=tb,
+  language=Java,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{black},
+  keywordstyle=\color{keywordorange},
+  commentstyle=\color{commentgray},
+  stringstyle=\color{stringgreen},
+  breaklines=true,
+  breakatwhitespace=true,
+  morecomment=[s][\color{constantpurple}] {trainingDataSiz}{e},
+  morecomment=[s][\color{constantpurple}] {predictionHorizo}{n},
+  morecomment=[s][\color{constantpurple}] {windowSiz}{e},
+  tabsize=3,
+  numbers=left
+}
 
 
 \usepackage{abtmobithesis/abtmobithesis}           % Das Abteilungs-Stylepaket, am Ende einbinden!
 
 
-% Einstellungen f\"{u}r die "offizielle" Titelseite
-\title{Balancing Performance and \\[-0.2em]Resource-Awareness:\\[0.6em] Optimizing the Model Selection and Ensemble Process in Machine Learning} % Titel der Arbeit
-\author{Niklas Diller} % Name des Autors
+% Settings for title page
+\title{Balancing Performance and \\[-0.2em]Resource-Awareness:\\[0.6em] Optimizing the Model Selection and Ensemble Process in Machine Learning}
+\author{Niklas Diller}
 \date{\today}
 \studiengang{Master’s Degree in Computing in the Humanities}
 \arbeitstyp{Master's  Thesis}
@@ -31,7 +68,7 @@
 
 
 % Anfang des Dokuments
-\maketitle              % Offizielle Titelseite der Uni
+\maketitle              % Title page
 
 \newpage
 \thispagestyle{empty}
@@ -39,7 +76,7 @@
 
 \pagenumbering{Roman}   
 
-% Zusammenfassung und Abstract
+% TODO Abstract
 \input{content/abstract.tex}
 
 
@@ -50,43 +87,33 @@
 \pagenumbering{arabic}  % Arabische Seitenzahlen starten neu
 
 
-% Der eigentliche Inhalt, hier könnte man dann auch jedes Kapitel einzeln einfügen
-\input{content/templatecontent.tex} %Das hier noch entfernen!!
-
+% Content by chapter
 \input{content/introduction.tex}
 \input{content/relatedwork.tex}
-\input{content/design}
-\input{content/implementation}
+\input{content/design.tex}
+\input{content/implementation.tex}
+\input{content/evaluation.tex}
+\input{content/conclusion.tex}
 
-
-% Verzeichnisse am Ende, erst das Glossar
-\addonchapter{Glossar} %
-\input{content/glossar.tex}
-
-% Dann die Abkürzungen
+% Abbreviations
 \addonchapter{Abbreviations} 
-\input{content/abkuerzungen.tex}
+\input{content/abbreviations.tex}
 
-% Weiter mit Abbildungen
+% Figures
 \cleardoublepage
 \phantomsection % generiert Anker für \addcontentsline
-\addcontentsline{toc}{chapter}{Abbildungen} % Sowohl im Inhaltsverzeichnis als auch als
-\renewcommand{\listfigurename}{Abbildungen} % Überschrift als "Abbildungen" ohne -verzeichnis
+\addcontentsline{toc}{chapter}{Figures} 
+\renewcommand{\listfigurename}{Figures}
 \listoffigures
 
 % Schließlich Literatur
 \cleardoublepage
 \phantomsection % generiert Anker für \addcontentsline
 \addcontentsline{toc}{chapter}{Literature} % Soll als "Literature" auftauchen
-\bibliographystyle{alpha}                % Unser Standard-Bibliopgraphiestyle
-\renewcommand{\bibname}{Literature}        % Auch als Überschrift soll "Literatur" erscheinen
+\bibliographystyle{IEEEtran}                % Literautrestyle
+\renewcommand{\bibname}{Literature}
 \bibliography{content/betterbib}            % Literaturverzeichnis einbinden
 
-% Und ganz am Ende der Index
-\cleardoublepage
-\phantomsection % generiert Anker für \addcontentsline
-\addcontentsline{toc}{chapter}{Index} % Der auch Index hei{\ss}en soll
-\input{content/index.tex}                     % Index einbinden, vorher aber mit makeindex erzeugen!
 
 % Und schließlich noch die Versicherung für das Prüfungsamt, Parameter ist der Ort der Unterschrift
 \cleardoublepage
