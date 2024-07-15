@@ -11,7 +11,7 @@ def naive_topk (df: pd.DataFrame, weight: float, k: int):
     result = []
     for ind in df.index:
         #Compute Score and put in new column
-        score = (df.at[ind, '1'] * weight) + (df.at[ind, '2'] * (1-weight)) # Using the last 2 columns (= Performance/Attributes or MSS/QSL)
+        score = (df.at[ind, '1'] * weight) + (df.at[ind, '2'] * (1-weight)) # Using the last 2 columns (= Performance/features or MSS/QSL)
         #score = (df.at[ind, df.columns[-2]] * weight) + (df.at[ind, df.columns[-1]] * (1-weight))
 
         df.at[ind, 'score'] = score

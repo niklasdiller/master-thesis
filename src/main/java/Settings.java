@@ -30,11 +30,11 @@ class Settings {
     String featuresJSON;
     String spaceIDJSON;
     String classifiersJSON;
-    String attributesJSON;
+
     HashMap<String, ArrayList<String>> featureData;
     List<Integer> spaceIDData;
     List<Integer> classifiersData;
-    List<Integer> attributesData;
+    List<Integer> featuresData;
     String rawTable; //table with raw parking data
     String preprocessedTable; //table with all the preprocessed data
     String tableName;
@@ -55,12 +55,12 @@ class Settings {
         developer = getSettingAsString("developer", false);
         spaceIDJSON = getSettingAsString("spaceIDs", false);
         classifiersJSON = getSettingAsString("classifiers", true);
-        attributesJSON = getSettingAsString("attributes", true);
+        featuresJSON = getSettingAsString("features", true);
         settingsType = getSettingAsString("type", false);
         spaceIDData = parseStringToIntList(spaceIDJSON);
-        if  (spaceIDJSON != null && classifiersJSON != null && attributesJSON != null){
+        if  (spaceIDJSON != null && classifiersJSON != null && featuresJSON != null){
             classifiersData = parseStringToIntList(classifiersJSON);
-            attributesData = parseStringToIntList(attributesJSON);
+            featuresData = parseStringToIntList(featuresJSON);
         }
         parkingId = getSettingAsInt("parkingId", false);
         windowSize = getSettingAsInt("windowSize", false);

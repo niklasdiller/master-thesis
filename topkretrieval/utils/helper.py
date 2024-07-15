@@ -8,7 +8,7 @@ def normalize (df: pd.DataFrame, col: str, rev: bool):
     normCol = [col]
     if not rev: #E.g. for performance data: High values -> high score 
         df[normCol] = df[normCol].apply(lambda x: (x - x.min()) / (x.max() - x.min()))
-    else: #E.g. to have models with low number of attributes/low error metric have a high RA/Perf score: High value -> low score
+    else: #E.g. to have models with low number of features/low error metric have a high RA/Perf score: High value -> low score
         df[normCol] = df[normCol].apply(lambda x: ((x - x.min()) / (x.max() - x.min()) -1) * -1) 
         #Replace -0.0 with 0.0 for reverse normalization
         for ind in df.index:
@@ -26,7 +26,7 @@ def create_combinations (resultList: list, combineSameFeatures: bool):
             features_set = set() # A set to keep track of the features in one combination
             for model in models_per_pH: #For all models 
                 model_name = model.get("model_name")
-                features = model_name.split('-')[1] # get the featues 
+                features = model_name.split('-')[1] # get the features 
                 features_set.add(features)
                 cur_combi.append(model)
             if len(features_set) == 1: # As a set does not contain duplicate values length 1 means only the same features in the combination
@@ -114,7 +114,7 @@ def convert_to_json (result, is_modelset:bool, perf_metric): #Convert result lis
         return json_result
 
 
-def round_result(obj): #Round attribute, performance and overall score of each model
+def round_result(obj): #Round feature, performance and overall score of each model
     # Note: Decimals of only 2 might lead to inaccuracies for scores i.e. different absolute metrics (e.g. accuracy) might have the same score
     obj["score"] = round(obj["score"], 2)
     obj["1"] = round(obj["1"], 2)
@@ -127,11 +127,11 @@ def round_result_df(df):
     df['score'] = df['score'].astype(float).round(2)
     return df
 
-def count_attributes(df: pd.DataFrame): #Count the number of attributes used in each model
+def count_features(df: pd.DataFrame): #Count the number of features used in each model
     for ind in df.index:
         val = df.at[ind, '2']
         numAttr = len(val.split(', '))
-        df.at[ind, '2'] = numAttr # replace the actual attirbute values with the number of attributes used
+        df.at[ind, '2'] = numAttr # replace the actual attirbute values with the number of features used
         df = penalize_small_window_size(df, ind) 
     return df
 

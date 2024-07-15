@@ -79,7 +79,7 @@ def topk():
         raise Exception ("No models found with specified metrics.")   
 
     df = get_perf_metric(df, perf_metric) #Get required Performance Metric 
-    df = count_attributes(df) #Counts the number of attributes of each model
+    df = count_features(df) #Counts the number of features of each model
 
     if perf_metric == "acc":
         df = normalize(df, '1', rev = False)
@@ -95,7 +95,7 @@ def topk():
     df_reaw = df.drop(columns=['1']) #Resource Awareness Table
 
     df_perf = df_perf.sort_values(by='1', ascending=False, na_position='first') #Sort with highest performance first
-    df_reaw = df_reaw.sort_values(by='2', ascending=False, na_position='first') #Sort with least numner of attributes first
+    df_reaw = df_reaw.sort_values(by='2', ascending=False, na_position='first') #Sort with least numner of features first
     df_dict = {}
     df_dict.update([('1', df_perf), ('2', df_reaw)])
 
@@ -172,7 +172,7 @@ def topkmodelsets():
         raise Exception ("No models found with specified metrics.")   
     
     df = get_perf_metric(df, perf_metric) #get the required Performacne Metric
-    df = count_attributes(df) #Counts the number of attributes of each model
+    df = count_features(df) #Counts the number of features of each model
 
     if perf_metric == "acc":
         df = normalize(df, '1', rev = False)
@@ -181,9 +181,9 @@ def topkmodelsets():
     df = normalize(df, '2', rev = True)
 
     df_dict = {}
-    df_dict_naive = {} #Dict of DF for the naive algorithm: No splitting done for performance/attributes
+    df_dict_naive = {} #Dict of DF for the naive algorithm: No splitting done for performance/features
 
-    #Splitting Table into smaller tables for each predHor value * 2 (performance and attributes)
+    #Splitting Table into smaller tables for each predHor value * 2 (performance and features)
     # df_dict with df_metric as value per predHor, which holds 2 more df 
     for key in predhor_list: 
         df_predhor = df.drop(df[df.prediction_horizon != int(key)].index) # Only one predHor 
@@ -194,7 +194,7 @@ def topkmodelsets():
         df_reaw = df_predhor.drop(columns=['1'])
 
         df_perf = df_perf.sort_values(by=['1', 'model_id'], ascending=False, na_position='first') #Sort with highest performance first
-        df_reaw = df_reaw.sort_values(by=['2', 'model_id'], ascending=False, na_position='first') #Sort with least numner of attributes first
+        df_reaw = df_reaw.sort_values(by=['2', 'model_id'], ascending=False, na_position='first') #Sort with least numner of features first
 
         df_metric.update([('1', df_perf), ('2', df_reaw)])
         df_dict.update({key: df_metric}) # Adding into dict each df containing a unique predHor
