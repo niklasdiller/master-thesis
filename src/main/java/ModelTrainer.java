@@ -49,12 +49,12 @@ public class ModelTrainer implements Serializable {
     }};
 
     /**
-     * attribute indexes for actual model
+     * feature indexes for actual model
      */
     private ArrayList<Integer> featuresIndexes = new ArrayList<>();
 
     /**
-     * Map for attribute names
+     * Map for featue names
      **/
     private ArrayList<String> featuresNamesList = new ArrayList<>();
 
@@ -246,7 +246,7 @@ public class ModelTrainer implements Serializable {
         this.classifierNamesMap.put(2, "Linear Regression");
         this.classifierNamesMap.put(3, "K-Nearest Neighbours");
 
-        // fill an features map with attribute names
+        // fill an features map with feature names
         this.featuresNamesList.add("temperature");
         this.featuresNamesList.add("humidity");
         this.featuresNamesList.add("day of the week");
@@ -349,13 +349,13 @@ public class ModelTrainer implements Serializable {
         Instance instance = new DenseInstance(this.m_Train_Data.numAttributes());
         instance.setDataset(this.m_Train_Data);
 
-        for (int attribute : this.featuresIndexes) {
-            if (attribute == 0 || attribute == 1 || attribute == 6) {
-                instance.setValue(this.m_Train_Data.attribute(occupancyPredictFeatures.get(attribute)),
-                        rowData.getDouble(occupancyPredictFeatures.get(attribute)));
-            } else if (attribute == 2 || attribute == 3 || attribute == 4 || attribute == 5) {
-                instance.setValue(this.m_Train_Data.attribute(occupancyPredictFeatures.get(attribute)),
-                        rowData.getInt(occupancyPredictFeatures.get(attribute)));
+        for (int feature : this.featuresIndexes) {
+            if (feature == 0 || feature == 1 || feature == 6) {
+                instance.setValue(this.m_Train_Data.attribute(occupancyPredictFeatures.get(feature)),
+                        rowData.getDouble(occupancyPredictFeatures.get(feature)));
+            } else if (feature == 2 || feature == 3 || feature == 4 || feature == 5) {
+                instance.setValue(this.m_Train_Data.attribute(occupancyPredictFeatures.get(feature)),
+                        rowData.getInt(occupancyPredictFeatures.get(feature)));
             }
         }
         // target is proceed separately, because featuresData contains only features
@@ -524,8 +524,8 @@ public class ModelTrainer implements Serializable {
         if (settings.featuresData.isEmpty()) {
             System.err.println("Features cannot be empty!"); //empty case handled through all selected
         } else {
-            for (int attributNumber : settings.featuresData) {
-                featuresString += (featuresNamesList.get(attributNumber) + ", ");
+            for (int featureNumber : settings.featuresData) {
+                featuresString += (featuresNamesList.get(featureNumber) + ", ");
             }
             featuresString = featuresString.substring(0, featuresString.length() - 2); //remove last ", "
         }

@@ -33,7 +33,7 @@ public class Preprocessor {
         PreparedStatement ps = trainer.conn.prepareStatement("" +
                 "INSERT INTO " + settings.tableName + " (" +
                 "temp, humidity, weekday, month, year, time_Slot, previous_Occupancy, occupancy, pID, window_size," +
-                " shift24h, period_start_time) " + "VALUES (?,?,?,?,?,?,?,?,?,?,?,?);");
+                " shift24h, period_start_time, developer) " + "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);");
 
         System.out.println(table.rowCount() + " Rows in Table");
 
@@ -50,6 +50,7 @@ public class Preprocessor {
             ps.setInt(10, winSize);
             ps.setBoolean(11, shift24h); // Indicates if a 24h Shift was used for this data entry
             ps.setString(12, table.row(i).getDateTime("periodStartTime").toString()); // Time of start of this period
+            ps. setString(13, settings.developer);
 
             ps.addBatch();
 
@@ -58,7 +59,7 @@ public class Preprocessor {
             }
         }
         ps.close();
-        System.out.println("Data with pID=" + pID + " and winSize=" + winSize +" saved to DB.");
+        System.out.println("Data with pID=" + pID + " and winSize=" + winSize + " saved to DB.");
     }
 
     private Properties changeValues(String settingsPath, int pID, int winSize) {
@@ -102,24 +103,23 @@ public class Preprocessor {
                 pID_val = trainer.parkingLotMap.get(pID);
 
                 //Window Size
-//                for (int winSize = 0; winSize <= trainer.windowSizeMap.size() - 1; winSize++) {
-//                    winSize_val = trainer.windowSizeMap.get(winSize).get(0); //TODO: Uncomment lines
-                winSize_val = 5;
+                for (int winSize = 0; winSize <= trainer.windowSizeMap.size() - 1; winSize++) {
+                    winSize_val = trainer.windowSizeMap.get(winSize).get(0);
 
-                //set flag for 24h occupancy prediction used in preprocessing
-//                    if (winSize == 3) shift24h = true; //TODO Uncomment
+                    //set flag for 24h occupancy prediction used in preprocessing
+                    if (winSize == 3) shift24h = true;
 
-                props = prep.changeValues(settingsPath, pID_val, winSize_val);
-                settings = new Settings(settingsPath, props);
-                trainer = new ModelTrainer(settings);
-                prep = new Preprocessor(settings, trainer);
+                    props = prep.changeValues(settingsPath, pID_val, winSize_val);
+                    settings = new Settings(settingsPath, props);
+                    trainer = new ModelTrainer(settings);
+                    prep = new Preprocessor(settings, trainer);
 
-                ResultSet rs = trainer.queryDB();
-                Table tableData = trainer.preprocessing(rs, shift24h);
-                prep.saveTable(tableData, pID_val, winSize_val, shift24h);
-                rs.getStatement().close(); // closes the resource
-                shift24h = false; //resets flag
-//                }
+                    ResultSet rs = trainer.queryDB();
+                    Table tableData = trainer.preprocessing(rs, shift24h);
+                    prep.saveTable(tableData, pID_val, winSize_val, shift24h);
+                    rs.getStatement().close(); // closes the resource
+                    shift24h = false; //resets flag
+                }
             }
         } catch (Exception e) {
             throw new RuntimeException(e);

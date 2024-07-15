@@ -77,7 +77,6 @@
 
 \pagenumbering{Roman}   
 
-% TODO Abstract
 \input{content/abstract.tex}
 
 
@@ -106,6 +105,14 @@
 \addcontentsline{toc}{chapter}{Figures} 
 \renewcommand{\listfigurename}{Figures}
 \listoffigures
+
+
+% Tables
+\cleardoublepage
+\phantomsection % generiert Anker für \addcontentsline
+\addcontentsline{toc}{chapter}{Tables} 
+\renewcommand{\listtablename}{Tables}
+\listoftables
 
 % Schließlich Literatur
 \cleardoublepage
