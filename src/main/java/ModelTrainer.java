@@ -203,12 +203,11 @@ public class ModelTrainer implements Serializable {
     public ModelTrainer(Settings settings) throws Exception {
         this.settings = settings;
         this.windowSize = settings.windowSize;
-        this.featureScaling = featureScaling;
 
         String nameOfDataset = "ParkingOccupancyProblem";
 
         ArrayList<Attribute> features = new ArrayList<>();
-        if (settings.settingsType == "training") {
+        if (Objects.equals(settings.settingsType, "training")) {
             if (settings.featuresData.isEmpty() || settings.featuresData == null) {
                 for (int i = 0; i < occupancyPredictFeatures.size() - 1; i++) {
                     features.add(new Attribute(occupancyPredictFeatures.get(i)));
@@ -1080,7 +1079,6 @@ public class ModelTrainer implements Serializable {
      * Applies feature scaling to train and test dataset
      */
     private void featureScale() throws Exception {
-
         Normalize filter = new Normalize();
         filter.setInputFormat(m_Train_Data);
         m_Train_Data = Filter.useFilter(m_Train_Data, filter);
