@@ -21,7 +21,8 @@ If you don't want to use any custom tables, you can use the tables that are pres
 
 Before starting the pipelines, it is useful to understand how to bring variety into the results each pipeline produces. The value changes that are happening for preprocessing or training are determined by adjusting Hash Maps that store the relevant data. These Hash Maps can be found in `ModelTrainer.java`. If one wants to train models for parking lot 38 and 634 the Hash Map `parkingLotMap` would look like this:
 
-´this.parkingLotMap.put(0, 38);`
+`this.parkingLotMap.put(0, 38);`
+
 `this.parkingLotMap.put(1, 634);`
 
 A special case is the Hash Naps for window sizes. Here, the actual window size and the corresponding `trainingWeeks` value(s) are combined in one Hash Map. Details can be read in the in-code documentation. 
@@ -47,6 +48,7 @@ It is possible to run the presented pipelines in the background using the univer
 To run the preprocessor pipeline, then set the variable `MainClassName` in the `build.grade` file to `main.java.Preprocessor`. Then, run the following commands:
 
 `gradle clean build`
+
 `nohup gradle run >preprocessor.log 2>&1 </dev/null &`
 
 Adjust these steps accordingly, if you want to run the training pipeline instead.
@@ -72,18 +74,18 @@ The two Top-k API calls come with a number of settings that can be customized.
 
 This POST request can be filled with several variables. 
 
-![Exemplary reqeust for model set retrieval](./docs/readmde_files/modelset_request.png)
+![Exemplary reqeust for model set retrieval](./docs/readme_files/modelset_request.png)
 
 The following table is extracted from the master's thesis and goes into detail for each choosable variable. 
 
-![EMetrics for model set retrieval](./docs/readmde_files/modelset_metrics.png)
+![EMetrics for model set retrieval](./docs/readme_files/modelset_metrics.png)
 
 
 ### Top-K Single Model
  
 The available settings for single-model retrieval are an abbreviated version of model set retrieval.
 
-![EMetrics for single model retrieval](./docs/readmde_files/singlemodel_request.png)
+![EMetrics for single model retrieval](./docs/readme_files/singlemodel_request.png)
 
 
 
