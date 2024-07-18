@@ -1,55 +1,90 @@
 # 2023-MA-Niklas-Diller
 
-The actual thesis can be read 
+Master's Thesis of Niklas Diller, M.A. CitH. at the Chair of Mobile Systems, University of Bamberg. 
+
+The actual thesis can be accessed in `Thesis.pdf`.
 
 The implementation for this master's thesis is split up into two modules: The pipelines for preprocessing and training, and the top-k retrieval system. This text will go into detail on how to successfully execute those modules and how to change the settings within them.  
 
-## Getting started
+## Preprocessing and Training Pipeline
+
+To fill up a database with a large variety of machine learning models, both a preprocessing as well as a training pipeline were developed for this project. The pipelines are based on the work of the [model trainer implemented by Paul Pongratz and Alexandr Litvin](https://gitlab.rz.uni-bamberg.de/mobi/living-lab/parking/-/tree/draftWithPaulsCode?ref_type=heads). The idea is to first preprocess raw parking data in bulk based on chosen window sizes and parking lots. Once enough data has been preprocessed, a large number of different models can be automatically trained and stored, using the training pipeline.
+
+### Getting started
+
+- Make sure you are connected to the university network, either directly or via VPN.
+- Open the files `preproccess.properties` and `training.properties` in `\bin\main\main\java`.
+- In each file insert a valid URI to your database (`dbUri`), along with your username (`dbUsername`) and password (`dbPassword`). Have `rawTable` direct to the table containing the raw parking data (usually `Input_datasets_parkinglot_`), `preprocessedTable` to the table containing the preprocessed data, and `tableName` to the table you want to store the output of your pipeline in. Also, set a suitable `developer`name.
+- Save the `properties`-files.
+
+If you don't want to use any custom tables, you can use the tables that are preset in the `properties`-files. The pipelines' outputs are then stored in test databases. Just make sure you set up your Username and Password in this case.
+
+Before starting the pipelines, it is useful to understand how to bring variety into the results each pipeline produces. The value changes that are happening for preprocessing or training are determined by adjusting Hash Maps that store the relevant data. These Hash Maps can be found in `ModelTrainer.java`. If one wants to train models for parking lot 38 and 634 the Hash Map `parkingLotMap` would look like this:
+
+´this.parkingLotMap.put(0, 38);`
+`this.parkingLotMap.put(1, 634);`
+
+A special case is the Hash Naps for window sizes. Here, the actual window size and the corresponding `trainingWeeks` value(s) are combined in one Hash Map. Details can be read in the in-code documentation. 
 
 
-# Editing this README
+### Preprocessing Pipeline
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
+- Once, the `properties`-files are set up, the data that is to be preprocessed can be determined. For the preprocessing pipeline, the parking lot IDs and the window sizes can be set up, using `windowSizeMap`and `parkingLotMap` in the `ModelTrainer.java`file. 
 
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+### Training Pipeline
 
-## Name
-Choose a self-explaining name for your project.
+- Once, the `properties`-files are set up, the attributes of the models that are to be trained can be determined. For the training pipeline, the parking lot IDs, the prediction horizons, the window size, and the training data size in weeks can be set up using `parkingLotMap`, `predHorMap`and `windowSizeMap`. 
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+- The classifier algorithms and the features used for training can be controlled by (un)commenting lines of code in the main method. 
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+- In addition, one can choose to bring in a variation of the hyperparameters for kNN and RF classifiers, by changing the values in `kMap` and `maxDepthMap`. 
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+### Running Pipelines in Background
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+It is possible to run the presented pipelines in the background using the university's VM. This is especially useful if large quantities of data are to be preprocessed or a large amount of models is to be trained so the user does not have to rely on the SSH or VPN connection to be established at all times. First, connect to the VM using SSH and clone this git repository. 
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+To run the preprocessor pipeline, then set the variable `MainClassName` in the `build.grade` file to `main.java.Preprocessor`. Then, run the following commands:
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+`gradle clean build`
+`nohup gradle run >preprocessor.log 2>&1 </dev/null &`
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+Adjust these steps accordingly, if you want to run the training pipeline instead.
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+## Top-K Retrieval System
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+To retrieve the best model(sets) from the models created from the training pipeline, the top-k retrieval system is used. The requests are sent via an RESTful API call and a Flask app then executes the top-k algorithm and returns the result to the client. The retrieval requests can be tailored to the user's liking in great detail. 
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+### Getting started
 
-## License
-For open source projects, say how it is licensed.
+- Make sure you are connected to the university network, either directly or via VPN.
+- Navigate to the directory `topkretrieval` and enter the virtual environment executing `source .venv/bin/activate`. 
+- Start the Flask app using `flask run -port 8000`, or any other arbitrary port. 
+- Open an API client of your choice (e.g. Insomnia) and reach the desired endpoint using the URL `http://127.0.0.1:8000` and one of the following:
+	- **Model selection** ( `/api/select`): POST operation that retrieves information about a model that the user specifies via a JSON file.
+	- **Model direct selection** (`/api/model/<model-name>`): READ operation, that retrieves information about a model the user specifies directly in the URL.
+	- **Top-k single model** (`/api/topk`): CREATE operation that retrieves the k best models based on the users’ input.
+	- **Top-k model set** (`/api/topk/modelsets`): CREATE operation that retrieves the k best model sets based on the users’ input.
+	
+The two Top-k API calls come with a number of settings that can be customized.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+### Top-K Model Set
+
+This POST request can be filled with several variables. 
+
+![Exemplary reqeust for model set retrieval](./docs/readmde_files/modelset_request.png)
+
+The following table is extracted from the master's thesis and goes into detail for each choosable variable. 
+
+![EMetrics for model set retrieval](./docs/readmde_files/modelset_metrics.png)
+
+
+### Top-K Single Model
+ 
+The available settings for single-model retrieval are an abbreviated version of model set retrieval.
+
+![EMetrics for single model retrieval](./docs/readmde_files/singlemodel_request.png)
+
+
+
+

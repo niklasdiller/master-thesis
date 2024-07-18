@@ -254,6 +254,8 @@ public class ModelTrainer implements Serializable {
         this.featuresNamesList.add("time slot");
         this.featuresNamesList.add("previous occupancy");
 
+        // Hash Maps to adjust settings begin here:
+
         // fill a WindowSizeMap with values for the training pipeline and their corresponding trainingDataSize
         // first value: windowSize
         // second value: First value of weeks of Training data to use
@@ -285,7 +287,7 @@ public class ModelTrainer implements Serializable {
 //        values.clear();
 
         // fill a parkingLot Map with the corresponding Parking Lot IDs
-        this.parkingLotMap.put(0, 38);
+            this.parkingLotMap.put(0, 38);
         this.parkingLotMap.put(1, 634);
 
         // hyperparameter, for RF and KNN
