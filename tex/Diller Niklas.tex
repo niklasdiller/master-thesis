@@ -11,11 +11,15 @@
 \usepackage{pdfpages}
 \usepackage{graphicx}
 \usepackage{hyperref}
+\addto\extrasenglish{
+    \def\sectionautorefname{Section}
+    \def\chapterautorefname{Chapter}
+    \def\subsectionautorefname{Subsection}
+}
 \usepackage{mathtools,amssymb,amsthm} % Mathematical environments
 
 \usepackage{tabularx}
 \usepackage{booktabs}
-
 
 
 \setlength{\textfloatsep}{6pt plus 2.0pt minus 4.0pt}
@@ -81,7 +85,7 @@
 
 
 % Inhaltsverzeichnis
-\renewcommand{\contentsname}{Content} 
+\renewcommand{\contentsname}{Table of Contents} 
 \tableofcontents        % Inhaltsverzeichnis einbinden
 \cleardoublepage        % Danach auf ungerader Seite weitermachen
 \pagenumbering{arabic}  % Arabische Seitenzahlen starten neu

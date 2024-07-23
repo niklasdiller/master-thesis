@@ -1,0 +1,60 @@
+This is BibTeX, Version 0.99d (TeX Live 2024)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: Diller Niklas.aux
+The style file: IEEEtran.bst
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated wiz_functions (elt_size=4) to 6000 items from 3000.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Database file #1: content/betterbib.bib
+-- IEEEtran.bst version 1.14 (2015/08/26) by Michael Shell.
+-- http://www.michaelshell.org/tex/ieeetran/bibtex/
+-- See the "IEEEtran_bst_HOWTO.pdf" manual for usage information.
+Warning--empty journal in fagin2002a
+Warning--empty journal in martinez-munoz2004
+Warning--edition ordinal word "Fourth Edition" may be too high (or improper) for conversion in eibe2016
+
+Done.
+You've used 36 entries,
+            4087 wiz_defined-function locations,
+            1047 strings with 14546 characters,
+and the built_in function-call counts, 26043 in all, are:
+= -- 2051
+> -- 669
+< -- 187
++ -- 333
+- -- 126
+* -- 1284
+:= -- 3877
+add.period$ -- 80
+call.type$ -- 36
+change.case$ -- 44
+chr.to.int$ -- 399
+cite$ -- 39
+duplicate$ -- 1973
+empty$ -- 2188
+format.name$ -- 158
+if$ -- 6075
+int.to.chr$ -- 0
+int.to.str$ -- 36
+missing$ -- 358
+newline$ -- 131
+num.names$ -- 44
+pop$ -- 859
+preamble$ -- 1
+purify$ -- 0
+quote$ -- 4
+skip$ -- 1954
+stack$ -- 0
+substring$ -- 950
+swap$ -- 1570
+text.length$ -- 54
+text.prefix$ -- 0
+top$ -- 5
+type$ -- 36
+warning$ -- 3
+while$ -- 121
+width$ -- 38
+write$ -- 360
+(There were 3 warnings)

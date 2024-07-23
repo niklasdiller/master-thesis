@@ -1,0 +1,47 @@
+\babel@toc {english}{}\relax 
+\contentsline {chapter}{\numberline {1}Introduction}{1}{chapter.1}%
+\contentsline {chapter}{\numberline {2}Related Work}{3}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Use Cases}{3}{section.2.1}%
+\contentsline {subsection}{\numberline {2.1.1}Cattle Activity Recognition}{3}{subsection.2.1.1}%
+\contentsline {subsection}{\numberline {2.1.2}Parking Availability Prediction}{4}{subsection.2.1.2}%
+\contentsline {section}{\numberline {2.2}Ensembles}{5}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}Ensemble Types}{5}{subsection.2.2.1}%
+\contentsline {subsection}{\numberline {2.2.2}Combination}{6}{subsection.2.2.2}%
+\contentsline {subsection}{\numberline {2.2.3}Diversity}{7}{subsection.2.2.3}%
+\contentsline {subsection}{\numberline {2.2.4}Application of Ensembles in This Work}{8}{subsection.2.2.4}%
+\contentsline {section}{\numberline {2.3}Resource Awareness}{9}{section.2.3}%
+\contentsline {section}{\numberline {2.4}Performance}{11}{section.2.4}%
+\contentsline {section}{\numberline {2.5}Top-K Retrieval}{12}{section.2.5}%
+\contentsline {subsection}{\numberline {2.5.1}Fagin's Algorithm}{14}{subsection.2.5.1}%
+\contentsline {subsection}{\numberline {2.5.2}Threshold Algorithm}{14}{subsection.2.5.2}%
+\contentsline {subsection}{\numberline {2.5.3}Additional Top-K Approaches}{15}{subsection.2.5.3}%
+\contentsline {chapter}{\numberline {3}Design and Architecture}{17}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Training Pipeline}{17}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Retrieval System}{18}{section.3.2}%
+\contentsline {paragraph}{Alternative 2}{19}{section*.5}%
+\contentsline {paragraph}{Alternative 3}{20}{section*.6}%
+\contentsline {paragraph}{Alternative 4}{20}{section*.7}%
+\contentsline {chapter}{\numberline {4}Implementation}{25}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Model Database}{25}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Training Pipeline}{27}{section.4.2}%
+\contentsline {section}{\numberline {4.3}24 Hour Shift}{29}{section.4.3}%
+\contentsline {section}{\numberline {4.4}Running the Pipeline}{31}{section.4.4}%
+\contentsline {section}{\numberline {4.5}Prediction Horizon}{32}{section.4.5}%
+\contentsline {section}{\numberline {4.6}Retrieval System}{33}{section.4.6}%
+\contentsline {chapter}{\numberline {5}Evaluation}{37}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Training Pipeline}{37}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Retrieval System}{38}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}Accesses}{38}{subsection.5.2.1}%
+\contentsline {subsection}{\numberline {5.2.2}Time}{40}{subsection.5.2.2}%
+\contentsline {subsection}{\numberline {5.2.3}Network Utilization}{42}{subsection.5.2.3}%
+\contentsline {paragraph}{Extreme Example}{43}{section*.17}%
+\contentsline {paragraph}{Realistic Example}{43}{section*.19}%
+\contentsline {paragraph}{Large Model Set Example}{44}{section*.21}%
+\contentsline {paragraph}{QSL Counterexample}{45}{section*.23}%
+\contentsline {chapter}{\numberline {6}Future Work and Conclusion}{47}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Future Work}{47}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Conclusion}{49}{section.6.2}%
+\contentsline {chapter}{Abbreviations}{51}{section*.25}%
+\contentsline {chapter}{Figures}{53}{section*.26}%
+\contentsline {chapter}{Tables}{55}{section*.28}%
+\contentsline {chapter}{Literature}{57}{section*.30}%
