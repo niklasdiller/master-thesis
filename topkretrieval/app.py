@@ -20,10 +20,6 @@ app = Flask(__name__)
 url = os.getenv("DATABASE_URL")
 connection = psycopg2.connect(url)
 
-@app.get("/") #Define endpoint for home screen
-def home():
-    #TODO: Set up a simple homepage with instructions on how to use the modelset retrieval system.
-    return "Hello, world!"
 
 # Select a model with a given name
 @app.post("/api/select")
@@ -278,7 +274,7 @@ def topkmodelsets():
             case _:
                 raise Exception ("Not a valid QSL calculation! Try 'max', 'min', or 'avg'.")
 
-        qsl_score = ((qsl_val * 10) + 60) / 100 #Formula to calculate the QSL Score. Is between 0.6 and 1. Changes can be made here
+        qsl_score = ((qsl_val * 10) + 60) / 100 #Formula to calculate the QSL Score, "normalizing" it. Value is between 0.6 and 1. Changes can be made here
         modelset.update({'QSL Score' : qsl_score})
      
     #print(combinations)

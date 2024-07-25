@@ -20,8 +20,6 @@
 
 \usepackage{tabularx}
 \usepackage{booktabs}
-
-
 \setlength{\textfloatsep}{6pt plus 2.0pt minus 4.0pt}
 
 
@@ -54,6 +52,13 @@
 
 
 \usepackage{abtmobithesis/abtmobithesis}           % Das Abteilungs-Stylepaket, am Ende einbinden!
+
+% Für Equations
+\newcommand\variablename[1]{\mathop{\textnormal{\slshape #1}}\nolimits}
+
+\newcommand{\MS}{\variablename{Model Score}}
+\newcommand{\PS}{\variablename{Performance Score}}
+\newcommand{\RAS}{\variablename{Resource Awareness Score}}
 
 
 % Settings for title page

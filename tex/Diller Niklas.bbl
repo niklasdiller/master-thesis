@@ -44,6 +44,9 @@ W.~Shi, J.~Cao, Q.~Zhang, Y.~Li, and L.~Xu, ``Edge {{Computing}}: {{Vision}} and
 \bibitem{zhou2012}
 Z.-H. Zhou, \emph{Ensemble {{Methods}}: {{Foundations}} and {{Algorithms}}}, ser. Machine {{Learning}} \& {{Pattern Recognition Series}}.\hskip 1em plus 0.5em minus 0.4em\relax Boca Raton, Fla.: CRC Press, Taylor \& Francis, 2012.
 
+\bibitem{james2023}
+G.~James, D.~Witten, T.~Hastie, R.~Tibshirani, and J.~Taylor, \emph{{An Introduction to Statistical Learning: with Applications in Python}}, 1st~ed.\hskip 1em plus 0.5em minus 0.4em\relax Cham, Switzerland: Springer, Jul. 2023.
+
 \bibitem{schmeling2021}
 L.~Schmeling, G.~Elmamooz, P.~T. Hoang, A.~Kozar, D.~Nicklas, M.~Sünkel, S.~Thurner, and E.~Rauch, ``Training and {{Validating}} a {{Machine Learning Model}} for the {{Sensor-Based Monitoring}} of {{Lying Behavior}} in {{Dairy Cows}} on {{Pasture}} and in the {{Barn}},'' \emph{Animals}, vol.~11, no.~9, p. 2660, Sep. 2021.
 
@@ -98,9 +101,6 @@ J.~Dessain, ``Machine learning models predicting returns: {{Why}} most popular p
 \bibitem{grandini2020}
 M.~Grandini, E.~Bagli, and G.~Visani, ``Metrics for {{Multi-Class Classification}}: An {{Overview}},'' Aug. 2020.
 
-\bibitem{james2023}
-G.~James, D.~Witten, T.~Hastie, R.~Tibshirani, and J.~Taylor, \emph{{An Introduction to Statistical Learning: with Applications in Python}}, 1st~ed.\hskip 1em plus 0.5em minus 0.4em\relax Cham, Switzerland: Springer, Jul. 2023.
-
 \bibitem{fagin2002}
 R.~Fagin, ``Combining fuzzy information: An overview,'' \emph{ACM SIGMOD Record}, vol.~31, no.~2, pp. 109--118, Jun. 2002.
 
@@ -116,14 +116,14 @@ S.~Borzsony, D.~Kossmann, and K.~Stocker, ``The {{Skyline}} operator,'' in \emph
 \bibitem{eibe2016}
 F.~Eibe, M.~A. Hall, and I.~H. Witten, ``The {{WEKA Workbench}},'' in \emph{Data {{Mining}}: {{Practical Machine Learning Tools}} and {{Techniques}}}, fourth edition~ed.\hskip 1em plus 0.5em minus 0.4em\relax Morgan Kaufmann, 2016.
 
-\bibitem{mckinney2022}
-W.~McKinney, \emph{{Python for Data Analysis: Data Wrangling with Pandas, NumPy, and Jupyter}}, 3rd~ed.\hskip 1em plus 0.5em minus 0.4em\relax Beijing Boston Farnham Sebastopol Tokyo: O'Reilly Media, Sep. 2022.
-
 \bibitem{dehghani2019}
 A.~Dehghani, O.~Sarbishei, T.~Glatard, and E.~Shihab, ``A {{Quantitative Comparison}} of {{Overlapping}} and {{Non-Overlapping Sliding Windows}} for {{Human Activity Recognition Using Inertial Sensors}},'' \emph{Sensors (Basel, Switzerland)}, vol.~19, no.~22, p. 5026, Nov. 2019.
 
 \bibitem{silberschatz2010}
 A.~Silberschatz, H.~F. Korth, and S.~Sudarshan, \emph{{Database System Concepts}}, 6th~ed.\hskip 1em plus 0.5em minus 0.4em\relax New York: McGraw Hill Higher Education, Jan. 2010.
+
+\bibitem{mckinney2022}
+W.~McKinney, \emph{{Python for Data Analysis: Data Wrangling with Pandas, NumPy, and Jupyter}}, 3rd~ed.\hskip 1em plus 0.5em minus 0.4em\relax Beijing Boston Farnham Sebastopol Tokyo: O'Reilly Media, Sep. 2022.
 
 \bibitem{marco2019}
 V.~S. Marco, B.~Taylor, Z.~Wang, and Y.~Elkhatib, ``Optimizing {{Deep Learning Inference}} on {{Embedded Systems Through Adaptive Model Selection}},'' Nov. 2019.
