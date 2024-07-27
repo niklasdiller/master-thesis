@@ -1,0 +1,1 @@
+{"rule":"NUMEROUS_DIFFERENT","sentence":"^\\QIn such a distributed system, many different edges exist, and the transfer of data is not limited to the dataflow depicted in this section.\\E$"}

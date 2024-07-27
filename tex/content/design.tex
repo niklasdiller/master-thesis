@@ -4,7 +4,7 @@ For a model set retrieval system to be working properly, of course, there need t
 
 \begin{figure}[htbp]
 
-  \makebox[\textwidth][c]{\includegraphics[width=1.2\textwidth]{graphics/globalarchitecture.pdf}}%
+  \makebox[\textwidth][c]{\includegraphics[width=1.1\textwidth]{graphics/globalarchitecture.pdf}}%
   \caption{The architecture of the different modules and databases in this work}
   \label{fig:globalarch}
 \end{figure}
@@ -22,7 +22,7 @@ The general aim of implementing the model set retrieval system was to provide th
 \begin{figure}[htbp]
   \centering
 \includegraphics[height=14cm]{graphics/flowchartretrieval.pdf}
-  \caption{Simple flowchart of the top-k retrieval system}
+  \caption{Flowchart of the top-k retrieval system}
   \label{fig:flowchartretrieval}
 \end{figure}
 
@@ -144,13 +144,11 @@ The following summary is intended to give a better understanding of all the metr
     \label{psrev}
     \end{equation}
 
-\item \textbf{Resource Awareness Score (RAS)}: Score for a single model. The chosen resource awareness metric is normalized over all models retrieved from the model database. In the implemented version, this is a count of the used features of a model, with an additional penalty for small window sizes. Assumes a value between 0 and 1. Let $f_\text{min}$ be the minimum number and $f_\text{max}$ the maximum number of the features used across all models per prediction horizon, and let $f_\text{i}$ be the number of features model $i$ uses. Furthermore, let $pen_\text{ws}$ be the penalty that is added to the fraction, if the observed model uses a window size of 1 minute. In the implemented version, $pen_\text{ws}$ is $3$.
+\item \textbf{Resource Awareness Score (RAS)}: Score for a single model. The chosen resource awareness metric is normalized over all models retrieved from the model database. In the implemented version, this is a count of the used features of a model, with an additional penalty for small window sizes. The more features a model uses, the lower this score will be. Assumes a value between 0 and 1. Let $f_\text{min}$ be the minimum number and $f_\text{max}$ the maximum number of the features used across all models per prediction horizon, and let $f_\text{i}$ be the number of features model $i$ uses. Furthermore, let $pen_\text{ws}$ be the penalty that is added to the fraction if the observed model uses a window size of 1 minute. In the implemented version, $pen_\text{ws}$ is $3$.
 \begin{equation}
   \operatorname{RAS_i} = 1- (\frac{f_\text{i} - f_{\text{min}}}{f_{\text{max}} - f_{\text{min}}} + pen_\text{ws}).
   \label{ras}
   \end{equation}
-
-
 
 \item \textbf{Model Score (MS)}: Overall score for single model. Combines Performance Score and Resource Awareness Score using a predefined weight. 
 \begin{equation}

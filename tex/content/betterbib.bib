@@ -1,3 +1,8 @@
+@IEEEtranBSTCTL{IEEEexample:BSTcontrol,
+CTLdash_repeated_names = "no"
+}
+
+
 @article{amir2018,
   title = {Priority {{Neuron}}: {{A Resource-Aware Neural Network}} for {{Cyber-Physical Systems}}},
   shorttitle = {Priority {{Neuron}}},
@@ -222,7 +227,8 @@
   isbn = {978-3-540-59119-1 978-3-540-49195-8}
 }
 
-@misc{grandini2020,
+@techreport{grandini2020,
+  type = {White {{Paper}}},
   title = {Metrics for {{Multi-Class Classification}}: An {{Overview}}},
   shorttitle = {Metrics for {{Multi-Class Classification}}},
   author = {Grandini, Margherita and Bagli, Enrico and Visani, Giorgio},
@@ -231,8 +237,7 @@
   number = {arXiv:2008.05756},
   eprint = {2008.05756},
   primaryclass = {cs, stat},
-  publisher = {arXiv},
-  doi = {10.48550/arXiv.2008.05756},
+  institution = {arXiv},
   urldate = {2024-06-12},
   abstract = {Classification tasks in machine learning involving more than two classes are known by the name of "multi-class classification". Performance indicators are very useful when the aim is to evaluate and compare different classification models or machine learning techniques. Many metrics come in handy to test the ability of a multi-class classifier. Those metrics turn out to be useful at different stage of the development process, e.g. comparing the performance of two different models or analysing the behaviour of the same model by tuning different parameters. In this white paper we review a list of the most promising multi-class metrics, we highlight their advantages and disadvantages and show their possible usages during the development of a classification model.},
   archiveprefix = {arXiv},
@@ -376,12 +381,13 @@
   file = {/Users/niklas/Zotero/storage/4Z7D3Z4J/Marco et al. - 2019 - Optimizing Deep Learning Inference on Embedded Sys.pdf;/Users/niklas/Zotero/storage/BWEXPMMT/1911.html}
 }
 
-@article{martinez-munoz2004,
+@inproceedings{martinez-munoz2004,
   title = {Aggregation Ordering in Bagging},
+  booktitle = {Proc. of the {{IASTED International Conference}} on {{Artificial Intelligence}} and {{Applications}}},
   author = {{Mart{\'i}nez-Mu{\~n}oz}, Gonzalo and Su{\'a}rez, Alberto},
   year = {2004},
-  month = jan,
-  abstract = {The order in which classifiers are aggregated in ensemble methods can be an important tool in the identification of subsets of classifiers that, when combined, perform better than the whole ensemble. Ensembles with randomly or-dered classifiers usually exhibit a generalization error that decreases as the number of classifiers that are aggregated increases. If an appropriate order for aggregation is chosen, the generalization error reaches, at intermediate numbers of classifiers, a minimum, which lies below the asymptotic error of the ensemble. This work presents some heuris-tics that exploit the relations between the classifiers in a bagging ensemble to identify the appropriate ordering and then select a subset for aggregation according to a desired amount pruning. The resulting subensembles are smaller and improve the classification performance of the original ensemble.},
+  pages = {258--263},
+  abstract = {The order in which classifiers are aggregated in ensemble methods can be an important tool in the identification of subsets of classifiers that, when combined, perform better than the whole ensemble. Ensembles with randomly ordered classifiers usually exhibit a generalization error that decreases as the number of classifiers that are aggregated increases. If an appropriate order for aggregation is chosen, the generalization error reaches, at intermediate numbers of classifiers, a minimum, which lies below the asymptotic error of the ensemble. This work presents some heuristics that exploit the relations between the classifiers in a bagging ensemble to identify the appropriate ordering and then select a subset for aggregation according to a desired amount pruning. The resulting subensembles are smaller and improve the classification performance of the original ensemble.},
   file = {/Users/niklas/Zotero/storage/JUTSRFKI/Martínez-Muñoz und Suárez - 2004 - Aggregation ordering in bagging.pdf}
 }
 
@@ -437,19 +443,18 @@
   file = {/Users/niklas/Zotero/storage/ARRRZ9LI/Preuveneers et al. - 2020 - Resource Usage and Performance Trade-offs for Mach.pdf}
 }
 
-@misc{rapp2022,
+@inproceedings{rapp2022,
   title = {{{DISTREAL}}: {{Distributed Resource-Aware Learning}} in {{Heterogeneous Systems}}},
   shorttitle = {{{DISTREAL}}},
+  booktitle = {Proc. of the {{AAAI Conference}} on {{Artificial Intelligence}} 36},
   author = {Rapp, Martin and Khalili, Ramin and Pfeiffer, Kilian and Henkel, J{\"o}rg},
   year = {2022},
   month = apr,
-  number = {arXiv:2112.08761},
   eprint = {2112.08761},
   primaryclass = {cs},
-  publisher = {arXiv},
+  pages = {8062--8071},
   urldate = {2024-06-19},
   abstract = {We study the problem of distributed training of neural networks (NNs) on devices with heterogeneous, limited, and time-varying availability of computational resources. We present an adaptive, resource-aware, on-device learning mechanism, DISTREAL, which is able to fully and efficiently utilize the available resources on devices in a distributed manner, increasing the convergence speed. This is achieved with a dropout mechanism that dynamically adjusts the computational complexity of training an NN by randomly dropping filters of convolutional layers of the model. Our main contribution is the introduction of a design space exploration (DSE) technique, which finds Pareto-optimal per-layer dropout vectors with respect to resource requirements and convergence speed of the training. Applying this technique, each device is able to dynamically select the dropout vector that fits its available resource without requiring any assistance from the server. We implement our solution in a federated learning (FL) system, where the availability of computational resources varies both between devices and over time, and show through extensive evaluation that we are able to significantly increase the convergence speed over the state of the art without compromising on the final accuracy.},
-  archiveprefix = {arXiv},
   langid = {english},
   keywords = {Computer Science - Machine Learning},
   file = {/Users/niklas/Zotero/storage/DQ3XXNMA/Rapp et al. - 2022 - DISTREAL Distributed Resource-Aware Learning in H.pdf}

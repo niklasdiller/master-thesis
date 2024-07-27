@@ -33,7 +33,7 @@ W.~M.~P. {van der Aalst}, V.~Rubin, H.~M.~W. Verbeek, B.~F. {van Dongen}, E.~Kin
 O.~A. Montesinos~L{\'o}pez, A.~Montesinos~L{\'o}pez, and J.~Crossa, ``Overfitting, {{Model Tuning}}, and {{Evaluation}} of {{Prediction Performance}},'' in \emph{Multivariate {{Statistical Machine Learning Methods}} for {{Genomic Prediction}}}, O.~A. Montesinos~L{\'o}pez, A.~Montesinos~L{\'o}pez, and J.~Crossa, Eds.\hskip 1em plus 0.5em minus 0.4em\relax Cham: Springer International Publishing, 2022, pp. 109--139.
 
 \bibitem{rapp2022}
-M.~Rapp, R.~Khalili, K.~Pfeiffer, and J.~Henkel, ``{{DISTREAL}}: {{Distributed Resource-Aware Learning}} in {{Heterogeneous Systems}},'' Apr. 2022.
+M.~Rapp, R.~Khalili, K.~Pfeiffer, and J.~Henkel, ``{{DISTREAL}}: {{Distributed Resource-Aware Learning}} in {{Heterogeneous Systems}},'' in \emph{Proc. of the {{AAAI Conference}} on {{Artificial Intelligence}} 36}, Apr. 2022, pp. 8062--8071.
 
 \bibitem{preuveneers2020}
 D.~Preuveneers, I.~Tsingenopoulos, and W.~Joosen, ``Resource {{Usage}} and {{Performance Trade-offs}} for {{Machine Learning Models}} in {{Smart Environments}},'' \emph{Sensors}, vol.~20, no.~4, p. 1176, Jan. 2020.
@@ -63,7 +63,7 @@ L.~Rokach, ``Ensemble-based classifiers,'' \emph{Artificial Intelligence Review}
 Y.~Freund and R.~E. Schapire, ``A desicion-theoretic generalization of on-line learning and an application to boosting,'' in \emph{Computational {{Learning Theory}}}, G.~Goos, J.~Hartmanis, J.~Leeuwen, J.~G. Carbonell, J.~Siekmann, and P.~Vit{\'a}nyi, Eds.\hskip 1em plus 0.5em minus 0.4em\relax Berlin, Heidelberg: Springer Berlin Heidelberg, 1995, vol. 904, pp. 23--37.
 
 \bibitem{martinez-munoz2004}
-G.~{Mart{\'i}nez-Mu{\~n}oz} and A.~Su{\'a}rez, ``Aggregation ordering in bagging,'' Jan. 2004.
+G.~{Mart{\'i}nez-Mu{\~n}oz} and A.~Su{\'a}rez, ``Aggregation ordering in bagging,'' in \emph{Proc. of the {{IASTED International Conference}} on {{Artificial Intelligence}} and {{Applications}}}, 2004, pp. 258--263.
 
 \bibitem{bauer1999}
 E.~Bauer and R.~Kohavi, ``An {{Empirical Comparison}} of {{Voting Classification Algorithms}}: {{Bagging}}, {{Boosting}}, and {{Variants}},'' \emph{Machine Learning}, vol.~36, no.~1, pp. 105--139, Jul. 1999.
@@ -99,7 +99,7 @@ T.~Hastie, R.~Tibshirani, and J.~Friedman, \emph{The {{Elements}} of {{Statistic
 J.~Dessain, ``Machine learning models predicting returns: {{Why}} most popular performance metrics are misleading and proposal for an efficient metric,'' \emph{Expert Systems with Applications}, vol. 199, p. 116970, Aug. 2022.
 
 \bibitem{grandini2020}
-M.~Grandini, E.~Bagli, and G.~Visani, ``Metrics for {{Multi-Class Classification}}: An {{Overview}},'' Aug. 2020.
+M.~Grandini, E.~Bagli, and G.~Visani, ``Metrics for {{Multi-Class Classification}}: An {{Overview}},'' arXiv, White {{Paper}} arXiv:2008.05756, Aug. 2020.
 
 \bibitem{fagin2002}
 R.~Fagin, ``Combining fuzzy information: An overview,'' \emph{ACM SIGMOD Record}, vol.~31, no.~2, pp. 109--118, Jun. 2002.

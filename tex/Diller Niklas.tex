@@ -15,6 +15,7 @@
     \def\sectionautorefname{Section}
     \def\chapterautorefname{Chapter}
     \def\subsectionautorefname{Subsection}
+    \def\subsubsectionautorefname{Subsubsection}
 }
 \usepackage{mathtools,amssymb,amsthm} % Mathematical environments
 
@@ -22,6 +23,7 @@
 \usepackage{booktabs}
 \setlength{\textfloatsep}{6pt plus 2.0pt minus 4.0pt}
 
+\usepackage{IEEEtrantools}
 
 \usepackage{listings}			  	% For code snippet
 \usepackage{color}
@@ -53,7 +55,7 @@
 
 \usepackage{abtmobithesis/abtmobithesis}           % Das Abteilungs-Stylepaket, am Ende einbinden!
 
-% Für Equations
+% For Equations
 \newcommand\variablename[1]{\mathop{\textnormal{\slshape #1}}\nolimits}
 
 \newcommand{\MS}{\variablename{Model Score}}
@@ -70,12 +72,12 @@
 \erstgutachter{Prof. Dr. Daniela Nicklas}
 \zweitgutachter{Michael Freitag}
 
-% Index erneuern
+% Renew Index
 \makeindex
 
-% Das eigentliche Dokument
+% Document start
 \begin{document}
-
+\bstctlcite{IEEEexample:BSTcontrol} % To get rid of dashes if 2 entries in bib have same author and year
 
 % Anfang des Dokuments
 \maketitle              % Title page
@@ -89,7 +91,7 @@
 \input{content/abstract.tex}
 
 
-% Inhaltsverzeichnis
+% ToC
 \renewcommand{\contentsname}{Table of Contents} 
 \tableofcontents        % Inhaltsverzeichnis einbinden
 \cleardoublepage        % Danach auf ungerader Seite weitermachen
@@ -115,7 +117,6 @@
 \renewcommand{\listfigurename}{Figures}
 \listoffigures
 
-
 % Tables
 \cleardoublepage
 \phantomsection % generiert Anker für \addcontentsline
@@ -123,7 +124,7 @@
 \renewcommand{\listtablename}{Tables}
 \listoftables
 
-% Schließlich Literatur
+% Literature
 \cleardoublepage
 \phantomsection % generiert Anker für \addcontentsline
 \addcontentsline{toc}{chapter}{Literature} % Soll als "Literature" auftauchen
@@ -132,7 +133,7 @@
 \bibliography{content/betterbib}            % Literaturverzeichnis einbinden
 
 
-% Und schließlich noch die Versicherung für das Prüfungsamt, Parameter ist der Ort der Unterschrift
+% DoA
 \cleardoublepage
 \versicherung{Bamberg}
 
