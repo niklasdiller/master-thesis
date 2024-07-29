@@ -130,7 +130,7 @@ def topk():
 #Top K Model Sets
 @app.post("/api/topk/modelsets")
 def topkmodelsets():
-
+    getdata_start = time.time()
     data = request.get_json()
     pID = int(data["pID"])
     if pID != 38 and pID != 634:
@@ -152,9 +152,14 @@ def topkmodelsets():
     weight1 = float(data["perfWeight"]) #Importance of Performance in comparison to Resource Awareness; Value [0-1]
     weight2 = float(data["AMSWeight"]) #Importance of Modelset Score in comparison to Query Sharing Level; Value [0-1]
     algorithm = data["algorithm"] #The algorithm that should be called. Possible values: fagin, threshold, naive.
+    allowed_algos = {'fagin', 'naive', 'threshold'}
+    if algorithm not in  allowed_algos:
+        raise Exception ("Not a valid algorithm! Try 'naive', 'fagin', or 'threshold'.")
     combine_same_features = (data["combineSameFeatures"]) #Indicates, whether modelsets should only be generated if the models have the same features
     calculate_qsl = data["calculateQSL"]
+    getdata_end = time.time()
 
+    sql_start = time.time()
     with connection:
         with connection.cursor() as cursor:
             if predhor_list == [] or predhor_list == 0:
@@ -163,7 +168,9 @@ def topkmodelsets():
                 #Putting the variables into the statement
                 cursor.execute(FILTER_MODELS_MODELSETS.format(winsize_vars, predhor_vars), (pID,) + tuple(winsize_list + predhor_list))
             df = pd.DataFrame(cursor.fetchall(), columns=['model_id', 'model_name', 'prediction_horizon', 'window_size', 'accuracy', 'mae', 'mse', 'rmse', '2'])
+    sql_end = time.time()
 
+    prep_start = time.time()
     if df.size == 0: #If no model match the requirements
         raise Exception ("No models found with specified metrics.")   
     
@@ -178,7 +185,9 @@ def topkmodelsets():
 
     df_dict = {}
     df_dict_naive = {} #Dict of DF for the naive algorithm: No splitting done for performance/features
+    prep_end = time.time()
 
+    splitsort1_start = time.time()
     #Splitting Table into smaller tables for each predHor value * 2 (performance and features)
     # df_dict with df_metric as value per predHor, which holds 2 more df 
     for key in predhor_list: 
@@ -195,11 +204,12 @@ def topkmodelsets():
         df_metric.update([('1', df_perf), ('2', df_reaw)])
         df_dict.update({key: df_metric}) # Adding into dict each df containing a unique predHor
         df_dict_naive.update({key:df_predhor}) # Fill dict for naive algortithm
+    splitsort1_end = time.time()
 
     print("First TopK...")
     # Call the desired algrotihm:
+    algo1_start = time.time()
     result = []
-    time1_start = time.time()
     for key in df_dict:
         match algorithm:
             case 'fagin':
@@ -213,11 +223,14 @@ def topkmodelsets():
                 print("Naive finished.")
             case _:
                 raise Exception ("Not a valid algorithm! Try 'naive', 'fagin', or 'threshold'.")
-    time1_end = time.time()
+    algo1_end = time.time()
 
+    combine_start = time.time()
     combinations_raw = create_combinations(result, combine_same_features) # Create modelsets by combining models
     combinations = [] # List that contains JSON convertable datatypes only
+    combine_end = time.time()
 
+    amm_start = time.time()
     # Get the best modelset by calculating overall score
     for cur_combi in combinations_raw:
             modelset = OrderedDict([('Modelset Number', None), ('Models', {}), ('Query Sharing Level', None), ( 'Aggregated Model Score', None), ('QSL Score', None)]) #Define dict to turn into JSON
@@ -233,10 +246,12 @@ def topkmodelsets():
             combinations.append(modelset)
     
     combinations= sorted(combinations, key = lambda d: d['Aggregated Model Score'], reverse=True) # Sort by value of Aggregated Model Score
+    amm_end = time.time()
 
     if k2 == "max": #If user put "max", all the created modelsets will be displayed.
         k2 = len(combinations) # If max was set, return the total number of combinations to the client
 
+    qsl_start = time.time()
     for index,modelset in enumerate(combinations): 
         modelset.update({'Modelset Number' : index+1 }) #Give each modelset a number
         qsl_list = []
@@ -276,10 +291,10 @@ def topkmodelsets():
 
         qsl_score = ((qsl_val * 10) + 60) / 100 #Formula to calculate the QSL Score, "normalizing" it. Value is between 0.6 and 1. Changes can be made here
         modelset.update({'QSL Score' : qsl_score})
+    qsl_end = time.time()
      
-    #print(combinations)
-
-    #Slicing Tables
+    splitsort2_start = time.time()
+    #Split Tables
     df_from_od = pd.DataFrame(combinations) # Create DF from Ordered Dictionary
     df_from_od = df_from_od.rename(columns={"Aggregated Model Score": "1", "QSL Score": "2"})
 
@@ -291,10 +306,11 @@ def topkmodelsets():
     df_AMS = df_AMS.sort_values(by=['1', 'Modelset Number'], ascending=False, na_position='first')
     df_dict = {}
     df_dict.update([('1', df_AMS), ('2', df_QSL),])
+    splitsort2_end = time.time()
 
     print("Second TopK...")
      # Call the desired algrotihm:
-    time2_start = time.time()
+    algo2_start = time.time()
     match algorithm:
         case 'fagin':
             result = fagin_topk(df_dict, weight2, k2)
@@ -305,28 +321,43 @@ def topkmodelsets():
         case 'naive':
             result = naive_topk(df_from_od, weight2, k2)
             print("Naive finished.")
-    time2_end = time.time()
+    algo2_end = time.time()
+
+    json_start = time.time()
+    result_json= convert_to_json(result, True, perf_metric)
+    json_end = time.time()
 
     #Store time measurements in separate file
-    time1_sum = time1_end - time1_start
-    time2_sum = time2_end - time2_start
-    time_sum = str(time1_sum + time2_sum)
+    getdata_time = str(getdata_end -getdata_start)
+    sql_time = str(sql_end - sql_start)
+    prep_time = str(prep_end - prep_start)
+    splitsort1_time = str(splitsort1_end - splitsort1_start)
+    algo1_time = str(algo1_end - algo1_start)
+    combine_time = str(combine_end - combine_start)
+    amm_time = str(amm_end - amm_start)
+    qsl_time = str(qsl_end - qsl_start)
+    splitsort2_time = str(splitsort2_end - splitsort2_start)
+    algo2_time = str(algo2_end - algo2_start)
+    json_time = str(json_end - json_start)
+
+    time_sum = str((getdata_end -getdata_start)+(sql_end - sql_start)+(prep_end - prep_start)+(splitsort1_end - splitsort1_start)+(algo1_end - algo1_start)+(combine_end - combine_start)+(amm_end - amm_start)+(qsl_end - qsl_start)+(splitsort2_end - splitsort2_start)+(algo2_end - algo2_start)+(json_end - json_start))
+    
     if algorithm == 'fagin':
-        f = open("timestats/modelsets/fagin_timeonly.txt", "a")
+        f = open("timestats/modelsets/time_new.csv", "a")
         #f.write("Time 1: " + str(time1_sum) + " Time 2: " + str(time2_sum) + " Sum: " + time_sum + "\n"+ "\n")
-        f.write(time_sum + "\n")
+        f.write('fagins,' + getdata_time +','+ sql_time+','+prep_time+','+splitsort1_time+','+algo1_time+','+combine_time+','+amm_time+','+qsl_time+','+splitsort2_time+','+algo2_time+','+json_time+','+time_sum+ "\n")
         f.close
     elif algorithm == 'threshold':
-        f = open("timestats/modelsets/threshold_timeonly.txt", "a")
+        f = open("timestats/modelsets/time_new.csv", "a")
         #f.write("Time 1: " + str(time1_sum) + " Time 2: " + str(time2_sum) + " Sum: " + time_sum + "\n"+ "\n")
-        f.write(time_sum + "\n")
+        f.write('threshold,' + getdata_time +','+ sql_time+','+prep_time+','+splitsort1_time+','+algo1_time+','+combine_time+','+amm_time+','+qsl_time+','+splitsort2_time+','+algo2_time+','+json_time+','+time_sum+ "\n")
         f.close
     elif algorithm == 'naive':
-        f = open("timestats/modelsets/naive_timeonly.txt", "a")
+        f = open("timestats/modelsets/time_new.csv", "a")
         #f.write("Time 1: " + str(time1_sum) + " Time 2: " + str(time2_sum) + " Sum: " + time_sum + "\n"+ "\n")
-        f.write(time_sum + "\n")
+        f.write('naive,' + getdata_time +','+ sql_time+','+prep_time+','+splitsort1_time+','+algo1_time+','+combine_time+','+amm_time+','+qsl_time+','+splitsort2_time+','+algo2_time+','+json_time+ ','+time_sum+ "\n")
         f.close
 
     #print("Result", result)
-    result_json= convert_to_json(result, True, perf_metric)
+
     return (result_json), 200

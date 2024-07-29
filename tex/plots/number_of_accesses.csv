@@ -1,0 +1,16 @@
+request,algorithm,accesstype,accesses
+r1,ta,sorted,211
+r1,ta,random,430
+r1,fa,sorted,590
+r1,fa,random,1134
+r1,na,sorted,52240
+r2,ta,sorted,245
+r2,ta,random,496
+r2,fa,sorted,398
+r2,fa,random,706
+r2,na,sorted,33000
+r3,ta,sorted,25
+r3,ta,random,56
+r3,fa,sorted,339
+r3,fa,random,625
+r3,na,sorted,16984

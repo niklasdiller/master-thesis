@@ -7,14 +7,59 @@ The evaluation of this work is divided into two parts. First, there will be a sh
   \section{Training Pipeline}
   
   Upon execution of the training pipeline runs that were introduced in the previous chapter, several different observations could be made. The following analysis of the models that were created in the previously mentioned training pipeline runs will be done for all created models – models that were created in the first as well as in the second run. Therefore, observations about models with window sizes of 1, 5, 10, 30, and 60 minutes will be made. Additionally, the performance metrics of models that use the concept of prediction horizons will be analyzed together with models that use the previously introduced 24 hour-shift or no future prediction aspect at all.
+
+  In total, $23042$ models were created using the implemented training pipeline. With over $11$ hours, training the models with a window size of 1 minute took by far the longest time. In total, the training pipeline was running approximately for $29$ hours. Out of all models, $2632$ models have an accuracy of $0\%$. The total accuracy distribution of all created models can be seen in \autoref{fig:totalmodels}, which uses an logarithmic scale for better visibility. Following, almost $13\%$ of all trained models have an accuracy of $0\%$ and are therefore useless for further usage. The majority of the models with zero accuracy can be explained through the feature \texttt{previousOccupancy}: Out of all models with $0\%$ accuracy, $81\%$ (in absolute numbers $2130$) are missing \texttt{previousOccupancy} as a feature. The impact of \texttt{previousOccupancy} can also be seen in \autoref{fig:groupedprevocc}, which shows a grouped bar chart for models with and without \texttt{previousOccupancy} binned in $5\%$ steps.
+
+  \begin{figure}[htbp]
+    \centering
+    \includegraphics[height=10cm]{plots/totalmodels.pdf}
+    \caption{Accuracy Distribution for All Created Models on a Logarithmic Scale}
+    \label{fig:totalmodels}
+  \end{figure}
   
-  One thing that immediately became apparent when looking at the created models, was that small variations in certain metrics could make big differences in performance. One of the biggest influences comes from the window size of a model: a fine-grained segmentation mostly means an increase in performance metrics like accuracy, compared to a coarse-grained segmentation. Small window sizes for models using the implemented functionalities of the \texttt{predictionHorizon} are always performing better, than big window sizes for models that make use of \texttt{predictionHorizon}. This observation holds for models using the 24 hour-shift and models with no future prediction aspects. However, the accuracy for models with neither \texttt{predictionHorizon} nor 24 hour-shift tends to be higher than for models that use some form of future prediction: In total, 250 models that use no form of future prediction have an accuracy value of over 90\%, while the same is true for only 116 models that make use of a prediction horizon. The highest accuracy value for a model that was trained using a 24 hour-shift only reached an accuracy of 67\%. 
+  To expand on the findings from \autoref{fig:groupedprevocc}, it should be noted that out of all trained and stored models with an accuracy of over $90\%$, $346$ use \texttt{previousOccupancy}, and only $20$ don't. However, $18$ out of those $20$ models allegedly have an accuracy of $100\%$, which with a high probability makes them candidates for overfitting. This speaks for the indispensability of using the occupancy of the previous time slot as a feature when training a new model. Models that don't have access to this information seem to perform worse overall. When looking at this finding from a theoretical perspective, it should not be hard to see the reason for this behavior: In between two consecutive time slots (may it be one minute, or even 60 minutes), the occupancy of a specific parking lot usually should not change too much. Of course, a considerable change in occupancy during rush hours in the early morning or afternoon hours would be not surprising. However, this volatility in occupied parking spaces would most likely not happen rapidly in a matter of a few minutes, but rather in longer time periods, like a few hours. It therefore does not come as a surprise, that \texttt{previousOccupancy} plays such an important role in a model's performance.
+
+ 
+
+  \begin{figure}[htbp]
+    \centering
+    \includegraphics[height=10cm]{plots/grouped_prevocc.pdf}
+    \caption{Accuracy Distribution for Models With and Without Previous Occupancy}
+    \label{fig:groupedprevocc}
+  \end{figure}
+
+
   
-  Another observation that was made, is that feature scaling seemed to have close to no impact on the performance of the models. The vast majority of performance metrics (accuracy, MAE, MSE, RMSE) stay the same for a model compared to its feature-scaled pendant. However, as stated in the previous chapter, feature scaling was only done for some models. Further tests and evaluations using feature scaling on models with different window sizes and prediction horizons could produce unexpected new insights.
+  Another thing that became apparent when looking at the created models, was that small variations in certain metrics could make big differences in performance. One of the biggest influences comes from the window size of a model: a fine-grained segmentation mostly means an increase in performance metrics like accuracy, compared to a coarse-grained segmentation. Small window sizes for models using the implemented functionalities of the \texttt{predictionHorizon} are always performing better, than big window sizes for models that make use of \texttt{predictionHorizon}. This observation holds for models using the 24 hour-shift and models with no future prediction aspects. However, the accuracy for models with neither \texttt{predictionHorizon} nor 24 hour-shift tends to be higher than for models that use some form of future prediction: In total, $2,8\%$ of the models that use no form of future prediction (i.e. predict the same time slot as they are executed in) have an accuracy value of over $90\%$, while the same is true for only $0,9\%$ of models that make use of a prediction horizon. This behavior can be seen in \autoref{fig:nofuture} and \autoref{fig:predhor}. The highest accuracy value for a model that was trained using a 24 hour-shift only reached an accuracy of 67\%. In general, the distribution for models using a 24 hour-shift tends to be skewed towards lower accuracy values, as shown in \autoref{fig:shift24h}. Note, that in \autoref{fig:nofuture}, \autoref{fig:predhor}, and \autoref{fig:shift24h} models with an accuracy value of 0\% are disregarded to provide a better visualization of the accuracy distribution.
   
-  The feature \texttt{previousOccupancy} seems to be the feature with the most impact on performance. Out of all trained and stored models with an accuracy of over 90\%, 346 use \texttt{previousOccupancy}, and only 20 don’t. However, 18 out of those 20 models allegedly have an accuracy of 100\%, which with a high probability makes them candidates of overfitting. This speaks for an indispensability of using the occupancy of the previous time slot as a feature when training a new model. Models that don’t have access to this information seem to perform worse overall. When looking at this finding from a theoretical perspective, it should not be hard to see the reason for this behavior: In between two consecutive time slots (may it be one minute, or even 60 minutes), the occupancy of a specific parking lot usually should not change too much. Of course, a considerable change in occupancy during rush hours in the early morning or afternoon hours would be not surprising. However, this volatility in occupied parking spaces would most likely not happen rapidly in a matter of a few minutes, but rather in longer time periods, like a few hours. It therefore does not come as a surprise, that \texttt{previousOccupancy} plays such an important role in a model’s performance.
+  \begin{figure}[htbp]
+    \centering
+    \includegraphics[height=10cm]{plots/nofuture.pdf}
+    \caption{Accuracy Distribution for Models With No Future Prediction and >0\% Accuracy}
+    \label{fig:nofuture}
+  \end{figure}
+
+  \begin{figure}[htbp]
+    \centering
+    \includegraphics[height=10cm]{plots/predhor.pdf}
+    \caption{Accuracy Distribution for Models With Prediction Horizon and >0\% Accuracy}
+    \label{fig:predhor}
+  \end{figure}
+
+  \begin{figure}[htbp]
+    \centering
+    \includegraphics[height=10cm]{plots/shift24h.pdf}
+    \caption{Accuracy Distribution for Models With 24 Hour-Shift
+    and >0\% Accuracy}
+    \label{fig:shift24h}
+  \end{figure}
+
+
+  The reason for these observations seems straightforward, considering the models with future prediction (i.e. models using either a 24 hour-shift or a \texttt{predictionHorizon}) have to consider much more uncertainties in the regression, than models that just predict the occupancy for the current time slot. The fact that models that were implemented using the concept \texttt{predictionHorizon} seem to predict future occupancy values better than models using the 24 hour-shift can be traced back to the values the \texttt{predictionHorizon} assumes for the created models: These models predict the occupancy value in 60 minutes at most. From \autoref{fig:predhor} and \autoref{fig:shift24h} it can therefore be concluded, that models have less trouble predicting for relatively shorter time intervals, than for 24 hours.
   
-  In summary, the observations that could be made when looking at the performance metrics of the models trained by the constructed pipeline are mostly in line with prior expectations. Window size and the feature \texttt{previousOccupancy} rightfully have a large influence on a model’s performance. The lack of impact of feature-scaled models is something to further research and analyze.
+  Another observation that was made, is that feature scaling seemed to have close to no impact on the performance of the models. The vast majority of performance metrics (accuracy, MAE, MSE, RMSE) stay the same for a model compared to its feature-scaled pendant. However, as stated in \autoref{chap:implementation}, feature scaling was only done for some models. Further tests and evaluations using feature scaling on models with different window sizes and prediction horizons could produce unexpected new insights.
+  
+  In summary, the observations that could be made when looking at the performance metrics of the models trained by the constructed pipeline are mostly in line with prior expectations. The time difference between the inference of the model and the time that is to be predicted as well as the feature \texttt{previousOccupancy} rightfully have a large influence on a model's performance. The lack of impact of feature-scaled models is something to further research and analyze.
   
   
   
@@ -32,7 +77,7 @@ Before comparing the number of accesses across the different kinds of top-k algo
 
 
 % Models used for evaluating number of accesses
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
     \begin{tabular}{ l | c  c  c }
         \toprule
@@ -54,12 +99,24 @@ Before comparing the number of accesses across the different kinds of top-k algo
 \textbf{calculateQSL} & min & avg & max\\
         \bottomrule
     \end{tabular}
-\caption{Requests used for evaluating number of accesses} \label{accesses}
+\caption{Requests Used for Evaluating Number of Accesses} \label{accesses}
 \end{table}
 
-After the consistency of the number of accesses for an algorithm has been ensured, the actual evaluation could be started. To evaluate the number of accesses for each algorithm, three different exemplary requests have been created, as seen in \autoref{accesses}. The API calls were designed to represent a diverse spectrum of possible requests. Each request was then run for every algorithm each. As stated before, following Fagin’s reasoning, TA will in every case require less than or the same amount of sorted accesses as FA \cite{fagin2002}. This is indeed backed by the observed data: In every one of the three requests, TA required the least number of sorted accesses, followed by FA and NA. Across all algorithm rounds and requests, TA used a mean of 48,1 sorted accesses per algorithm call whilst this value was 132,7 for FA and 10222,4 for NA. The computation advantage of FA and TA over naïvely iterating through the entire model/model set list is apparent. This observation however lacks informative value, as NA does not do any random accesses, that the other two algorithms heavily rely on. It might therefore be necessary to look at the number of total accesses per algorithm, by summing up both random and serial accesses. Doing this, TA uses a mean of 146,2 total accesses per algorithm call, followed by FA with 379,1 and NA with still 10222,4. Therefore it can be seen that if even every form of access is considered, NA will still have significantly more accesses to do, in order to return the top-k results. 
+After the consistency of the number of accesses for an algorithm has been ensured, the actual evaluation could be started. To evaluate the number of accesses for each algorithm, three different exemplary requests have been created, as seen in \autoref{accesses}. The API calls were designed to represent a diverse spectrum of possible requests. Each request was then run for every algorithm each. As stated before, following Fagin’s reasoning, TA will in every case require less than or the same amount of sorted accesses as FA \cite{fagin2002}. This is indeed backed by the observed data: In every one of the three requests, TA required the least number of sorted accesses, followed by FA and NA, as seen in \autoref{fig:shift24h}. Note, that as NA uses vastly more sorted accesses than FA or TA, the graph had to be displayed on a logarithmic scale to ensure clarity. 
 
-Regarding the number of random accesses, a comparison between TA and FA can be made. As TA in its design relies more heavily on random accesses than FA, the former was expected to have at least a similar number of random accesses than the latter. This is because, in TA, every accessed grade is instantly followed up by the randomly accessed missing grade of the same item. In FA, however, the seen objects are only randomly accessed at the end, when k objects have been fully seen already. However, the average number of random accesses of 98,1 for TA and 246,4 for FA, came as a surprise. Apparently, TA still uses fewer random accesses than FA, which speaks for TA using less computational resources. Only in one occurrence did FA use fewer random accesses than TA: Getting the top $k$ model sets in the second request required not a single random access by FA, whilst requiring 44 by TA. This however is easily explained when looking at the specified k2 in this request. Selecting “max” as k2 results in an algorithm returning all items that are in the model set list. In the case of FA, this means the algorithm serial accesses every item in order and by the time the random access phase is started, the algorithm already has seen every object in its entirety. FA does therefore not have to do any random accesses.
+In the first request, TA only used 0,4\% and FA only 1,1\% as many sorted accesses as NA used. In other words, TA and FA only had to iterate over around 1\% of the entire model list that was provided for that particular request. Out of all three requests, NA had the most accesses in Request 1 (namely 52240), because it is the only request that inquires three different prediction horizons, resulting in a total of 4 algorithm executions (one for each prediction horizon plus one for the actual model set retrieval). This behavior can also be inspected in Request 2 and 3, where TA uses only 0,7\% and 0,1\% and FA only 1,2\% and 2,0\% as many sorted accesses as NA respectively. The fact that NA uses by far the most sorted accesses out of the three algorithms should not come as a surprise, however, as NA only relies on sorted access (i.e. does not do any random accesses) and traverses through the entire model list before producing an output. Still, the dimension of the difference in sorted access becomes apparent when looking at the absolute numbers from the introduced exemplary requests. Across all algorithm rounds and requests, TA used a mean of 48,1 sorted accesses per algorithm call whilst this value is 132,7 for FA and 10222,4 for NA.
+
+The computation advantage of FA and TA over naïvely iterating through the entire model/model set list is apparent. This observation however lacks informative value, as NA does not do any random accesses, that the other two algorithms heavily rely on. It might therefore be necessary to look at the number of total accesses per algorithm, by summing up both random and serial accesses. Doing this, TA uses a mean of 146,2 total accesses per algorithm call, followed by FA with 379,1 and NA with still 10222,4. Therefore, it can be seen that if even every form of access is considered, NA will still have significantly more accesses to do, in order to return the top-k results. 
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[height=10cm]{plots/grouped_accesses.pdf}
+    \caption{Number of Accesses for Each Request and Algorithm on a Logarithmic Scale}
+    \label{fig:shift24h}
+  \end{figure}
+
+
+Regarding the number of random accesses, a comparison between TA and FA can be made. As TA in its design relies more heavily on random accesses than FA, the former was expected to have at least a similar number of random accesses than the latter. This is because, in TA, every accessed grade is instantly followed up by the randomly accessed missing grade of the same item. In FA, however, the seen objects are only randomly accessed at the end, when $k$ objects have been fully seen already. However, the average number of random accesses of 98,1 for TA and 246,4 for FA, came as a surprise. Apparently, TA still uses fewer random accesses than FA, which speaks for TA using less computational resources. Only in one occurrence did FA use fewer random accesses than TA: Getting the top $k$ model sets in the second request required not a single random access by FA, whilst requiring 44 by TA. This however is easily explained when looking at the specified \texttt{k2} in this request. Selecting \texttt{max} as \texttt{k2} results in an algorithm returning all items that are in the model set list. In the case of FA, this means the algorithm serial accesses every item in order and by the time the random access phase is started, the algorithm already has seen every object in its entirety. FA does therefore not have to do any random accesses. The biggest difference in the number of random accesses between TA and FA can be seen in Request 3: While TA uses 56, FA uses 625, which is over 11 times more random accesses. The reason for this could be an inconvenient distribution of models within the lists.
 
 In summary, the expectations of both FA and TA have been fulfilled, as both top-k algorithms use significantly less accesses than a naïve approach of selecting the top-k elements. In addition, TA required fewer accesses than FA, making it the most access-friendly out of all three observed algorithms. 
 
@@ -73,7 +130,7 @@ Because of changes in local memory like cache and other simultaneous running pro
 
 
 
-% Models used for evaluating number of accesses
+% Models used for evaluating execution time
 \begin{table}[h]
 \centering
     \begin{tabular}{ l | c}
@@ -95,11 +152,32 @@ Because of changes in local memory like cache and other simultaneous running pro
 \textbf{calculateQSL} & min \\
         \bottomrule
     \end{tabular}
-\caption{Request used for evaluating execution time} \label{time}
+\caption{Request Used for Evaluating Execution Time} \label{time}
 \end{table}
 
 
 As expected, the differences in runtime became apparent once a larger model database was used. The request shown in \autoref{time} was run 20 times per algorithm, each time adding up all the individual times per algorithm run (in this case 2 prediction horizon runs plus one model set run). As an average, it took NA 4,464 seconds to come up with the top-k results, whilst TA and FA took significantly less time: On average, FA returned the top-k objects in 0,032 seconds total, while TA took 0,030 seconds. While the difference in runtime of FA and TA is hardly interpretable, the longer runtime of NA is explainable by its general procedure: Having to access every item in a list of over 200.000 items takes up much more time than only accessing the topmost items in each list. 
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[height=10cm]{plots/executiontime_naive.pdf}
+    \caption{Mean Execution Time in Steps for Naive Algorithm on a Logarithmic Scale}
+    \label{fig:timenaive}
+  \end{figure}
+
+  \begin{figure}[htbp]
+    \centering
+    \includegraphics[height=10cm]{plots/executiontime_fagins.pdf}
+    \caption{Mean Execution Time in Steps for Fagin's Algorithm on a Logarithmic Scale}
+    \label{fig:timefagin}
+  \end{figure}
+
+  \begin{figure}[htbp]
+    \centering
+    \includegraphics[height=10cm]{plots/executiontime_threshold.pdf}
+    \caption{Mean Execution Time in Steps for Threshold Algorithm on a Logarithmic Scale}
+    \label{fig:timethreshold}
+  \end{figure}
 
 % TODO evtl ein anderes request hinzufügen?
 
@@ -137,7 +215,7 @@ To show what implications the use of resource-aware model sets has, there are so
 
         \bottomrule
     \end{tabular}
-\caption{Data types and memory sizes of the different features} \label{datasizes}
+\caption{Data Types and Memory Sizes of the Different Features} \label{datasizes}
 \end{table}
 
 
@@ -165,7 +243,7 @@ Unique features &  \multicolumn{2}{c |}{7} & \multicolumn{2}{c}{1}\\\hline
 
         \bottomrule
     \end{tabular}
-\caption{Model sets for example with maximum divergence} \label{extreme}
+\caption{Model Sets for Example With Maximum Divergence} \label{extreme}
 \end{table}
 
 
@@ -202,7 +280,7 @@ Unique features &  \multicolumn{2}{c |}{7} & \multicolumn{2}{c}{2}\\\hline
 
         \bottomrule
     \end{tabular}
-\caption{Model sets for realistic example} \label{realistic}
+\caption{Model Sets for Realistic Example} \label{realistic}
 \end{table}
 
 The model set with the low resource awareness consists of two models, one using 5 features, and the other one using 6 features, out of which 4 are congruent to the one the former is using. However, Model 2 is making predictions in a different time interval again, which makes it not possible to share data between the models of Model Set 1. This will lead 
@@ -239,7 +317,7 @@ Unique features &  \multicolumn{2}{c |}{4} & \multicolumn{3}{c}{3}\\\hline
 
         \bottomrule
     \end{tabular}
-\caption{Model sets for large model set example} \label{large}
+\caption{Model Sets for Large Model Set Example} \label{large}
 \end{table}
 
 
@@ -270,7 +348,7 @@ Unique features &  \multicolumn{2}{c |}{3} & \multicolumn{2}{c}{4}\\\hline
 
         \bottomrule
     \end{tabular}
-\caption{Model sets for QSL counterexample} \label{counterexample}
+\caption{Model Sets for QSL Counterexample} \label{counterexample}
 \end{table}
 
 

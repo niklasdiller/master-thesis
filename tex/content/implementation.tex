@@ -1,6 +1,6 @@
 \chapter{Implementation}\label{chap:implementation}
 
-The following chapter will give an overview of how both the latest version of the training pipeline as well as the model set retrieval system was implemented, how the user can customize the retrieval process by changing certain settings, and what challenges were faced during the implementation process.
+The following chapter will give an overview of how both the latest version of the training pipeline as well as the model set retrieval system was implemented, how the user can customize the retrieval process by changing certain settings, and what challenges were faced during the implementation process. First, however, the structure of the database used for storing the machine learning models will be introduced.
 
 
 
@@ -45,11 +45,17 @@ time\char`_slot & 5\\\hline
 previous\char`_occupancy & 6 \\
         \bottomrule
     \end{tabular}
-\caption{Indexes of the features used for training} \label{indexfeatures}
+\caption{Indexes of the Features Used for Training} \label{indexfeatures}
 \end{table}
 
 
-\item \texttt{training\char`_data\char`_size}: Previously called \texttt{table\char`_length}, this attribute states the total number of rows of preprocessed training data that were used for the training of this model. The value is calculated using the following formula: $training\char`_weeks \cdot 7 \cdot \frac{1440}{window\char`_size}$.
+\item \texttt{training\char`_data\char`_size}: Previously called \texttt{table\char`_length}, this attribute states the total number of rows of preprocessed training data that were used for the training of this model. The value is calculated using the following formula:
+\begin{equation}
+   \operatorname{Training Data Size} =   \operatorname{training\char`_weeks} \cdot 7 \cdot \frac{1440}{window\char`_size}.
+    \label{trainingdatasize}
+    \end{equation}
+
+
 \item  \texttt{features}: Previously called \texttt{attributes}. Provides information about the features that were used to train this model. Instead of showing “all”, if every possible features was used in training, in the overworked version now every single feature is listed for better readability. 
 \item  \texttt{classifiers}:  The same improvements that were underdone for \texttt{features} were applied to the classifiers attribute for better readability. 
 \item  \texttt{accuracy}, \texttt{mae}, \texttt{mse}, \texttt{rmse}: A models performance metrics. In the initial version of the training pipeline, these metrics were calculated and put into one single column, making it unwieldy to process further in the top-k algorithms (As an example, in previous versions of the top-k retrieval system, the accuracy values had to be extracted using a \texttt{re.search} function on the string that contained all the metrics, and then converted to a float value). By making the metrics atomic, they can be accessed more directly without wasting computational resources. Another advantage is the better readability for the user.
@@ -106,7 +112,7 @@ instances were used for training. One of those instances may look like this:
 71 & 14 & 63.7 & 59.3\\
         \bottomrule
     \end{tabular}
-\caption{Exemplary instance for model \texttt{dt-1,5,6-60-4-38}} \label{fig:instance}
+\caption{Exemplary Instance for Model \texttt{dt-1,5,6-60-4-38}} \label{fig:instance}
 \end{table}
 
 
@@ -147,7 +153,7 @@ During the implementation phase, it became apparent that this behavior was not a
 \item \texttt{slotsIDs}: All parking slots were considered for training.
  \end{itemize}
  
- Using these combinations, a total of 4603 models have been trained, tested, and stored in about 8,5 hours. Models using the Random Forest algorithm used up the most time during building, with an estimated average of about 30 seconds per model. Observations regarding the performance of the generated models will follow in \autoref{chap:evaluation}.
+ Using these combinations, the first run of the training pipeline trained, tested, and stored a total of 4603 models in about 8,5 hours. Models using the Random Forest algorithm used up the most time during building, with an estimated average of about 30 seconds per model. Observations regarding the performance of the generated models will follow in \autoref{chap:evaluation}.
  
  
  
@@ -178,7 +184,7 @@ for (int i = 0; i < trainingDataSize; i++) {
             .getDouble("occupancy"));
 }
 \end{lstlisting}
-\caption{Modification of training data regarding the prediction horizon}
+\caption{Modification of Training Data Regarding the Prediction Horizon}
 \label{codepredhor}
 \end{figure}
 

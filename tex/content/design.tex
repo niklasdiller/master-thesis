@@ -5,13 +5,14 @@ For a model set retrieval system to be working properly, of course, there need t
 \begin{figure}[htbp]
 
   \makebox[\textwidth][c]{\includegraphics[width=1.1\textwidth]{graphics/globalarchitecture.pdf}}%
-  \caption{The architecture of the different modules and databases in this work}
+  \caption{The Architecture of the Different Modules and Databases in This Work}
   \label{fig:globalarch}
 \end{figure}
 
 \section{Training Pipeline}
 
-The first section that was worked on when starting this project, is the training pipeline. First versions of a model trainer have already been developed by fellow students Paul Pongratz and Alexandr Litvin in previous semesters. This original form of a module that could train machine learning models for the use cases introduced in \autoref{chap:relatedwork} served as a valuable basis to improve upon. The model trainer was written in Java and used the Weka (Waikato Environment for Knowledge Analysis) \cite{eibe2016} library as its main building block. Weka is an open-source software that specializes in machine learning and data mining. With the help of this library, data entries of the parking behavior including time stamps and weather information can be converted into so-called \texttt{Instances} which are then used to train different kinds of classifiers such as Linear Regression or Random Forest which are also managed by Weka. In addition, the library was used to apply filters, in order to make use of different feature-scaling methods. To get the relevant parking data that is stored in a \texttt{postgres} database on the university's servers, a Java \texttt{DriverManager} of the library \texttt{java.sql} is used. That way a connection to the \texttt{postgres} database is established and a SQL statement with the relevant information is both created and executed. Another library that was essential in the creation of the model trainer is \texttt{tablesaw}, which makes it possible to create and manage data into \texttt{dataframes}, similar to the \texttt{pandas} library in Python. \texttt{Tablesaw} is mainly used to establish training- and testing-datasets out of the data queried from the database. Some exemplary usages include counting rows, dropping columns, or joining tables. 
+%TODO Das hier in Implementierung schieben! 
+The first section that was worked on when starting this project, is the training pipeline. First versions of a model trainer have already been developed by fellow students Paul Pongratz and Alexandr Litvin in previous semesters. This original form of a module that could train machine learning models for the use cases introduced in \autoref{chap:relatedwork} served as a valuable basis to improve upon. The model trainer was written in Java and used the Weka (Waikato Environment for Knowledge Analysis) \cite{eibe2016} library as its main building block. Weka is an open-source software that specializes in machine learning and data mining. With the help of this library, data entries of the parking behavior including time stamps and weather information can be converted into so-called \texttt{Instances} which are then used to train different kinds of classifiers such as Linear Regression or Random Forest which are also managed by Weka. In addition, the library was used to apply filters, in order to make use of different feature-scaling methods. To get the relevant parking data that is stored in a \texttt{postgres} database on the university's servers, a Java \texttt{DriverManager} of the library \texttt{java.sql} is used. That way a connection to the \texttt{postgres} database is established and a SQL statement with the relevant information is both created and executed. Another library that was essential in the creation of the model trainer is \texttt{tablesaw}, which makes it possible to create and manage data into \texttt{dataframes}, similar to the \texttt{pandas} library in Python. \texttt{Tablesaw} is mainly used to establish training- and testing-datasets out of the data queried from the database. Some exemplary usages include counting rows, dropping columns, or joining tables. Because the original model trainer was written in Java, and the development of the training pipeline was done using the model trainer as a template, a constraint for the training pipeline was that it should also be implemented using Java.
 
 Regarding the overall architecture, the training pipeline initially was constructed in a way that let the user put in the desired model settings in a \texttt{config.properties} file which then was read by an \texttt{InputStream} to populate an object of the class Settings. This of course had to be modified in a way, that had the properties file be filled in automatically. Additionally, in the original version of the model trainer, the relevant data was pre-processed for each model, which turned out to be a very time-consuming effort. It was therefore decided to introduce a second entry point to the model trainer java program that takes care of all the pre-processing of the data entries. The pre-processed data is then stored in a separate database, which is later accessed by the actual model trainer for training and testing. The implementation chapter will go into more detail regarding the actual integration of those classes.
 
@@ -22,7 +23,7 @@ The general aim of implementing the model set retrieval system was to provide th
 \begin{figure}[htbp]
   \centering
 \includegraphics[height=14cm]{graphics/flowchartretrieval.pdf}
-  \caption{Flowchart of the top-k retrieval system}
+  \caption{Flowchart of the Top-K Retrieval System}
   \label{fig:flowchartretrieval}
 \end{figure}
 
@@ -118,7 +119,7 @@ By designing the model set retrieval system in a way, that makes it possible to 
 \begin{figure}[htbp]
   \centering
 \includegraphics[height=4cm]{graphics/qsl}
-  \caption{The increasing amount of different QSLs in larger model sets}
+  \caption{The Increasing Amount of Different QSLs in Larger Model Sets}
   \label{fig:qsls}
 \end{figure}
 
@@ -181,7 +182,7 @@ The following summary is intended to give a better understanding of all the metr
 \begin{figure}[htb]
   \centering
 \includegraphics[height=12cm]{graphics/scores.pdf}
-  \caption{Structure of the different scores used for the retrieval process}
+  \caption{Structure of the Different Scores Used for the Retrieval Process}
   \label{scoreconstruction}
 \end{figure}
 

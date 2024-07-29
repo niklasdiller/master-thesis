@@ -6,16 +6,16 @@
 \addvspace {10\p@ }
 \contentsline {table}{\numberline {3.1}{\ignorespaces Settings in the Retrieval System}}{19}{table.caption.6}%
 \addvspace {10\p@ }
-\contentsline {table}{\numberline {4.1}{\ignorespaces Indexes of the features used for training}}{28}{table.caption.13}%
-\contentsline {table}{\numberline {4.2}{\ignorespaces Exemplary instance for model \texttt {dt-1,5,6-60-4-38}}}{31}{table.caption.14}%
+\contentsline {table}{\numberline {4.1}{\ignorespaces Indexes of the Features Used for Training}}{28}{table.caption.13}%
+\contentsline {table}{\numberline {4.2}{\ignorespaces Exemplary Instance for Model \texttt {dt-1,5,6-60-4-38}}}{31}{table.caption.14}%
 \addvspace {10\p@ }
-\contentsline {table}{\numberline {5.1}{\ignorespaces Requests used for evaluating number of accesses}}{41}{table.caption.16}%
-\contentsline {table}{\numberline {5.2}{\ignorespaces Request used for evaluating execution time}}{43}{table.caption.17}%
-\contentsline {table}{\numberline {5.3}{\ignorespaces Data types and memory sizes of the different features}}{45}{table.caption.18}%
-\contentsline {table}{\numberline {5.4}{\ignorespaces Model sets for example with maximum divergence}}{45}{table.caption.19}%
-\contentsline {table}{\numberline {5.5}{\ignorespaces Model sets for realistic example}}{47}{table.caption.20}%
-\contentsline {table}{\numberline {5.6}{\ignorespaces Model sets for large model set example}}{47}{table.caption.21}%
-\contentsline {table}{\numberline {5.7}{\ignorespaces Model sets for QSL counterexample}}{48}{table.caption.22}%
+\contentsline {table}{\numberline {5.1}{\ignorespaces Requests Used for Evaluating Number of Accesses}}{44}{table.caption.21}%
+\contentsline {table}{\numberline {5.2}{\ignorespaces Request Used for Evaluating Execution Time}}{48}{table.caption.23}%
+\contentsline {table}{\numberline {5.3}{\ignorespaces Data Types and Memory Sizes of the Different Features}}{50}{table.caption.27}%
+\contentsline {table}{\numberline {5.4}{\ignorespaces Model Sets for Example With Maximum Divergence}}{51}{table.caption.28}%
+\contentsline {table}{\numberline {5.5}{\ignorespaces Model Sets for Realistic Example}}{52}{table.caption.29}%
+\contentsline {table}{\numberline {5.6}{\ignorespaces Model Sets for Large Model Set Example}}{53}{table.caption.30}%
+\contentsline {table}{\numberline {5.7}{\ignorespaces Model Sets for QSL Counterexample}}{53}{table.caption.31}%
 \addvspace {10\p@ }
 \addvspace {10\p@ }
 \addvspace {10\p@ }
