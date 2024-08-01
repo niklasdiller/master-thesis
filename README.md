@@ -70,16 +70,16 @@ The two top-k API calls come with a number of settings that can be customized.
 
 This CREATE request can be filled with several variables. 
 
-<img src="./docs/readme_files/modelset_request.png" alt="Exemplary reqeust for model set retrieval" width="250"/>
+<img src="./misc_docs/readme_files/modelset_request.png" alt="Exemplary reqeust for model set retrieval" width="250"/>
 
 The following table is extracted from the master's thesis and goes into detail for each choosable variable. 
 
-<img src="./docs/readme_files/modelset_metrics.png" alt="Metrics for model set retrieval" width="500"/>
+<img src="./misc_docs/readme_files/modelset_metrics.png" alt="Metrics for model set retrieval" width="500"/>
 
 ### Top-K Single Model
  
 The available settings for single-model retrieval are an abbreviated version of model set retrieval.
 
-<img src="./docs/readme_files/singlemodel_request.png" alt="Exemplary reqeust for single model retrieval" width="250"/>
+<img src="./misc_docs/readme_files/singlemodel_request.png" alt="Exemplary reqeust for single model retrieval" width="250"/>
 
 
