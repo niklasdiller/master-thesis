@@ -33,6 +33,7 @@ def select():
             model = cursor.fetchall()
     return {"model": model, "message": "Data selected!"}, 200
 
+
 # Selet a model with a given name directly using the URL
 @app.get("/api/model/<model_name>")
 def select_direct(model_name):

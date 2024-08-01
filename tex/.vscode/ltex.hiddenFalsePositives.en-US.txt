@@ -1,1 +1,3 @@
 {"rule":"NUMEROUS_DIFFERENT","sentence":"^\\QIn such a distributed system, many different edges exist, and the transfer of data is not limited to the dataflow depicted in this section.\\E$"}
+{"rule":"EXCEPTION_OF_TO","sentence":"^\\QThis can generally be affirmed by the observed data, with exception of SQL query.\\E$"}
+{"rule":"ABLE_TO_PASSIVE","sentence":"^\\QThe research question for this work that was how to manage a meaningful balance between performance and resource awareness in the model selection process, was able to be answered by introducing the\\E$"}

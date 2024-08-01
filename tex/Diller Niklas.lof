@@ -7,8 +7,8 @@
 \contentsline {figure}{\numberline {2.2}{\ignorespaces Rejection Option, As Lying and Standing Are Exclusive Behaviors}}{8}{figure.caption.3}%
 \addvspace {10\p@ }
 \contentsline {figure}{\numberline {3.1}{\ignorespaces The Architecture of the Different Modules and Databases in This Work}}{15}{figure.caption.4}%
-\contentsline {figure}{\numberline {3.2}{\ignorespaces Flowchart of the Top-K Retrieval System}}{17}{figure.caption.5}%
-\contentsline {figure}{\numberline {3.3}{\ignorespaces The Increasing Amount of Different QSLs in Larger Model Sets}}{23}{figure.caption.11}%
+\contentsline {figure}{\numberline {3.2}{\ignorespaces Flowchart of the Top-K Retrieval System}}{19}{figure.caption.6}%
+\contentsline {figure}{\numberline {3.3}{\ignorespaces The Increasing Amount of Different QSLs in Larger Model Sets}}{24}{figure.caption.11}%
 \contentsline {figure}{\numberline {3.4}{\ignorespaces Structure of the Different Scores Used for the Retrieval Process}}{26}{figure.caption.12}%
 \addvspace {10\p@ }
 \contentsline {figure}{\numberline {4.1}{\ignorespaces Modification of Training Data Regarding the Prediction Horizon}}{35}{figure.caption.15}%
@@ -19,8 +19,8 @@
 \contentsline {figure}{\numberline {5.4}{\ignorespaces Accuracy Distribution for Models With Prediction Horizon and >0\% Accuracy}}{42}{figure.caption.19}%
 \contentsline {figure}{\numberline {5.5}{\ignorespaces Accuracy Distribution for Models With 24 Hour-Shift and >0\% Accuracy}}{42}{figure.caption.20}%
 \contentsline {figure}{\numberline {5.6}{\ignorespaces Number of Accesses for Each Request and Algorithm on a Logarithmic Scale}}{45}{figure.caption.22}%
-\contentsline {figure}{\numberline {5.7}{\ignorespaces Mean Execution Time in Steps for Naive Algorithm on a Logarithmic Scale}}{47}{figure.caption.24}%
-\contentsline {figure}{\numberline {5.8}{\ignorespaces Mean Execution Time in Steps for Fagin's Algorithm on a Logarithmic Scale}}{47}{figure.caption.25}%
+\contentsline {figure}{\numberline {5.7}{\ignorespaces Mean Execution Time in Steps for Naive Algorithm on a Logarithmic Scale}}{48}{figure.caption.24}%
+\contentsline {figure}{\numberline {5.8}{\ignorespaces Mean Execution Time in Steps for Fagin's Algorithm on a Logarithmic Scale}}{48}{figure.caption.25}%
 \contentsline {figure}{\numberline {5.9}{\ignorespaces Mean Execution Time in Steps for Threshold Algorithm on a Logarithmic Scale}}{49}{figure.caption.26}%
 \addvspace {10\p@ }
 \addvspace {10\p@ }

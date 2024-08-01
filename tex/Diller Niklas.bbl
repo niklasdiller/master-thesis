@@ -113,11 +113,11 @@ C.~Li, K.~{Chen-Chuan Chang}, and I.~F. Ilyas, ``Supporting ad-hoc ranking aggre
 \bibitem{borzsony2001}
 S.~Borzsony, D.~Kossmann, and K.~Stocker, ``The {{Skyline}} operator,'' in \emph{Proceedings 17th {{International Conference}} on {{Data Engineering}}}.\hskip 1em plus 0.5em minus 0.4em\relax Heidelberg, Germany: IEEE Comput. Soc, 2001, pp. 421--430.
 
-\bibitem{eibe2016}
-F.~Eibe, M.~A. Hall, and I.~H. Witten, ``The {{WEKA Workbench}},'' in \emph{Data {{Mining}}: {{Practical Machine Learning Tools}} and {{Techniques}}}, fourth edition~ed.\hskip 1em plus 0.5em minus 0.4em\relax Morgan Kaufmann, 2016.
-
 \bibitem{dehghani2019}
 A.~Dehghani, O.~Sarbishei, T.~Glatard, and E.~Shihab, ``A {{Quantitative Comparison}} of {{Overlapping}} and {{Non-Overlapping Sliding Windows}} for {{Human Activity Recognition Using Inertial Sensors}},'' \emph{Sensors (Basel, Switzerland)}, vol.~19, no.~22, p. 5026, Nov. 2019.
+
+\bibitem{eibe2016}
+F.~Eibe, M.~A. Hall, and I.~H. Witten, ``The {{WEKA Workbench}},'' in \emph{Data {{Mining}}: {{Practical Machine Learning Tools}} and {{Techniques}}}, fourth edition~ed.\hskip 1em plus 0.5em minus 0.4em\relax Morgan Kaufmann, 2016.
 
 \bibitem{silberschatz2010}
 A.~Silberschatz, H.~F. Korth, and S.~Sudarshan, \emph{{Database System Concepts}}, 6th~ed.\hskip 1em plus 0.5em minus 0.4em\relax New York: McGraw Hill Higher Education, Jan. 2010.

@@ -1,5 +1,5 @@
 SELECT_MODEL =  """SELECT model_id, model_name, developer, created_time, features, classifiers, model_size_in_bytes, 
-                randomforestmaxdepth, kneighbours ,accuracy, mae, mse, rmse,
+                randomforestmaxdepth, kneighbours , accuracydt, accuracyrf, accuracylr, accuracyknn
                 FROM niklas_trained_models 
                 WHERE model_name = %s
                 ORDER BY model_id desc

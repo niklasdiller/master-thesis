@@ -29,7 +29,7 @@
 \contentsline {chapter}{\numberline {4}Implementation}{27}{chapter.4}%
 \contentsline {section}{\numberline {4.1}Model Database}{27}{section.4.1}%
 \contentsline {section}{\numberline {4.2}Training Pipeline}{29}{section.4.2}%
-\contentsline {section}{\numberline {4.3}24 Hour Shift}{31}{section.4.3}%
+\contentsline {section}{\numberline {4.3}24 Hour Shift}{32}{section.4.3}%
 \contentsline {section}{\numberline {4.4}Running the Pipeline}{33}{section.4.4}%
 \contentsline {section}{\numberline {4.5}Prediction Horizon}{34}{section.4.5}%
 \contentsline {section}{\numberline {4.6}Retrieval System}{35}{section.4.6}%
@@ -38,15 +38,16 @@
 \contentsline {section}{\numberline {5.2}Retrieval System}{43}{section.5.2}%
 \contentsline {subsection}{\numberline {5.2.1}Accesses}{43}{subsection.5.2.1}%
 \contentsline {subsection}{\numberline {5.2.2}Execution Time}{46}{subsection.5.2.2}%
-\contentsline {subsection}{\numberline {5.2.3}Network Utilization}{49}{subsection.5.2.3}%
-\contentsline {subsubsection}{\numberline {5.2.3.1}Maximum Divergence Example}{50}{subsubsection.5.2.3.1}%
+\contentsline {subsection}{\numberline {5.2.3}Network Utilization}{50}{subsection.5.2.3}%
+\contentsline {subsubsection}{\numberline {5.2.3.1}Maximum Divergence Example}{51}{subsubsection.5.2.3.1}%
 \contentsline {subsubsection}{\numberline {5.2.3.2}Realistic Example}{52}{subsubsection.5.2.3.2}%
-\contentsline {subsubsection}{\numberline {5.2.3.3}Large Model Set Example}{52}{subsubsection.5.2.3.3}%
-\contentsline {subsubsection}{\numberline {5.2.3.4}QSL Counterexample}{53}{subsubsection.5.2.3.4}%
-\contentsline {chapter}{\numberline {6}Future Work and Conclusion}{55}{chapter.6}%
-\contentsline {section}{\numberline {6.1}Future Work}{55}{section.6.1}%
-\contentsline {section}{\numberline {6.2}Conclusion}{57}{section.6.2}%
-\contentsline {chapter}{Abbreviations}{61}{section*.32}%
-\contentsline {chapter}{Figures}{63}{section*.33}%
-\contentsline {chapter}{Tables}{65}{section*.35}%
-\contentsline {chapter}{Literature}{67}{section*.37}%
+\contentsline {subsubsection}{\numberline {5.2.3.3}Example from Retrieval System}{53}{subsubsection.5.2.3.3}%
+\contentsline {subsubsection}{\numberline {5.2.3.4}Large Model Set Example}{54}{subsubsection.5.2.3.4}%
+\contentsline {subsubsection}{\numberline {5.2.3.5}QSL Counterexample}{55}{subsubsection.5.2.3.5}%
+\contentsline {chapter}{\numberline {6}Future Work and Conclusion}{57}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Future Work}{57}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Conclusion}{59}{section.6.2}%
+\contentsline {chapter}{Abbreviations}{63}{section*.34}%
+\contentsline {chapter}{Figures}{65}{section*.35}%
+\contentsline {chapter}{Tables}{67}{section*.37}%
+\contentsline {chapter}{Literature}{69}{section*.39}%

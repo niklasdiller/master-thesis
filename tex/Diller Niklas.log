@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2024.7.21)  29 JUL 2024 19:45
+This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2024.7.21)  1 AUG 2024 09:40
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -514,11 +514,7 @@ File: t1ptm.fd 2001/06/04 font definitions for T1/ptm.
 File: l3backend-pdftex.def 2024-02-20 L3 backend support: PDF output (pdfTeX)
 \l__color_backend_stack_int=\count326
 \l__pdf_internal_box=\box66
-) (./Diller Niklas.aux
-
-LaTeX Warning: Label `fig:shift24h' multiply defined.
-
-)
+) (./Diller Niklas.aux)
 \openout1 = `"Diller Niklas.aux"'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 79.
@@ -613,8 +609,8 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
 pdfTeX warning (ext4): destination with the same identifier (name{page.1}) has been already used, duplicate ignored
 <to be read again> 
                    \relax 
-l.10 
-      [1
+l.9 
+     [1
 
 ]) (./content/relatedwork.tex
 pdfTeX warning (ext4): destination with the same identifier (name{page.2}) has been already used, duplicate ignored
@@ -641,32 +637,29 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
  [7]
 
 pdfTeX warning: pdflatex (file ./graphics/combining.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
-<graphics/combining.pdf, id=279, 401.58029pt x 506.85359pt>
+<graphics/combining.pdf, id=280, 385.44pt x 486.85887pt>
 File: graphics/combining.pdf Graphic file (type pdf)
 <use graphics/combining.pdf>
-Package pdftex.def Info: graphics/combining.pdf  used on input line 84.
-(pdftex.def)             Requested size: 202.89142pt x 256.0748pt.
+Package pdftex.def Info: graphics/combining.pdf  used on input line 82.
+(pdftex.def)             Requested size: 202.73543pt x 256.0748pt.
 LaTeX Font Info:    Font shape `T1/phv/m/it' in size <10.95> not available
-(Font)              Font shape `T1/phv/m/sl' tried instead on input line 85.
+(Font)              Font shape `T1/phv/m/sl' tried instead on input line 83.
 
 
 pdfTeX warning: pdflatex (file ./graphics/combiningrejection.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
-<graphics/combiningrejection.pdf, id=280, 401.58029pt x 506.85359pt>
+<graphics/combiningrejection.pdf, id=281, 385.44pt x 486.85887pt>
 File: graphics/combiningrejection.pdf Graphic file (type pdf)
 <use graphics/combiningrejection.pdf>
-Package pdftex.def Info: graphics/combiningrejection.pdf  used on input line 90.
-(pdftex.def)             Requested size: 202.89142pt x 256.0748pt.
-
-Underfull \vbox (badness 4229) has occurred while \output is active []
-
- [8 <./graphics/combining.pdf> <./graphics/combiningrejection.pdf>]
+Package pdftex.def Info: graphics/combiningrejection.pdf  used on input line 88.
+(pdftex.def)             Requested size: 202.73543pt x 256.0748pt.
+[8 <./graphics/combining.pdf> <./graphics/combiningrejection.pdf>]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [9]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [10]
-LaTeX Font Info:    Trying to load font information for T1+pcr on input line 119.
+LaTeX Font Info:    Trying to load font information for T1+pcr on input line 117.
  (/usr/local/texlive/2024/texmf-dist/tex/latex/psnfss/t1pcr.fd
 File: t1pcr.fd 2001/06/04 font definitions for T1/pcr.
 ) [11]
@@ -679,74 +672,70 @@ pdfTeX warning: pdflatex (file ./graphics/globalarchitecture.pdf): PDF inclusion
 File: graphics/globalarchitecture.pdf Graphic file (type pdf)
 <use graphics/globalarchitecture.pdf>
 Package pdftex.def Info: graphics/globalarchitecture.pdf  used on input line 7.
-(pdftex.def)             Requested size: 485.12218pt x 207.21944pt.
+(pdftex.def)             Requested size: 507.16768pt x 216.63629pt.
 [15
 
  <./graphics/globalarchitecture.pdf>]
-
-pdfTeX warning: pdflatex (file ./graphics/flowchartretrieval.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
-<graphics/flowchartretrieval.pdf, id=420, 324.25137pt x 695.7192pt>
-File: graphics/flowchartretrieval.pdf Graphic file (type pdf)
-<use graphics/flowchartretrieval.pdf>
-Package pdftex.def Info: graphics/flowchartretrieval.pdf  used on input line 25.
-(pdftex.def)             Requested size: 185.6564pt x 398.33858pt.
-LaTeX Font Info:    Trying to load font information for TS1+ptm on input line 36.
-(/usr/local/texlive/2024/texmf-dist/tex/latex/psnfss/ts1ptm.fd
+LaTeX Font Info:    Trying to load font information for TS1+ptm on input line 31.
+ (/usr/local/texlive/2024/texmf-dist/tex/latex/psnfss/ts1ptm.fd
 File: ts1ptm.fd 2001/06/04 font definitions for TS1/ptm.
 )
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [16] [17 <./graphics/flowchartretrieval.pdf>]
-Underfull \hbox (badness 2846) in paragraph at lines 56--56
-[]|\T1/pcr/m/n/10.95 acc\T1/ptm/m/n/10.95 , \T1/pcr/m/n/10.95 mae\T1/ptm/m/n/10.95 , \T1/pcr/m/n/10.95 mse\T1/ptm/m/n/10.95 ,
- []
-
-
-Underfull \hbox (badness 1365) in paragraph at lines 57--57
+ [16]
+Underfull \hbox (badness 1365) in paragraph at lines 52--52
 []|\T1/pcr/m/n/10.95 1 \T1/ptm/m/n/10.95 to \T1/pcr/m/n/10.95 n\T1/ptm/m/n/10.95 , where \T1/pcr/m/n/10.95 n
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 57--57
+Underfull \hbox (badness 10000) in paragraph at lines 52--52
 \T1/ptm/m/n/10.95 is the max-i-mum
  []
 
 
-Underfull \hbox (badness 3343) in paragraph at lines 58--58
+Underfull \hbox (badness 3343) in paragraph at lines 53--53
 []|\T1/pcr/m/n/10.95 max \T1/ptm/m/n/10.95 or \T1/pcr/m/n/10.95 1 \T1/ptm/m/n/10.95 to \T1/pcr/m/n/10.95 n\T1/ptm/m/n/10.95 ,
  []
 
 
-Underfull \hbox (badness 4569) in paragraph at lines 58--58
+Underfull \hbox (badness 4569) in paragraph at lines 53--53
 \T1/ptm/m/n/10.95 i-mum num-ber of
  []
 
 
-Underfull \hbox (badness 6493) in paragraph at lines 59--59
+Underfull \hbox (badness 6493) in paragraph at lines 54--54
 []|\T1/pcr/m/n/10.95 10\T1/ptm/m/n/10.95 , \T1/pcr/m/n/10.95 30\T1/ptm/m/n/10.95 , \T1/pcr/m/n/10.95 60 \T1/ptm/m/n/10.95 or
  []
 
 
-Underfull \hbox (badness 3907) in paragraph at lines 59--59
+Underfull \hbox (badness 3907) in paragraph at lines 54--54
 \T1/ptm/m/n/10.95 a com-bi-na-tion of
  []
 
 
-Underfull \hbox (badness 4739) in paragraph at lines 60--60
+Underfull \hbox (badness 4739) in paragraph at lines 55--55
 []|\T1/ptm/m/n/10.95 Value be-tween \T1/pcr/m/n/10.95 0
  []
 
 
-Underfull \hbox (badness 4739) in paragraph at lines 61--61
+Underfull \hbox (badness 4739) in paragraph at lines 56--56
 []|\T1/ptm/m/n/10.95 Value be-tween \T1/pcr/m/n/10.95 0
  []
 
 
-Underfull \hbox (badness 2096) in paragraph at lines 64--64
+Underfull \hbox (badness 2096) in paragraph at lines 59--59
 []|\T1/ptm/m/n/10.95 Aggregation func-tion for de-ter-min-ing the
  []
 
-[18] [19]
+
+
+pdfTeX warning: pdflatex (file ./graphics/flowchartretrieval.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
+<graphics/flowchartretrieval.pdf, id=433, 324.25137pt x 695.7192pt>
+File: graphics/flowchartretrieval.pdf Graphic file (type pdf)
+<use graphics/flowchartretrieval.pdf>
+Package pdftex.def Info: graphics/flowchartretrieval.pdf  used on input line 67.
+(pdftex.def)             Requested size: 265.22485pt x 569.05511pt.
+[17] [18] [19 <./graphics/flowchartretrieval.pdf>]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [20]
@@ -756,25 +745,21 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [22]
-<graphics/qsl.pdf, id=488, 392.96812pt x 174.6525pt>
+<graphics/qsl.pdf, id=492, 392.96812pt x 174.6525pt>
 File: graphics/qsl.pdf Graphic file (type pdf)
 <use graphics/qsl.pdf>
-Package pdftex.def Info: graphics/qsl.pdf  used on input line 121.
+Package pdftex.def Info: graphics/qsl.pdf  used on input line 118.
 (pdftex.def)             Requested size: 256.07982pt x 113.81102pt.
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [23 <./graphics/qsl.pdf>]
-
-LaTeX Warning: Reference `qslscore' on page 24 undefined on input line 129.
-
-[24]
+ [23] [24 <./graphics/qsl.pdf>]
 
 pdfTeX warning: pdflatex (file ./graphics/scores.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
-<graphics/scores.pdf, id=514, 470.50781pt x 454.69875pt>
+<graphics/scores.pdf, id=518, 470.50781pt x 454.69875pt>
 File: graphics/scores.pdf Graphic file (type pdf)
 <use graphics/scores.pdf>
-Package pdftex.def Info: graphics/scores.pdf  used on input line 184.
+Package pdftex.def Info: graphics/scores.pdf  used on input line 180.
 (pdftex.def)             Requested size: 353.31075pt x 341.43306pt.
 ) (./content/implementation.tex [25] [26 <./graphics/scores.pdf>]
 Overfull \hbox (5.31548pt too wide) in paragraph at lines 27--28
@@ -792,13 +777,13 @@ Overfull \hbox (1.04333pt too wide) in paragraph at lines 52--53
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [30]
-LaTeX Font Info:    Font shape `T1/pcr/m/it' in size <10.95> not available
-(Font)              Font shape `T1/pcr/m/sl' tried instead on input line 115.
- [31]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
+ [31]
+LaTeX Font Info:    Font shape `T1/pcr/m/it' in size <10.95> not available
+(Font)              Font shape `T1/pcr/m/sl' tried instead on input line 123.
  [32] [33] [34]
-Underfull \vbox (badness 1048) has occurred while \output is active []
+Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [35]
 Underfull \vbox (badness 10000) has occurred while \output is active []
@@ -806,12 +791,12 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
  [36]) (./content/evaluation.tex [37] [38
 
 ]
-<plots/totalmodels.pdf, id=683, 578.16pt x 433.62pt>
+<plots/totalmodels.pdf, id=690, 578.16pt x 433.62pt>
 File: plots/totalmodels.pdf Graphic file (type pdf)
 <use plots/totalmodels.pdf>
 Package pdftex.def Info: plots/totalmodels.pdf  used on input line 15.
 (pdftex.def)             Requested size: 379.39009pt x 284.52756pt.
-<plots/grouped_prevocc.pdf, id=685, 578.16pt x 433.62pt>
+<plots/grouped_prevocc.pdf, id=692, 578.16pt x 433.62pt>
 File: plots/grouped_prevocc.pdf Graphic file (type pdf)
 <use plots/grouped_prevocc.pdf>
 Package pdftex.def Info: plots/grouped_prevocc.pdf  used on input line 26.
@@ -820,17 +805,17 @@ Package pdftex.def Info: plots/grouped_prevocc.pdf  used on input line 26.
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [39] [40 <./plots/totalmodels.pdf> <./plots/grouped_prevocc.pdf>]
-<plots/nofuture.pdf, id=843, 578.16pt x 433.62pt>
+<plots/nofuture.pdf, id=850, 578.16pt x 433.62pt>
 File: plots/nofuture.pdf Graphic file (type pdf)
 <use plots/nofuture.pdf>
 Package pdftex.def Info: plots/nofuture.pdf  used on input line 37.
 (pdftex.def)             Requested size: 379.39009pt x 284.52756pt.
-<plots/predhor.pdf, id=844, 578.16pt x 433.62pt>
+<plots/predhor.pdf, id=851, 578.16pt x 433.62pt>
 File: plots/predhor.pdf Graphic file (type pdf)
 <use plots/predhor.pdf>
 Package pdftex.def Info: plots/predhor.pdf  used on input line 44.
 (pdftex.def)             Requested size: 379.39009pt x 284.52756pt.
-<plots/shift24h.pdf, id=845, 578.16pt x 433.62pt>
+<plots/shift24h.pdf, id=852, 578.16pt x 433.62pt>
 File: plots/shift24h.pdf Graphic file (type pdf)
 <use plots/shift24h.pdf>
 Package pdftex.def Info: plots/shift24h.pdf  used on input line 51.
@@ -839,146 +824,127 @@ Package pdftex.def Info: plots/shift24h.pdf  used on input line 51.
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [43]
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [44]
-<plots/grouped_accesses.pdf, id=1068, 578.16pt x 433.62pt>
+<plots/grouped_accesses.pdf, id=1070, 578.16pt x 433.62pt>
 File: plots/grouped_accesses.pdf Graphic file (type pdf)
 <use plots/grouped_accesses.pdf>
 Package pdftex.def Info: plots/grouped_accesses.pdf  used on input line 113.
 (pdftex.def)             Requested size: 379.39009pt x 284.52756pt.
 
-Underfull \vbox (badness 1817) has occurred while \output is active []
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [44]
+Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [45 <./plots/grouped_accesses.pdf>]
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-<plots/executiontime_naive.pdf, id=1135, 722.7pt x 433.62pt>
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [46]
+<plots/executiontime_naive.pdf, id=1158, 722.7pt x 433.62pt>
 File: plots/executiontime_naive.pdf Graphic file (type pdf)
 <use plots/executiontime_naive.pdf>
-Package pdftex.def Info: plots/executiontime_naive.pdf  used on input line 163.
-(pdftex.def)             Requested size: 474.23763pt x 284.52756pt.
-
-Overfull \hbox (33.21991pt too wide) in paragraph at lines 163--164
- [][] 
- []
-
-<plots/executiontime_fagins.pdf, id=1136, 722.7pt x 433.62pt>
+Package pdftex.def Info: plots/executiontime_naive.pdf  used on input line 167.
+(pdftex.def)             Requested size: 426.80835pt x 256.0748pt.
+<plots/executiontime_fagins.pdf, id=1159, 722.7pt x 433.62pt>
 File: plots/executiontime_fagins.pdf Graphic file (type pdf)
 <use plots/executiontime_fagins.pdf>
-Package pdftex.def Info: plots/executiontime_fagins.pdf  used on input line 170.
-(pdftex.def)             Requested size: 474.23763pt x 284.52756pt.
-
-Overfull \hbox (33.21991pt too wide) in paragraph at lines 170--171
- [][] 
- []
-
-<plots/executiontime_threshold.pdf, id=1137, 722.7pt x 433.62pt>
+Package pdftex.def Info: plots/executiontime_fagins.pdf  used on input line 174.
+(pdftex.def)             Requested size: 426.80835pt x 256.0748pt.
+<plots/executiontime_threshold.pdf, id=1160, 722.7pt x 433.62pt>
 File: plots/executiontime_threshold.pdf Graphic file (type pdf)
 <use plots/executiontime_threshold.pdf>
-Package pdftex.def Info: plots/executiontime_threshold.pdf  used on input line 177.
-(pdftex.def)             Requested size: 474.23763pt x 284.52756pt.
-
-Overfull \hbox (33.21991pt too wide) in paragraph at lines 177--178
- [][] 
- []
-
-
+Package pdftex.def Info: plots/executiontime_threshold.pdf  used on input line 181.
+(pdftex.def)             Requested size: 426.80835pt x 256.0748pt.
+ [47] [48 <./plots/executiontime_naive.pdf> <./plots/executiontime_fagins.pdf>]
 Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [46] [47 <./plots/executiontime_naive.pdf> <./plots/executiontime_fagins.pdf>]
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [48]
-Underfull \vbox (badness 2334) has occurred while \output is active []
 
  [49 <./plots/executiontime_threshold.pdf>]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [50] [51]
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-[50]
+
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [51]
+ [52]
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-[52] [53]) (./content/conclusion.tex [54]
+
+Underfull \vbox (badness 2573) has occurred while \output is active []
+
+ [53]
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+[54] [55]) (./content/conclusion.tex [56]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [55
+ [57
 
 ]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [56]
+ [58]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [57]
+ [59]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [58])
-Underfull \hbox (badness 10000) in paragraph at lines 38--108
+ [60]) [61] [62
 
- []
+] (./content/abbreviations.tex) [63
 
-[59] [60
-
-] (./content/abbreviations.tex) [61
-
-] [62
+] [64
 
 ] (./Diller Niklas.lof)
 \tf@lof=\write7
 \openout7 = `"Diller Niklas.lof"'.
 
- [63
+ [65
 
-] [64
+] [66
 
 ] (./Diller Niklas.lot)
 \tf@lot=\write8
 \openout8 = `"Diller Niklas.lot"'.
 
- [65
+ [67
 
-] [66
+] [68
 
-] (./Diller Niklas.bbl [67
+] (./Diller Niklas.bbl [69
 
-] [68]) [69] [70
+] [70]) [71] [72
 
-] [71
+] [73
 
 ] (./Diller Niklas.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-02-20>
  ***********
-
-
-LaTeX Warning: There were undefined references.
-
-
-LaTeX Warning: There were multiply-defined labels.
-
 Package rerunfilecheck Info: File `"Diller Niklas".out' has not changed.
-(rerunfilecheck)             Checksum: 502F5B4E7FD6C23CF013FE4C371793B1;3340.
+(rerunfilecheck)             Checksum: E1963CF70B3390AE95F5539694DD85E4;3340.
  ) 
 Here is how much of TeX's memory you used:
- 18228 strings out of 474116
- 290752 string characters out of 5743682
- 1960187 words of memory out of 5000000
- 40053 multiletter control sequences out of 15000+600000
+ 18241 strings out of 474116
+ 290946 string characters out of 5743682
+ 1962187 words of memory out of 5000000
+ 40061 multiletter control sequences out of 15000+600000
  609679 words of font info for 94 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 75i,13n,79p,2857b,1348s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 75i,13n,79p,2907b,1348s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/urw/courier/ucrr8a.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/urw/courier/ucrro8a.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/urw/helvetic/uhvb8a.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/urw/helvetic/uhvro8a.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
-Output written on "Diller Niklas.pdf" (77 pages, 1019450 bytes).
+Output written on "Diller Niklas.pdf" (79 pages, 1029618 bytes).
 PDF statistics:
- 1692 PDF objects out of 1728 (max. 8388607)
- 928 compressed objects within 10 object streams
- 225 named destinations out of 1000 (max. 500000)
+ 1729 PDF objects out of 2073 (max. 8388607)
+ 963 compressed objects within 10 object streams
+ 230 named destinations out of 1000 (max. 500000)
  297 words of extra memory for PDF output out of 10000 (max. 10000000)
 
